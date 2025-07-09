@@ -1,8 +1,8 @@
 import InfoCard from "../../components/infoCard";
 import Mate from "../../img/Mate.png";
-import Logo from "../../img/noBackgroundLogo.png";
+import Logo from "../../img/new_logo.png";
 
-import "../../img/noBackgroundLogo.png";
+import "../../img/new_logo.png";
 import "./About.css";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

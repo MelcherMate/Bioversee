@@ -1,5 +1,5 @@
 import Google from "../../img/google.png";
-import Logo from "../../img/noBackgroundLogo.png";
+import Logo from "../../img/new_logo.png";
 import "./Login.css";
 
 const Login = () => {
