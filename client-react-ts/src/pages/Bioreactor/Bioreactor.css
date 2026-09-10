@@ -19,9 +19,9 @@
 aside {
   display: flex;
   position: absolute;
-  width: min(300px, calc(100vw - 24px));
+  width: min(312px, calc(100vw - 24px));
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   z-index: 2;
   padding: 12px;
   pointer-events: none;
@@ -42,25 +42,39 @@ aside > * {
 }
 
 .boxTitle {
-  margin: 0 0 10px;
+  margin: 0 0 4px;
+  padding: 0 2px 8px;
   text-align: left;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--bv-text-tertiary);
+  border-bottom: 1px solid var(--bv-line);
 }
 
+.controlPanel,
 .switchBox,
 .sliderBox,
 .chartBox {
   border-radius: var(--bv-radius-lg);
-  padding: 14px;
+  padding: 14px 14px 10px;
   background: var(--bv-glass);
   border: 1px solid var(--bv-glass-border);
   box-shadow: var(--bv-shadow-float);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.controlPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.controlPanel__section + .controlPanel__section {
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
 .chartBox {

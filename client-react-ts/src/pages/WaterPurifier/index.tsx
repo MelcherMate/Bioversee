@@ -48,39 +48,41 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   return (
     <div className="container">
       <aside id="actuatorSide">
-        <div className="switchBox">
-          <h4 className="boxTitle">Swicth settings</h4>
-          <Switch
-            name="switchPump1"
-            setVal={setPump1Val}
-            val={pump1Val}
-            label="Puffer to Active pump"
-            user={user}
-          />
-          <Switch
-            name="switchPump2"
-            setVal={setPump2Val}
-            val={pump2Val}
-            label="Additive to Active pump"
-            user={user}
-          />
-          <Switch
-            name="switchPump3"
-            setVal={setPump3Val}
-            val={pump3Val}
-            label="Active to Clean pump"
-            user={user}
-          />
-        </div>
-        <div className="sliderBox">
-          <h4 className="boxTitle">Agitator settings</h4>
-          <Slider
-            name="agitator"
-            setVal={setRotorVal}
-            val={rotorVal}
-            label="Agitator"
-            user={user}
-          />
+        <div className="controlPanel">
+          <section className="controlPanel__section">
+            <h4 className="boxTitle">Pumps</h4>
+            <Switch
+              name="switchPump1"
+              setVal={setPump1Val}
+              val={pump1Val}
+              label="Puffer → Active"
+              user={user}
+            />
+            <Switch
+              name="switchPump2"
+              setVal={setPump2Val}
+              val={pump2Val}
+              label="Additive → Active"
+              user={user}
+            />
+            <Switch
+              name="switchPump3"
+              setVal={setPump3Val}
+              val={pump3Val}
+              label="Active → Clean"
+              user={user}
+            />
+          </section>
+          <section className="controlPanel__section">
+            <h4 className="boxTitle">Motion</h4>
+            <Slider
+              name="agitator"
+              setVal={setRotorVal}
+              val={rotorVal}
+              label="Agitator"
+              user={user}
+            />
+          </section>
         </div>
       </aside>
       <main id="waterpurifierBox" ref={canvasRef}>

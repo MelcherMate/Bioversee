@@ -50,53 +50,55 @@ function Bioreactor({ user }: BioreactorProps) {
   return (
     <div className="container">
       <aside id="actuatorSide">
-        <div className="switchBox">
-          <h4 className="boxTitle">Pump settings</h4>
-          <Switch
-            name="switchWarmWaterPump"
-            setVal={setWarmWVal}
-            val={warmWVal}
-            label="Warm water pump"
-            user={user}
-          />
-          <Switch
-            name="switchColdWaterPump"
-            setVal={setColdWVal}
-            val={coldWVal}
-            label="Cold water pump"
-            user={user}
-          />
-          <Switch
-            name="switchAcidPump"
-            setVal={setAcidVal}
-            val={acidVal}
-            label="Acid pump"
-            user={user}
-          />
-          <Switch
-            name="switchBasePump"
-            setVal={setBaseVal}
-            val={baseVal}
-            label="Base pump"
-            user={user}
-          />
-        </div>
-        <div className="sliderBox">
-          <h4 className="boxTitle">Agitator / Aerator Settings</h4>
-          <Slider
-            name="rotor"
-            setVal={setRotorVal}
-            val={rotorVal}
-            label="Rotor"
-            user={user}
-          />
-          <Slider
-            name="aerator"
-            setVal={setAeratorVal}
-            val={aeratorVal}
-            label="Aerator"
-            user={user}
-          />
+        <div className="controlPanel">
+          <section className="controlPanel__section">
+            <h4 className="boxTitle">Pumps</h4>
+            <Switch
+              name="switchWarmWaterPump"
+              setVal={setWarmWVal}
+              val={warmWVal}
+              label="Warm water"
+              user={user}
+            />
+            <Switch
+              name="switchColdWaterPump"
+              setVal={setColdWVal}
+              val={coldWVal}
+              label="Cold water"
+              user={user}
+            />
+            <Switch
+              name="switchAcidPump"
+              setVal={setAcidVal}
+              val={acidVal}
+              label="Acid"
+              user={user}
+            />
+            <Switch
+              name="switchBasePump"
+              setVal={setBaseVal}
+              val={baseVal}
+              label="Base"
+              user={user}
+            />
+          </section>
+          <section className="controlPanel__section">
+            <h4 className="boxTitle">Motion</h4>
+            <Slider
+              name="rotor"
+              setVal={setRotorVal}
+              val={rotorVal}
+              label="Rotor"
+              user={user}
+            />
+            <Slider
+              name="aerator"
+              setVal={setAeratorVal}
+              val={aeratorVal}
+              label="Aerator"
+              user={user}
+            />
+          </section>
         </div>
       </aside>
       <main id="reactorBox" ref={canvasRef}>
