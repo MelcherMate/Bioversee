@@ -25,9 +25,21 @@ There is **no 7-day logout** on iOS — sessions stay until you log out that acc
 
 ## Push notifications
 
-1. Run `supabase/push_tokens.sql` in the Supabase SQL Editor.
+**Requires a paid Apple Developer Program team.** Free personal teams cannot use the Push Notifications capability / `aps-environment` entitlement — Xcode will fail signing if it’s enabled.
+
+Until you enroll, the app uses **inbox polling (15s) + local banners**. That works on a personal team.
+
+When enrolled:
+
+1. Run `supabase/push_tokens.sql` in the Supabase SQL Editor (safe to leave if already run).
 2. In Apple Developer → Keys → create an **APNs** key (`.p8`). Note Key ID + Team ID.
-3. Xcode → Signing & Capabilities → enable **Push Notifications** (entitlements already in the project). Use a physical device (simulator has no APNs).
+3. In `ios/Bioversee/Bioversee.entitlements` add:
+   ```xml
+   <key>aps-environment</key>
+   <string>development</string>
+   ```
+   And in Xcode → Signing & Capabilities → **+ Capability → Push Notifications**.
+   Uncomment `registerForRemoteNotifications()` in `PushNotificationManager`.
 4. Deploy the edge function and set secrets:
 
 ```bash

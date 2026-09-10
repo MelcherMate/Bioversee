@@ -15,14 +15,15 @@ final class PushNotificationManager: NSObject, ObservableObject {
         UNUserNotificationCenter.current().delegate = self
     }
 
+    /// Local alert permission (works on free personal teams).
+    /// Remote APNs registration is skipped until Push entitlement is enabled (paid Developer Program).
     func requestAuthorizationAndRegister() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) {
             granted,
             _ in
             guard granted else { return }
-            DispatchQueue.main.async {
-                UIApplication.shared.registerForRemoteNotifications()
-            }
+            // Paid team + aps-environment entitlement required:
+            // UIApplication.shared.registerForRemoteNotifications()
         }
     }
 

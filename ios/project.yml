@@ -16,10 +16,10 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: Bioversee
+    # Push (aps-environment) needs a paid Apple Developer Program team.
+    # Re-add when enrolled — see ios/README.md.
     entitlements:
       path: Bioversee/Bioversee.entitlements
-      properties:
-        aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bioversee.app
