@@ -40,9 +40,14 @@ Run [`share_links.sql`](./share_links.sql) once. Fresh installs get this from `s
 
 Run [`notifications.sql`](./notifications.sql) once. Invites become pending until the recipient accepts from the bell.
 
+## Create device from header
+
+Run [`create_device.sql`](./create_device.sql) once so the **+** button can create named devices.
+
 ## Notes
 
 - Share UI: navbar Share → invite link / email / roster.
 - Recipients get a notification and must **Accept** before the device appears.
+- Header: **+** adds a device; circular icons open each instance (hover shows name).
 - Pi API keys: table ready (`device_credentials`); mint UI + Edge Function still follow-up.
 - Pi ingest should use the **service role** or a future Edge Function that validates a device credential and inserts with `device_id`.

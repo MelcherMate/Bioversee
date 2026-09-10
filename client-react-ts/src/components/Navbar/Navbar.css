@@ -23,7 +23,7 @@
 .topbar__left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
   flex: 1;
 }
@@ -79,148 +79,67 @@
   border: 0;
 }
 
-.topbar__device {
+.topbar__add {
   position: relative;
-  min-width: 0;
-  max-width: min(360px, 100%);
+  flex-shrink: 0;
 }
 
-.topbar__device-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
+.topbar__round-btn,
+.topbar__device-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
   border: none;
-  border-radius: 999px;
-  padding: 6px 10px 6px 12px;
+  border-radius: 50%;
   background: var(--bv-fill);
   cursor: pointer;
-  color: var(--bv-text);
   transition:
     background 0.2s var(--bv-ease),
-    box-shadow 0.2s var(--bv-ease);
+    box-shadow 0.2s var(--bv-ease),
+    transform 0.15s var(--bv-ease);
 }
 
-.topbar__device-btn:hover,
-.topbar__device-btn.is-open {
+.topbar__round-btn:hover,
+.topbar__device-icon:hover,
+.topbar__round-btn.is-active,
+.topbar__device-icon.is-active {
   background: var(--bv-accent-soft);
   box-shadow: inset 0 0 0 1px var(--bv-accent-border);
 }
 
-.topbar__device-copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-  text-align: left;
-}
-
-.topbar__device-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--bv-text-tertiary);
-  line-height: 1.1;
-}
-
-.topbar__device-name {
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
-}
-
-.topbar__pill {
+.topbar__device-icon {
+  position: relative;
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--bv-accent-hover);
-  background: #fff;
-  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
 }
 
-.topbar__pill--legacy {
-  color: #9a3412;
-  background: #ffedd5;
-  box-shadow: inset 0 0 0 1px #fdba74;
+.topbar__device-icon.is-shared {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-.topbar__device-menu {
+.topbar__device-shared-dot {
   position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  width: min(340px, calc(100vw - 28px));
-  max-height: min(70vh, 480px);
-  overflow: auto;
-  padding: 14px;
-  border-radius: var(--bv-radius-md);
-  background: var(--bv-card);
-  box-shadow: var(--bv-shadow-card);
-  z-index: 55;
-  animation: menu-in 0.2s var(--bv-ease);
+  right: 2px;
+  bottom: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bv-accent);
+  box-shadow: 0 0 0 2px #fff;
 }
 
-.topbar__device-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.topbar__device-option {
+.topbar__devices {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  border: none;
-  border-radius: 10px;
-  padding: 10px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: none;
 }
 
-.topbar__device-option:hover {
-  background: var(--bv-fill);
-}
-
-.topbar__device-option.is-active {
-  background: var(--bv-accent-soft);
-  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
-}
-
-.topbar__device-option-name {
-  display: block;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
-.topbar__device-option-meta {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--bv-text-secondary);
-}
-
-.topbar__device-empty {
-  margin: 0;
-  font-size: 12px;
-  color: var(--bv-text-secondary);
+.topbar__devices::-webkit-scrollbar {
+  display: none;
 }
 
 .topbar__right {
@@ -488,9 +407,5 @@ button.topbar__account-row:hover:not(:disabled) {
 @media (max-width: 640px) {
   .topbar__brand-text {
     display: none;
-  }
-
-  .topbar__device-name {
-    max-width: 120px;
   }
 }

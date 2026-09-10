@@ -177,6 +177,25 @@ export async function listAccessibleDevices(): Promise<
     });
 }
 
+export async function createMyDevice(input: {
+  type: DeviceType;
+  name: string;
+  memberEmails?: string[];
+  memberRole?: "admin" | "operator" | "viewer";
+}): Promise<string> {
+  const { data, error } = await supabase.rpc("create_my_device", {
+    p_type: input.type,
+    p_name: input.name,
+    p_member_emails: input.memberEmails ?? [],
+    p_member_role: input.memberRole ?? "viewer",
+  });
+  if (error) throw error;
+  if (!data || typeof data !== "string") {
+    throw new Error("Failed to create device");
+  }
+  return data;
+}
+
 export function isLegacyDeviceType(type: DeviceType): boolean {
   return type === "bioreactor" || type === "water_purifier";
 }

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ChevronDownOutline,
+  AddOutline,
   NotificationsOutline,
   ShareSocialOutline,
 } from "react-ionicons";
@@ -16,20 +16,17 @@ import {
   type StoredAccount,
 } from "../../lib/accountSessions";
 import { connectivityLabel, useAppStatus } from "../../lib/appStatus";
+import { DEVICE_TYPE_META } from "../../lib/deviceIcons";
 import {
-  isLegacyDeviceType,
   listAccessibleDevices,
   type Device,
   type DeviceType,
 } from "../../lib/devices";
 import { listMyNotifications, unreadCount } from "../../lib/notifications";
-import {
-  deviceTypeFromPath,
-  openSharedDeviceUrl,
-  pathForDeviceType,
-} from "../../lib/sharing";
+import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
+import AddDevicePanel from "../AddDevicePanel";
 import NotificationsPanel from "../NotificationsPanel";
 import SharePanel from "../SharePanel";
 import "./Navbar.css";
@@ -40,11 +37,8 @@ type NavbarProps = {
   user: AppUser;
 };
 
-function deviceHref(device: Pick<Device, "id" | "type" | "owner_id">, userId: string) {
-  if (device.owner_id === userId) {
-    return pathForDeviceType(device.type);
-  }
-  return openSharedDeviceUrl(device);
+function deviceHref(device: Pick<Device, "id" | "type">) {
+  return `${pathForDeviceType(device.type)}?device=${device.id}`;
 }
 
 const Navbar = ({ user }: NavbarProps) => {
@@ -55,45 +49,38 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const [showAccount, setShowAccount] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [showDevices, setShowDevices] = useState(false);
+  const [showAddDevice, setShowAddDevice] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [accounts, setAccounts] = useState<StoredAccount[]>([]);
   const [devices, setDevices] = useState<AccessibleDevice[]>([]);
-  const [devicesLoading, setDevicesLoading] = useState(true);
   const [unread, setUnread] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const accountRef = useRef<HTMLDivElement | null>(null);
-  const deviceRef = useRef<HTMLDivElement | null>(null);
+  const addRef = useRef<HTMLDivElement | null>(null);
 
   const preferredDeviceId = searchParams.get("device");
   const routeType = deviceTypeFromPath(location.pathname);
 
   const refreshAccounts = () => setAccounts(listStoredAccounts());
 
+  const refreshDevices = useCallback(() => {
+    return listAccessibleDevices()
+      .then(setDevices)
+      .catch((err) => {
+        console.error(err);
+        setDevices([]);
+      });
+  }, []);
+
   useEffect(() => {
     refreshAccounts();
   }, [user.id, showAccount]);
 
   useEffect(() => {
-    let cancelled = false;
-    setDevicesLoading(true);
-    listAccessibleDevices()
-      .then((list) => {
-        if (!cancelled) setDevices(list);
-      })
-      .catch((err) => {
-        console.error(err);
-        if (!cancelled) setDevices([]);
-      })
-      .finally(() => {
-        if (!cancelled) setDevicesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user.id]);
+    void refreshDevices();
+  }, [user.id, refreshDevices]);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,7 +90,7 @@ const Navbar = ({ user }: NavbarProps) => {
           if (!cancelled) setUnread(unreadCount(list));
         })
         .catch(() => {
-          /* table may not exist until SQL applied */
+          /* optional until SQL applied */
         });
     };
     pullUnread();
@@ -117,7 +104,7 @@ const Navbar = ({ user }: NavbarProps) => {
   useEffect(() => {
     setShowShare(false);
     setShowAccount(false);
-    setShowDevices(false);
+    setShowAddDevice(false);
     setShowNotifications(false);
   }, [location.pathname, location.search]);
 
@@ -130,31 +117,21 @@ const Navbar = ({ user }: NavbarProps) => {
       ) {
         setShowAccount(false);
       }
-      if (
-        deviceRef.current &&
-        event.target instanceof Node &&
-        !deviceRef.current.contains(event.target)
-      ) {
-        setShowDevices(false);
-      }
     };
 
-    if (showAccount || showDevices) {
+    if (showAccount) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showAccount, showDevices]);
-
-  const ownedDevices = devices.filter((device) => device.isOwner);
-  const sharedDevices = devices.filter((device) => !device.isOwner);
+  }, [showAccount]);
 
   const activeDevice =
     (preferredDeviceId &&
       devices.find((device) => device.id === preferredDeviceId)) ||
     (routeType &&
-      ownedDevices.find((device) => device.type === routeType)) ||
+      devices.find((device) => device.type === routeType && device.isOwner)) ||
     (routeType && devices.find((device) => device.type === routeType)) ||
     null;
 
@@ -164,9 +141,21 @@ const Navbar = ({ user }: NavbarProps) => {
     ? `${connectivityLabel(connectivity)}: ${issue}`
     : connectivityLabel(connectivity);
 
+  const closeOverlays = () => {
+    setShowAccount(false);
+    setShowShare(false);
+    setShowAddDevice(false);
+    setShowNotifications(false);
+  };
+
   const onSelectDevice = (device: AccessibleDevice) => {
-    setShowDevices(false);
-    navigate(deviceHref(device, user.id));
+    closeOverlays();
+    navigate(deviceHref(device));
+  };
+
+  const onDeviceCreated = async (deviceId: string, type: DeviceType) => {
+    await refreshDevices();
+    navigate(`${pathForDeviceType(type)}?device=${deviceId}`);
   };
 
   const onSwitch = async (account: StoredAccount) => {
@@ -247,11 +236,7 @@ const Navbar = ({ user }: NavbarProps) => {
     <header className="topbar">
       <div className="topbar__inner">
         <div className="topbar__left">
-          <Link
-            to="/bioreactor"
-            className="topbar__brand"
-            title={statusTitle}
-          >
+          <Link to="/bioreactor" className="topbar__brand" title={statusTitle}>
             <span
               className={`topbar__mark topbar__mark--${connectivity}`}
               aria-hidden
@@ -260,114 +245,58 @@ const Navbar = ({ user }: NavbarProps) => {
             <span className="topbar__sr-only">{statusTitle}</span>
           </Link>
 
-          <div className="topbar__device" ref={deviceRef}>
+          <div className="topbar__add" ref={addRef}>
             <button
               type="button"
-              className={`topbar__device-btn ${showDevices ? "is-open" : ""}`}
-              aria-expanded={showDevices}
-              aria-haspopup="listbox"
+              className={`topbar__round-btn ${showAddDevice ? "is-active" : ""}`}
+              aria-label="Add device"
+              aria-expanded={showAddDevice}
+              title="Add device"
               onClick={() => {
                 setShowAccount(false);
                 setShowShare(false);
                 setShowNotifications(false);
-                setShowDevices((open) => !open);
+                setShowAddDevice((open) => !open);
               }}
             >
-              <span className="topbar__device-copy">
-                <span className="topbar__device-label">Device</span>
-                <span className="topbar__device-name">
-                  {devicesLoading
-                    ? "Loading…"
-                    : activeDevice?.name ??
-                      labelForType(routeType) ??
-                      "Select device"}
-                </span>
-              </span>
-              {activeDevice && isLegacyDeviceType(activeDevice.type) && (
-                <span className="topbar__pill topbar__pill--legacy">Legacy</span>
-              )}
-              {!activeDevice?.isOwner && activeDevice && (
-                <span className="topbar__pill">Shared</span>
-              )}
-              <ChevronDownOutline
-                color="#6e6e73"
-                height="16px"
-                width="16px"
-                title=""
-              />
+              <AddOutline color="#1d1d1f" height="18px" width="18px" title="" />
             </button>
+            <AddDevicePanel
+              open={showAddDevice}
+              onClose={() => setShowAddDevice(false)}
+              onCreated={onDeviceCreated}
+            />
+          </div>
 
-            {showDevices && (
-              <div className="topbar__device-menu" role="listbox">
-                <p className="topbar__menu-label">Your devices</p>
-                {ownedDevices.length === 0 ? (
-                  <p className="topbar__device-empty">No devices yet</p>
-                ) : (
-                  <ul className="topbar__device-list">
-                    {ownedDevices.map((device) => (
-                      <li key={device.id}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={activeDevice?.id === device.id}
-                          className={`topbar__device-option ${
-                            activeDevice?.id === device.id ? "is-active" : ""
-                          }`}
-                          onClick={() => onSelectDevice(device)}
-                        >
-                          <span>
-                            <span className="topbar__device-option-name">
-                              {device.name}
-                            </span>
-                            <span className="topbar__device-option-meta">
-                              {labelForType(device.type)}
-                            </span>
-                          </span>
-                          {isLegacyDeviceType(device.type) && (
-                            <span className="topbar__pill topbar__pill--legacy">
-                              Legacy
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {sharedDevices.length > 0 && (
-                  <>
-                    <p className="topbar__menu-label topbar__menu-label--spaced">
-                      Shared with you
-                    </p>
-                    <ul className="topbar__device-list">
-                      {sharedDevices.map((device) => (
-                        <li key={device.id}>
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={activeDevice?.id === device.id}
-                            className={`topbar__device-option ${
-                              activeDevice?.id === device.id ? "is-active" : ""
-                            }`}
-                            onClick={() => onSelectDevice(device)}
-                          >
-                            <span>
-                              <span className="topbar__device-option-name">
-                                {device.name}
-                              </span>
-                              <span className="topbar__device-option-meta">
-                                {labelForType(device.type)} · {device.role}
-                              </span>
-                            </span>
-                            <span className="topbar__pill">Shared</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
+          <div className="topbar__devices" role="toolbar" aria-label="Devices">
+            {devices.map((device) => {
+              const meta = DEVICE_TYPE_META[device.type];
+              const Icon = meta.Icon;
+              const active = activeDevice?.id === device.id;
+              return (
+                <button
+                  key={device.id}
+                  type="button"
+                  className={`topbar__device-icon ${active ? "is-active" : ""} ${
+                    device.isOwner ? "" : "is-shared"
+                  }`}
+                  title={device.name}
+                  aria-label={device.name}
+                  aria-pressed={active}
+                  onClick={() => onSelectDevice(device)}
+                >
+                  <Icon
+                    color={active ? "#0f766e" : "#1d1d1f"}
+                    height="18px"
+                    width="18px"
+                    title={device.name}
+                  />
+                  {!device.isOwner && (
+                    <span className="topbar__device-shared-dot" aria-hidden />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -380,7 +309,7 @@ const Navbar = ({ user }: NavbarProps) => {
               aria-expanded={showShare}
               onClick={() => {
                 setShowAccount(false);
-                setShowDevices(false);
+                setShowAddDevice(false);
                 setShowNotifications(false);
                 setShowShare((open) => !open);
               }}
@@ -411,7 +340,7 @@ const Navbar = ({ user }: NavbarProps) => {
               aria-expanded={showNotifications}
               onClick={() => {
                 setShowAccount(false);
-                setShowDevices(false);
+                setShowAddDevice(false);
                 setShowShare(false);
                 setShowNotifications((open) => !open);
               }}
@@ -442,7 +371,7 @@ const Navbar = ({ user }: NavbarProps) => {
               aria-label="Account menu"
               onClick={() => {
                 setShowShare(false);
-                setShowDevices(false);
+                setShowAddDevice(false);
                 setShowNotifications(false);
                 setShowAccount((open) => !open);
               }}
@@ -558,20 +487,5 @@ const Navbar = ({ user }: NavbarProps) => {
     </header>
   );
 };
-
-function labelForType(type: DeviceType | null | undefined): string | null {
-  switch (type) {
-    case "bioreactor":
-      return "Bioreactor";
-    case "pressure_vessel":
-      return "Pressure Vessel";
-    case "membrane_bioreactor":
-      return "Membrane MBR";
-    case "water_purifier":
-      return "Water Purifier";
-    default:
-      return null;
-  }
-}
 
 export default Navbar;

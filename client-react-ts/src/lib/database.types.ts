@@ -314,6 +314,15 @@ export type Database = {
         Args: { p_link_id: string };
         Returns: undefined;
       };
+      create_my_device: {
+        Args: {
+          p_type: DeviceType;
+          p_name: string;
+          p_member_emails?: string[];
+          p_member_role?: DeviceMemberRole;
+        };
+        Returns: string;
+      };
       create_pending_device_invite_as: {
         Args: {
           p_device_id: string;
