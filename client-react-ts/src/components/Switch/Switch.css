@@ -1,46 +1,62 @@
 .switch {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.switch:last-child {
+  margin-bottom: 0;
 }
 
 .switch input[type="checkbox"] {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 .switch label {
   position: relative;
   display: inline-block;
-  width: 60px;
-  height: 34px;
-  background-color: rgb(185, 65, 65);
-  border-radius: 16px;
-  transition: background-color 0.3s;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  background: #e2e8f0;
+  border-radius: 999px;
   cursor: pointer;
-  padding: 5px;
-  min-width: 60px;
+  transition: background 0.25s var(--bv-ease);
 }
 
 .switch label::before {
   content: "";
   position: absolute;
-  width: 25px;
-  height: 25px;
-  background-color: white;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
   border-radius: 50%;
-  transition: transform 0.3s;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.switch input:checked + label::before {
-  transform: translateX(25px) translateY(-50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s var(--bv-ease);
 }
 
 .switch input:checked + label {
-  background-color: rgb(0, 150, 0);
+  background: var(--bv-accent);
+}
+
+.switch input:checked + label::before {
+  transform: translateX(20px);
+}
+
+.switch input:focus-visible + label {
+  box-shadow: 0 0 0 3px var(--bv-accent-glow);
 }
 
 .switch span {
-  margin-left: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bv-text);
+  line-height: 1.3;
 }

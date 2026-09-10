@@ -1,4 +1,20 @@
-#aboutContainer {
+#aboutContainer.container {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
+  gap: 16px;
+  padding: 24px 16px 32px;
+  position: relative;
+  background:
+    radial-gradient(
+      900px 480px at 50% 0%,
+      var(--bv-accent-soft),
+      transparent 55%
+    ),
+    var(--bv-surface);
+}
+
+#aboutContainer aside {
+  display: none;
 }

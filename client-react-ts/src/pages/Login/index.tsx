@@ -54,62 +54,97 @@ const Login = () => {
   };
 
   return (
-    <div id="loginPage">
-      <div id="loginBox">
-        <h2 id="loginTitle">Bioversee</h2>
-        <img src={Logo} id="loginLogo" alt="Bioversee logo" />
-        <p id="slogan">
-          Automation for <br /> EVERYONE
-        </p>
+    <div className="auth-shell">
+      <div className="auth-shell__veil" aria-hidden />
+      <div className="auth-card">
+        <header className="auth-card__header">
+          <div className="auth-card__header-start">
+            <div className="auth-card__mark">
+              <img src={Logo} alt="" />
+            </div>
+            <div className="auth-card__headline">
+              <p className="auth-card__eyebrow">Bioversee</p>
+              <h1 className="auth-card__title">Welcome</h1>
+              <p className="auth-card__subtitle">
+                Automation for everyone — control industrial equipment from the
+                cloud.
+              </p>
+            </div>
+          </div>
+        </header>
 
-        <form className="authForm" onSubmit={onSubmit}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          />
-          <button type="submit" className="loginButton email" disabled={busy}>
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Sign up"}
+        <div className="auth-card__body">
+          <div className="auth-segment" role="tablist">
+            <button
+              type="button"
+              className={mode === "signin" ? "is-active" : undefined}
+              onClick={() => setMode("signin")}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              className={mode === "signup" ? "is-active" : undefined}
+              onClick={() => setMode("signup")}
+            >
+              Sign up
+            </button>
+          </div>
+
+          <form className="auth-form" onSubmit={onSubmit}>
+            <label className="auth-field">
+              <span>Email</span>
+              <input
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </label>
+            <label className="auth-field">
+              <span>Password</span>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete={
+                  mode === "signin" ? "current-password" : "new-password"
+                }
+              />
+            </label>
+            <button type="submit" className="auth-cta" disabled={busy}>
+              {busy
+                ? "Please wait…"
+                : mode === "signin"
+                  ? "Sign in"
+                  : "Create account"}
+            </button>
+          </form>
+
+          <div className="auth-or">
+            <span>or</span>
+          </div>
+
+          <button
+            type="button"
+            className="auth-social"
+            onClick={signInWithGoogle}
+          >
+            <img src={Google} alt="" />
+            Continue with Google
           </button>
-        </form>
 
-        <button
-          type="button"
-          className="modeToggle"
-          onClick={() =>
-            setMode((current) => (current === "signin" ? "signup" : "signin"))
-          }
-        >
-          {mode === "signin"
-            ? "Need an account? Sign up"
-            : "Have an account? Sign in"}
-        </button>
+          {error && <p className="auth-error">{error}</p>}
+          {message && <p className="auth-message">{message}</p>}
 
-        <div className="divider">or</div>
-
-        <div className="loginButton google" onClick={signInWithGoogle}>
-          <img src={Google} alt="" className="icon" />
-          Continue with Google
+          <p className="auth-note">Demo site for Bioversee prototypes</p>
         </div>
-
-        {error && <p className="authError">{error}</p>}
-        {message && <p className="authMessage">{message}</p>}
       </div>
-      <h6 className="note">
-        Note: This website is just a DEMO site for BIOVERSEE
-      </h6>
     </div>
   );
 };

@@ -2,31 +2,15 @@ import "./ConstructionPage.css";
 
 function ConstructionPage() {
   return (
-    <>
-      <div id="background">
-        <h1 className="wip-text">
-          <span>W</span>
-          <span>o</span>
-          <span>r</span>
-          <span>k</span>
-          <span>&nbsp;</span>
-          <span>i</span>
-          <span>n</span>
-          <span>&nbsp;</span>
-          <span>P</span>
-          <span>r</span>
-          <span>o</span>
-          <span>g</span>
-          <span>r</span>
-          <span>e</span>
-          <span>s</span>
-          <span>s</span>
-          <span>.</span>
-          <span>.</span>
-          <span>.</span>
-        </h1>
+    <div className="wip">
+      <div className="wip__card">
+        <p className="wip__eyebrow">Settings</p>
+        <h1 className="wip__title">Work in progress</h1>
+        <p className="wip__copy">
+          This control desk is under construction. Check back soon.
+        </p>
       </div>
-    </>
+    </div>
   );
 }
 

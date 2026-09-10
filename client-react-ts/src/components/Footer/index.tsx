@@ -5,7 +5,7 @@ function Footer() {
   return (
     <div className="footerContainer">
       <div className="footerCopy">
-        <p>&copy; 2024 Bioversee. All rights reserved. Mate Melcher. </p>
+        <p>&copy; 2026 Bioversee. All rights reserved. Mate Melcher.</p>
       </div>
       <div id="linkBox">
         <span className="divider"> &#124; </span>

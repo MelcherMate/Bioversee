@@ -1,12 +1,7 @@
 import ConstructionPage from "../../components/ConstructionPage";
-import "./Settings.css";
 
 function Settings() {
-  return (
-    <>
-      <ConstructionPage></ConstructionPage>
-    </>
-  );
+  return <ConstructionPage />;
 }
 
 export default Settings;

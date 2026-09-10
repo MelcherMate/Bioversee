@@ -1,86 +1,97 @@
+/* Shared process-page chrome (Bioreactor + WaterPurifier) */
+
 .container {
   display: flex;
   position: relative;
   flex: 1 1 auto;
   align-items: stretch;
-  background-color: #f0f4f8;
-  animation: fadeIn 1s ease-in-out;
+  min-height: 0;
+  background:
+    radial-gradient(
+      900px 480px at 50% 0%,
+      var(--bv-accent-soft),
+      transparent 55%
+    ),
+    var(--bv-surface);
+  animation: page-fade 0.35s var(--bv-ease);
 }
 
 aside {
   display: flex;
   position: absolute;
-  flex: 0 1 auto;
-  width: 300px;
+  width: min(300px, calc(100vw - 24px));
   flex-direction: column;
+  gap: 10px;
   z-index: 2;
+  padding: 12px;
+  pointer-events: none;
+}
+
+aside > * {
+  pointer-events: auto;
 }
 
 #actuatorSide {
-  left: 0px;
-  top: 0px;
+  left: 0;
+  top: 0;
 }
 
 #sensorSide {
-  right: 0px;
-  top: 0px;
+  right: 0;
+  top: 0;
 }
 
 .boxTitle {
-  text-align: center;
-  margin: 5px;
+  margin: 0 0 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
 }
 
-.switchBox {
-  margin-top: 10px;
-  margin-left: 10px;
-  -webkit-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  -moz-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  border: 1px solid lightgrey;
-  border-radius: 24px;
-  padding: 8px 8px 0px 8px;
-  background-color: white;
+.switchBox,
+.sliderBox,
+.chartBox {
+  border-radius: var(--bv-radius-lg);
+  padding: 14px;
+  background: var(--bv-glass);
+  border: 1px solid var(--bv-glass-border);
+  box-shadow: var(--bv-shadow-float);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
-.sliderBox {
-  margin-top: 10px;
-  margin-left: 10px;
-  -webkit-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  -moz-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  border: 1px solid lightgrey;
-  border-radius: 24px;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 8px 0px 8px;
-  background-color: white;
-}
-
-#reactorBox {
+#reactorBox,
+#waterpurifierBox {
   position: relative;
   text-align: center;
   width: 100%;
   z-index: 1;
 }
 
-.chartBox {
-  margin-top: 10px;
-  margin-right: 10px;
-  -webkit-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  -moz-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  border: 1px solid lightgrey;
-  border-radius: 24px;
-  padding: 8px;
-  background-color: white;
-}
-
-@keyframes fadeIn {
+@keyframes page-fade {
   from {
     opacity: 0;
   }
   to {
     opacity: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  aside {
+    position: relative;
+    width: 100%;
+  }
+
+  #actuatorSide,
+  #sensorSide {
+    position: relative;
+  }
+
+  .container {
+    flex-direction: column;
   }
 }

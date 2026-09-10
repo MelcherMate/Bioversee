@@ -1,31 +1,48 @@
 .infoCard {
-  height: 400px;
-  width: 300px;
+  width: min(300px, 100%);
+  padding: 18px 16px 20px;
   text-align: center;
-  -webkit-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  -moz-box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  box-shadow: 0px 5px 33px -21px rgba(66, 68, 90, 1);
-  border-radius: 24px;
-  padding: 8px 8px 0px 8px;
-  background-color: white;
-  margin: 10px;
-  cursor: default;
+  border-radius: var(--bv-radius-lg);
+  background: var(--bv-card);
+  box-shadow: var(--bv-shadow-card);
+  transition: transform 0.25s var(--bv-ease), box-shadow 0.25s var(--bv-ease);
+}
+
+.infoCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--bv-shadow-float);
+}
+
+.infoCard #title {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.infoCard #subtitle {
+  margin: 12px 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--bv-text);
 }
 
 #image {
-  position: relative;
-  height: 160px;
-  border-radius: 25%;
-  border: 6px solid #fff;
-  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
-  transition: transform 0.5s ease;
-}
-
-.infoCard:hover #image {
-  transform: scale(1.1);
+  height: 140px;
+  width: 140px;
+  object-fit: cover;
+  border-radius: 28px;
+  background: var(--bv-fill);
+  box-shadow: 0 0 0 1px var(--bv-line);
 }
 
 #text {
-  font-style: italic;
-  font-size: 16px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-style: normal;
+  color: var(--bv-text-secondary);
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { SettingsOutline } from "react-ionicons";
 import { Link, useLocation } from "react-router-dom";
-import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
+import type { AppUser } from "../../lib/user";
 import "./Navbar.css";
 
 type NavbarProps = {
@@ -13,10 +13,6 @@ const Navbar = ({ user }: NavbarProps) => {
   const location = useLocation();
   const [showPopup, setShowPopup] = useState(false);
   const popupRef = useRef<HTMLDivElement | null>(null);
-
-  const handleAvatarClick = () => {
-    setShowPopup(!showPopup);
-  };
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -42,54 +38,56 @@ const Navbar = ({ user }: NavbarProps) => {
   }, [showPopup]);
 
   return (
-    <div className="naviField">
-      <div id="naviFieldLeft">
-        <Link to="/bioreactor" id="navbarTitle">
-          Bioversee
-        </Link>
-        <div>
+    <header className="topbar">
+      <div className="topbar__inner">
+        <div className="topbar__left">
+          <Link to={user ? "/bioreactor" : "/"} className="topbar__brand">
+            <span className="topbar__mark" aria-hidden />
+            Bioversee
+          </Link>
           {user && (
-            <Link
-              className={`naviButton ${
-                location.pathname === "/bioreactor" ? "active" : ""
-              }`}
-              to="/bioreactor"
-            >
-              Bioreactor
-            </Link>
+            <nav className="topbar__nav">
+              <Link
+                className={`topbar__link ${
+                  location.pathname === "/bioreactor" ? "is-active" : ""
+                }`}
+                to="/bioreactor"
+              >
+                Bioreactor
+              </Link>
+              <Link
+                className={`topbar__link ${
+                  location.pathname === "/waterpurifier" ? "is-active" : ""
+                }`}
+                to="/waterpurifier"
+              >
+                Water Purifier
+              </Link>
+            </nav>
           )}
         </div>
-        <div>
-          {user && (
-            <Link
-              className={`naviButton ${
-                location.pathname === "/waterpurifier" ? "active" : ""
-              }`}
-              to="/waterpurifier"
-            >
-              Water Purifier
-            </Link>
-          )}
-        </div>
-      </div>
-      <div id="naviFieldRight">
+
         {user && (
-          <ul className="list">
+          <div className="topbar__right">
             <Link
-              id="settingsButton"
-              className={`naviButton ${
-                location.pathname === "/settings" ? "active" : ""
+              className={`topbar__icon-btn ${
+                location.pathname === "/settings" ? "is-active" : ""
               }`}
               to="/settings"
+              aria-label="Settings"
             >
               <SettingsOutline
-                color={"#00000"}
+                color={"#1d1d1f"}
                 title={"Settings"}
-                height="40px"
-                width="33px"
+                height="20px"
+                width="20px"
               />
             </Link>
-            <li className="listItem">
+            <button
+              type="button"
+              className="topbar__avatar-btn"
+              onClick={() => setShowPopup((v) => !v)}
+            >
               <img
                 src={
                   user.avatarUrl ||
@@ -98,25 +96,27 @@ const Navbar = ({ user }: NavbarProps) => {
                   )}`
                 }
                 alt=""
-                id="avatar"
-                onClick={handleAvatarClick}
+                className="topbar__avatar"
               />
-            </li>
+            </button>
             {showPopup && (
-              <div id="popup" ref={popupRef}>
-                <p className="popupList">Family Name:</p>
-                <p className="popupItem">{user.familyName || "Unknown"}</p>
-                <p className="popupList">Given Name:</p>
-                <p className="popupItem">{user.givenName || "Unknown"}</p>
-                <button className="popupButton" onClick={logout}>
-                  Logout
+              <div className="topbar__menu" ref={popupRef}>
+                <p className="topbar__menu-label">Signed in</p>
+                <p className="topbar__menu-name">{user.displayName}</p>
+                <p className="topbar__menu-meta">{user.email}</p>
+                <button
+                  type="button"
+                  className="topbar__menu-logout"
+                  onClick={logout}
+                >
+                  Log out
                 </button>
               </div>
             )}
-          </ul>
+          </div>
         )}
       </div>
-    </div>
+    </header>
   );
 };
 

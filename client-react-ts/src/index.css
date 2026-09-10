@@ -1,0 +1,62 @@
+/* Bioversee design language — aligned with Smart Grid (Rivian / Apple–style) */
+:root {
+  --bv-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --bv-text: #1d1d1f;
+  --bv-text-secondary: #6e6e73;
+  --bv-text-tertiary: #86868b;
+  --bv-line: rgba(0, 0, 0, 0.08);
+  --bv-surface: #f5f5f7;
+  --bv-surface-elevated: #fbfbfd;
+  --bv-card: #ffffff;
+  --bv-fill: #f5f5f7;
+  --bv-radius-lg: 20px;
+  --bv-radius-md: 12px;
+  --bv-shadow-card:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 24px 48px -12px rgba(0, 0, 0, 0.14),
+    0 8px 20px -8px rgba(0, 0, 0, 0.08);
+  --bv-shadow-float:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 12px 32px -8px rgba(0, 0, 0, 0.12);
+  --bv-overlay: rgba(29, 29, 31, 0.45);
+  --bv-accent: #0d9488;
+  --bv-accent-hover: #0f766e;
+  --bv-accent-bright: #14b8a6;
+  --bv-accent-muted: #ccfbf1;
+  --bv-accent-soft: #f0fdfa;
+  --bv-accent-border: #99f6e4;
+  --bv-glass: rgba(255, 255, 255, 0.82);
+  --bv-glass-border: rgba(255, 255, 255, 0.6);
+  --bv-cta: #1d1d1f;
+  --bv-cta-hover: #000000;
+  --bv-danger: #b42318;
+  --bv-success: #027a48;
+  --bv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: var(--bv-font);
+  -webkit-font-smoothing: antialiased;
+  color: var(--bv-text);
+  background: var(--bv-surface);
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
