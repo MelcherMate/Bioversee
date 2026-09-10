@@ -1,91 +1,61 @@
-import { isUndefined } from "lodash";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent, type MouseEvent } from "react";
+import {
+  getLatestSliderState,
+  insertSliderState,
+} from "../../lib/actuators";
+import type { AppUser } from "../../lib/user";
 import "./Slider.css";
 
-function Slider(props: any) {
-  const { user } = props; // Destructure user from props
-  const [isSliding, setIsSliding] = useState(false); // Track if the user is sliding
+type SliderProps = {
+  name: string;
+  label: string;
+  val: number;
+  setVal: (value: number) => void;
+  user: AppUser;
+  min?: number;
+  max?: number;
+};
 
-  // Functions
-  const getFirstObjectByName = (arr: any, nameToFind: any) => {
-    return arr.find((obj: any) => obj.name === nameToFind);
-  };
+function Slider(props: SliderProps) {
+  const [isSliding, setIsSliding] = useState(false);
 
   useEffect(() => {
-    if (!isUndefined(props.url) && !isSliding) {
-      // Prevent fetching value while sliding
-      fetch(`${process.env.VITE_SERVER_URL + props.url}`, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          const firstWithName = getFirstObjectByName(
-            data.reverse(),
-            props.name
-          );
-          props.setVal(firstWithName.state);
-        })
-        .catch((error) => console.log(error));
-    }
-  }, [props.url, props.name, props, user, isSliding]);
+    if (isSliding) return;
 
-  // Update the value when the slider is moved
-  const handleChange = (event: any) => {
+    getLatestSliderState(props.name)
+      .then((state) => props.setVal(Number(state)))
+      .catch((error) => console.log(error));
+  }, [props.name, props.user.id, isSliding]);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = parseInt(event.target.value, 10);
     props.setVal(newValue);
-    setIsSliding(true); // Indicate the user is actively sliding
+    setIsSliding(true);
   };
 
-  // Send the slider value to the database when the user releases the mouse
-  const handleMouseUp = (event: any) => {
-    const newValue = parseInt(event.target.value, 10);
-    setIsSliding(false); // Indicate the user has stopped sliding
-    sendSliderValueToDatabase(newValue); // Send the value to the database
-  };
-
-  // Function to send the value to the database
-  const sendSliderValueToDatabase = (newValue: any) => {
-    const data = {
-      name: props.name,
-      state: newValue,
-      userId: user.id, // Send userId as well
-    };
-
-    console.log("Data being sent to the server:", data); // Log the data
-
-    fetch(`${process.env.VITE_SERVER_URL + props.updateUrl}`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ data }),
-    })
-      .then((response) => response.json())
-      .catch((error) => console.log(error));
+  const handleMouseUp = (event: MouseEvent<HTMLInputElement>) => {
+    const newValue = parseInt((event.target as HTMLInputElement).value, 10);
+    setIsSliding(false);
+    insertSliderState(props.name, newValue, props.user.id).catch((error) =>
+      console.log(error)
+    );
   };
 
   return (
-    <>
-      <div className="slider">
-        <input
-          type="range"
-          min={props.min || 0}
-          max={props.max || 100}
-          value={props.val}
-          onChange={handleChange} // Updates the slider UI value
-          onMouseUp={handleMouseUp} // Sends value to DB when mouse is released
-          className="slider"
-          id={props.name}
-        />
-        <span className="sliderValue">{props.val}%</span>
-        <span>{props.label}</span>
-      </div>
-    </>
+    <div className="slider">
+      <input
+        type="range"
+        min={props.min || 0}
+        max={props.max || 100}
+        value={props.val}
+        onChange={handleChange}
+        onMouseUp={handleMouseUp}
+        className="slider"
+        id={props.name}
+      />
+      <span className="sliderValue">{props.val}%</span>
+      <span>{props.label}</span>
+    </div>
   );
 }
 

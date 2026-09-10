@@ -20,33 +20,34 @@ Now that we have oxygen provided, organisms can grow and work inside. Every orga
 The idea is to have an off-the-self customisable computer (Raspberry Pi 5 is used in the prototypes) wired to a machine and connected to a cloud database. The controll website POST records into the database. The computer uses an event listener in order to detect new records in the database. Once a new record is detected, the software GETs the new state and sets it for the actuator. The method is the same with the sensors except it works to the other way.
 I’ve decided to use a database for communication between the web and the local server. This could cause performance difficulties in the future, but right now I want to ensure that all changes on the devices are recorded and stored.
 To controll the equipment I used the GPIO pins on my Raspberry Pi.
-For the local machine control language I choose Python because of the gpiozero library. The website is a React Vite app written in TypeScript. The database is MongoDB.
+For the local machine control language I choose Python because of the gpiozero library. The website is a React Vite app written in TypeScript. Auth and data live in **Supabase** (Postgres + Auth).
 
 ## Tools:
 
 - Designed on Apple Macbook Air M1 (2020)
 - Tested with Raspberry PI 5 8GB
 - Package manager: **pnpm**
-- Hosting target: **Vercel** (MongoDB Atlas unchanged)
+- Hosting target: **Vercel**
+- Backend-as-a-service: **Supabase**
 
 ## Local development
 
 ```bash
 pnpm install
-cp backend/.env.example backend/.env.dev
 cp client-react-ts/.env.example client-react-ts/.env.development
-# fill in MONGODB_URI and OAuth secrets
+# set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
 pnpm dev
 ```
 
-- Frontend: Vite on port `5173`
-- Backend: Express on the port in `backend/.env.dev` (default `4321`)
+1. In Supabase SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql) once.
+2. Enable Email and Google providers under Authentication → Providers.
+3. Add `http://localhost:5173` (and your Vercel URL) under Authentication → URL Configuration.
 
 ## Deploy on Vercel
 
-1. Import this repo in Vercel (framework preset: Other; `vercel.json` is already configured).
-2. Set env vars: `MONGODB_URI`, `PUBLIC_URL`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CLIENT_CALLBACK_URI`, plus Vite build vars `VITE_PUBLIC_URL`, `VITE_SERVER_URL`, `VITE_AUTH_URL`.
-3. For same-origin API on Vercel, set `VITE_SERVER_URL` and `VITE_AUTH_URL` to empty (or your Vercel URL). Point Google OAuth callback at `https://<your-app>.vercel.app/auth/google/callback`.
+1. Import this repo (framework: Other; `vercel.json` is configured for the Vite SPA).
+2. Set build env vars: `VITE_PUBLIC_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`.
+3. Add the Vercel URL to Supabase Auth redirect allow-list.
 
 ## Prototype 1:
 

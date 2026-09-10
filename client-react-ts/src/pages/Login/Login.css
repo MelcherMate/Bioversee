@@ -46,16 +46,48 @@
   animation: textFadeIn 2s ease-in-out;
 }
 
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.authForm input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
 .loginButton {
-  width: 200px;
+  width: 100%;
   padding: 10px 20px;
+  border: none;
   border-radius: 5px;
   color: white;
   display: flex;
   align-items: center;
+  justify-content: center;
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease;
+}
+
+.email {
+  background-color: #1f6feb;
+}
+
+.email:hover {
+  background-color: #1158c7;
+}
+
+.email:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 .google {
@@ -64,6 +96,35 @@
 
 .google:hover {
   background-color: #c03a22;
+}
+
+.modeToggle {
+  margin: 8px 0;
+  border: none;
+  background: none;
+  color: #1f6feb;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.divider {
+  margin: 8px 0 12px;
+  color: #888;
+  font-size: 13px;
+}
+
+.authError {
+  margin-top: 10px;
+  color: #b42318;
+  font-size: 13px;
+  text-align: center;
+}
+
+.authMessage {
+  margin-top: 10px;
+  color: #027a48;
+  font-size: 13px;
+  text-align: center;
 }
 
 .icon {

@@ -6,23 +6,23 @@ The main idea behind the project comes from the fact that many bioreactors in la
 
 ## Controller website:
 
-The controller website is written in HTML, CSS and JavaScript. It uses a node.js engine to run the server and a MongoDB database to store the data for the required and current state for the actuators. For the website I use a 3-tier architecture system. In this stage there is no About registration system implemented. In the future I am planning on using Amazon Web Service (AWS) as a host.
+The controller website is a **React + TypeScript (Vite)** SPA. Auth and data live in **Supabase** (Postgres + Auth). The browser talks to Supabase directly with the publishable key; there is no separate Express API server. Hosting target is **Vercel** (static SPA).
 
 ### Presentation tier:
 
-In the presentation tier I am developing a simple and easy to use design with sliders and buttons to control the actuators for the reactor. Here I also must present near live data from the sensors. In addition, we will need a About management system to control which About can access which part of the database, because the website is going to run on our side.
+In the presentation tier I am developing a simple and easy to use design with sliders and buttons to control the actuators for the reactor. Here I also must present near live data from the sensors. Supabase Auth (email + Google) gates access to the control pages.
 
 ### Application tier:
 
-In the application tier we will collect the required setting for the bioreactor and load the current state of the actuators we want into the database. For this purpose, I use an express.js server to communicate between the client and the database. The data is loaded into in a form we set in the backend/models folder by the loader code from the backend/controllers folder. The controller script reaches the client in a route we set in the backend/routes folder.
+Actuator and sensor I/O runs in the Vite app via the Supabase JS client. Slider/switch changes insert rows into `actuator_sliders` / `actuator_switches`. Charts read from the `sensors` table. Row Level Security enforces who can read and write.
 
 ### Data tier:
 
-In the data tier we have a MongoDB cloud-based database where we will store the data for the actuator and the data from the sensors. In the bioreactor database the system has 3 collections. In the actuators collection I store the data for the required setting for the actuators and in the sensors collection we store the data from the thermo and pH sensor. There are 2 types of actuators, ON/OFF and adjustable types. To store the data for the I used 2 separated actuator collections for better data query.
+Postgres on Supabase stores profiles, actuator history, and sensor readings. Tables are defined in [`supabase/schema.sql`](../supabase/schema.sql). There are two actuator tables (ON/OFF switches and adjustable sliders) for clearer queries, plus a sensors table for thermo / pH (and similar) feeds.
 
 ## Bioreactor controller:
 
-I use python codes to control the actuators. I did experiments using JavaScript for this purpose, but python turned out way more simple for this job. With the pymongo database and using a Raspberry Pi as a platform for reactor control I managed to write each code for the actuators and sensors within 100 lines.
+I use python codes to control the actuators. I did experiments using JavaScript for this purpose, but python turned out way more simple for this job. With a Supabase/Postgres client and using a Raspberry Pi as a platform for reactor control I managed to write each code for the actuators and sensors within 100 lines.
 
 ## Logical blueprint for the software setup:
 

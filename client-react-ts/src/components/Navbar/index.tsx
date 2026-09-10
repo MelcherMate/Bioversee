@@ -1,34 +1,41 @@
 import { useEffect, useRef, useState } from "react";
 import { SettingsOutline } from "react-ionicons";
 import { Link, useLocation } from "react-router-dom";
+import type { AppUser } from "../../lib/user";
+import { supabase } from "../../lib/supabase";
 import "./Navbar.css";
 
-const Navbar = ({ user }) => {
+type NavbarProps = {
+  user: AppUser | null;
+};
+
+const Navbar = ({ user }: NavbarProps) => {
   const location = useLocation();
   const [showPopup, setShowPopup] = useState(false);
-  const popupRef = useRef(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
 
   const handleAvatarClick = () => {
     setShowPopup(!showPopup);
   };
 
-  const logout = () => {
-    window.open(`${process.env.VITE_AUTH_URL}/auth/logout`, "_self");
-  };
-
-  const handleClickOutside = (event) => {
-    if (popupRef.current && !popupRef.current.contains(event.target)) {
-      setShowPopup(false);
-    }
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        popupRef.current &&
+        event.target instanceof Node &&
+        !popupRef.current.contains(event.target)
+      ) {
+        setShowPopup(false);
+      }
+    };
+
     if (showPopup) {
       document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
     }
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -84,7 +91,12 @@ const Navbar = ({ user }) => {
             </Link>
             <li className="listItem">
               <img
-                src={user.photos[0].value}
+                src={
+                  user.avatarUrl ||
+                  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+                    user.displayName
+                  )}`
+                }
                 alt=""
                 id="avatar"
                 onClick={handleAvatarClick}
@@ -93,11 +105,9 @@ const Navbar = ({ user }) => {
             {showPopup && (
               <div id="popup" ref={popupRef}>
                 <p className="popupList">Family Name:</p>
-                <p className="popupItem">
-                  {user.name?.familyName || "Unknown"}
-                </p>
+                <p className="popupItem">{user.familyName || "Unknown"}</p>
                 <p className="popupList">Given Name:</p>
-                <p className="popupItem">{user.name?.givenName || "Unknown"}</p>
+                <p className="popupItem">{user.givenName || "Unknown"}</p>
                 <button className="popupButton" onClick={logout}>
                   Logout
                 </button>

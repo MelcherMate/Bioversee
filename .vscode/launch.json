@@ -2,16 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Bioversee Backend App",
-      "program": "${workspaceFolder}/backend/app.js",
-      "request": "launch",
-      "skipFiles": ["<node_internals>/**"],
+      "name": "Bioversee Vite",
       "type": "node",
-      "env": {
-        "NODE_ENV": "development"
-      },
-      "restart": true,
-      "runtimeExecutable": "${workspaceFolder}/backend/node_modules/nodemon/bin/nodemon.js"
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }

@@ -4,14 +4,5 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "client-react-ts/dist",
   "framework": null,
-  "functions": {
-    "api/index.js": {
-      "includeFiles": "backend/**"
-    }
-  },
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/auth/:path*", "destination": "/api" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

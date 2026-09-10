@@ -1,5 +1,4 @@
 packages:
-  - backend
   - client-react-ts
 
 allowBuilds:
