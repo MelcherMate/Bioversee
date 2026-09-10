@@ -1,6 +1,10 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { createMyDevice, type DeviceType } from "../../lib/devices";
+import {
+  createMyDevice,
+  isLegacyDeviceType,
+  type DeviceType,
+} from "../../lib/devices";
 import { DEVICE_TYPE_META, DEVICE_TYPE_ORDER } from "../../lib/deviceIcons";
 import {
   inviteByEmail,
@@ -151,12 +155,15 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
               >
                 <span className="add-device__type-icon">
                   <Icon
-                    color={active ? "#0f766e" : "#1d1d1f"}
+                    color={active ? "var(--bv-accent-hover)" : "var(--bv-text)"}
                     height="18px"
                     width="18px"
                   />
                 </span>
                 <span className="add-device__type-label">{itemLabel}</span>
+                {isLegacyDeviceType(deviceType) ? (
+                  <span className="add-device__legacy">{t("common.legacy")}</span>
+                ) : null}
               </button>
             );
           })}
