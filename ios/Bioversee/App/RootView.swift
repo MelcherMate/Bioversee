@@ -136,26 +136,18 @@ struct AccountView: View {
 
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 14) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .fill(BVTheme.fill)
-                                    Image("BioverseeLogo")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 28, height: 28)
-                                        .foregroundStyle(BVTheme.accent)
-                                }
-                                .frame(width: 48, height: 48)
+                                ProfileAvatar(
+                                    url: session.avatarURL,
+                                    name: session.displayName
+                                )
 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Signed in")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .tracking(0.8)
-                                        .foregroundStyle(BVTheme.textTertiary)
-                                        .textCase(.uppercase)
-                                    Text(session.userEmail ?? "Account")
+                                    Text(session.displayName)
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundStyle(BVTheme.text)
+                                    Text(session.userEmail ?? "")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(BVTheme.textSecondary)
                                 }
                             }
 
@@ -186,5 +178,44 @@ struct AccountView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
+    }
+}
+
+private struct ProfileAvatar: View {
+    let url: URL?
+    let name: String
+
+    var body: some View {
+        Group {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        initials
+                    case .empty:
+                        ProgressView()
+                    @unknown default:
+                        initials
+                    }
+                }
+            } else {
+                initials
+            }
+        }
+        .frame(width: 48, height: 48)
+        .background(BVTheme.fill)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(BVTheme.line, lineWidth: 1))
+    }
+
+    private var initials: some View {
+        Text(String(name.prefix(1)).uppercased())
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(BVTheme.accent)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

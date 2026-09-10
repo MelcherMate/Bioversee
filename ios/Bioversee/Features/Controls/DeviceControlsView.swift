@@ -41,16 +41,6 @@ struct DeviceControlsView: View {
                             .foregroundStyle(BVTheme.textSecondary)
                     }
                     Spacer()
-                    Button {
-                        Task { await loadStates() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(BVTheme.text)
-                            .frame(width: 36, height: 36)
-                            .background(BVTheme.fill)
-                            .clipShape(Circle())
-                    }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)

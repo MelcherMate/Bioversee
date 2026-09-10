@@ -33,6 +33,24 @@ final class AppSession: ObservableObject {
         session?.user.id
     }
 
+    var displayName: String {
+        let meta = session?.user.userMetadata ?? [:]
+        if let full = meta["full_name"]?.stringValue, !full.isEmpty { return full }
+        if let name = meta["name"]?.stringValue, !name.isEmpty { return name }
+        if let email = userEmail, let local = email.split(separator: "@").first {
+            return String(local)
+        }
+        return "Account"
+    }
+
+    var avatarURL: URL? {
+        let meta = session?.user.userMetadata ?? [:]
+        if let raw = meta["avatar_url"]?.stringValue ?? meta["picture"]?.stringValue {
+            return URL(string: raw)
+        }
+        return nil
+    }
+
     func bootstrap() async {
         do {
             // Keychain-backed session with refresh — no 7-day web vault cut-off on iOS.
