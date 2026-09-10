@@ -20,6 +20,7 @@
     0 0 0 1px rgba(0, 0, 0, 0.06),
     0 12px 32px -8px rgba(0, 0, 0, 0.12);
   --bv-overlay: rgba(29, 29, 31, 0.45);
+  --bv-user-accent: #0d9488;
   --bv-accent: #0d9488;
   --bv-accent-hover: color-mix(in srgb, var(--bv-accent) 82%, #000);
   --bv-accent-bright: color-mix(in srgb, var(--bv-accent) 72%, #fff);
@@ -33,40 +34,40 @@
   --bv-danger: #b42318;
   --bv-success: #027a48;
   --bv-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Rolling number (odometer) motion */
   --bv-num-duration: 420ms;
   color-scheme: light;
 }
 
+/* Night mode — matched to Smart Grid (`data-sg-theme='dark'`) */
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bv-text: #f5f5f7;
   --bv-text-secondary: #a1a1a6;
   --bv-text-tertiary: #8e8e93;
-  --bv-line: rgba(255, 255, 255, 0.1);
-  --bv-surface: #0f0f10;
-  --bv-surface-elevated: #161618;
-  --bv-card: #1c1c1e;
-  --bv-fill: #2c2c2e;
+  --bv-line: rgba(255, 255, 255, 0.12);
+  --bv-surface: #000000;
+  --bv-surface-elevated: #1c1c1e;
+  --bv-card: #2c2c2e;
+  --bv-fill: #3a3a3c;
   --bv-shadow-card:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 24px 48px -12px rgba(0, 0, 0, 0.55),
-    0 8px 20px -8px rgba(0, 0, 0, 0.4);
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 48px -12px rgba(0, 0, 0, 0.5),
+    0 8px 20px -8px rgba(0, 0, 0, 0.35);
   --bv-shadow-float:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 12px 32px -8px rgba(0, 0, 0, 0.5);
-  --bv-overlay: rgba(0, 0, 0, 0.55);
-  --bv-accent-hover: color-mix(in srgb, var(--bv-accent) 78%, #fff);
-  --bv-accent-bright: color-mix(in srgb, var(--bv-accent) 65%, #fff);
-  --bv-accent-muted: color-mix(in srgb, var(--bv-accent) 28%, #1c1c1e);
-  --bv-accent-soft: color-mix(in srgb, var(--bv-accent) 16%, #1c1c1e);
-  --bv-accent-border: color-mix(in srgb, var(--bv-accent) 45%, #1c1c1e);
-  --bv-glass: rgba(28, 28, 30, 0.88);
-  --bv-glass-border: rgba(255, 255, 255, 0.1);
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 12px 32px -8px rgba(0, 0, 0, 0.45);
+  --bv-overlay: rgba(0, 0, 0, 0.65);
+  --bv-accent-hover: color-mix(in srgb, var(--bv-accent) 70%, #fff);
+  --bv-accent-bright: color-mix(in srgb, var(--bv-accent) 55%, #fff);
+  --bv-accent-muted: color-mix(in srgb, var(--bv-accent) 22%, #2c2c2e);
+  --bv-accent-soft: color-mix(in srgb, var(--bv-accent) 12%, #2c2c2e);
+  --bv-accent-border: color-mix(in srgb, var(--bv-accent) 38%, #2c2c2e);
+  --bv-glass: rgba(44, 44, 46, 0.92);
+  --bv-glass-border: rgba(255, 255, 255, 0.08);
   --bv-cta: #f5f5f7;
   --bv-cta-hover: #ffffff;
   --bv-danger: #f87171;
   --bv-success: #34d399;
-  color-scheme: dark;
 }
 
 * {

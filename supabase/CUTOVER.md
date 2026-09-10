@@ -52,12 +52,17 @@ Run [`device_manage.sql`](./device_manage.sql) once for rename, delete, and leav
 
 Run [`no_auto_devices.sql`](./no_auto_devices.sql) so new accounts start with **zero** devices (users add via **+**). Also enables reading owner avatars on shared device icons.
 
+## User appearance settings
+
+Run [`user_settings.sql`](./user_settings.sql) once so theme / accent / language sync to the signed-in account.
+
 ## Notes
 
-- Share UI: navbar Share → invite link / email / roster.
+- Share UI: right-click device → Share.
 - Recipients get a notification and must **Accept** before the device appears.
 - Header: **+** adds a device; circular icons open each instance (hover shows name).
 - Shared devices show the **owner’s avatar** on the icon.
-- Right-click a device icon → **Settings** or **Delete** / **Leave**.
+- Right-click a device icon → **Settings** / **Share** / **Delete** / **Leave**.
+- Header gear → Appearance (theme, accent, language) — stored in `user_settings`.
 - Pi API keys: table ready (`device_credentials`); mint UI + Edge Function still follow-up.
 - Pi ingest should use the **service role** or a future Edge Function that validates a device credential and inserts with `device_id`.

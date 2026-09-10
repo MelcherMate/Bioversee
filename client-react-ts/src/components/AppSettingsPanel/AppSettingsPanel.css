@@ -84,17 +84,17 @@
 .app-settings__swatches {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .app-settings__swatch {
   position: relative;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
   padding: 0;
 }
 
@@ -104,30 +104,15 @@
     0 0 0 4px var(--bv-accent);
 }
 
-.app-settings__swatch--custom {
+.app-settings__swatch-labels {
   display: grid;
-  place-items: center;
-  background: var(--bv-fill);
-  overflow: hidden;
-}
-
-.app-settings__swatch-plus {
-  font-size: 16px;
+  grid-template-columns: repeat(4, 32px);
+  gap: 10px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--bv-text-secondary);
-  line-height: 1;
-  pointer-events: none;
-}
-
-.app-settings__color-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  border: none;
-  padding: 0;
+  letter-spacing: 0.02em;
+  color: var(--bv-text-tertiary);
+  text-align: center;
 }
 
 .app-settings__select {

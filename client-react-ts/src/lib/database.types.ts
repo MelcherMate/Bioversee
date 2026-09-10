@@ -41,6 +41,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_settings: {
+        Row: {
+          user_id: string;
+          preferences: Json;
+          updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          preferences?: Json;
+          updated_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          preferences?: Json;
+          updated_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       devices: {
         Row: {
           id: string;

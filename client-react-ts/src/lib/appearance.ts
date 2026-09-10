@@ -9,16 +9,18 @@ export type AppearanceSettings = {
 
 const STORAGE_KEY = "bv.appearance.v1";
 
+/** Soft teal — current Bioversee green. */
 export const DEFAULT_ACCENT = "#0d9488";
 
+/**
+ * Accent palette: same soft/vivid character as teal + user yellow.
+ * Yellow from product preference; red/blue chosen to match.
+ */
 export const ACCENT_PRESETS = [
-  { id: "teal", label: "Teal", value: "#0d9488" },
-  { id: "blue", label: "Blue", value: "#2563eb" },
-  { id: "indigo", label: "Indigo", value: "#4f46e5" },
-  { id: "rose", label: "Rose", value: "#e11d48" },
-  { id: "orange", label: "Orange", value: "#ea580c" },
-  { id: "green", label: "Green", value: "#16a34a" },
-  { id: "slate", label: "Slate", value: "#475569" },
+  { id: "green", label: "Green", value: "#0d9488" },
+  { id: "yellow", label: "Yellow", value: "#ffe15d" },
+  { id: "red", label: "Red", value: "#ff6b6b" },
+  { id: "blue", label: "Blue", value: "#5b9fff" },
 ] as const;
 
 export const LANGUAGE_OPTIONS: {
@@ -49,6 +51,11 @@ function isHexColor(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
 }
 
+export function normalizeHex(value: string): string {
+  const raw = value.startsWith("#") ? value : `#${value}`;
+  return raw.toLowerCase();
+}
+
 export function loadAppearance(): AppearanceSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -72,19 +79,84 @@ export function saveAppearance(settings: AppearanceSettings): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 
+export function appearanceFromPrefs(
+  prefs: Partial<AppearanceSettings> | null | undefined
+): AppearanceSettings | null {
+  if (!prefs || typeof prefs !== "object") return null;
+  const next: AppearanceSettings = { ...DEFAULT_APPEARANCE };
+  let touched = false;
+  if (isTheme(prefs.theme)) {
+    next.theme = prefs.theme;
+    touched = true;
+  }
+  if (isHexColor(prefs.accent)) {
+    next.accent = prefs.accent.toLowerCase();
+    touched = true;
+  }
+  if (isLanguage(prefs.language)) {
+    next.language = prefs.language;
+    touched = true;
+  }
+  return touched ? next : null;
+}
+
 export function resolveTheme(
   preference: ThemePreference,
-  systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+  systemDark = typeof window !== "undefined" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
 ): "light" | "dark" {
   if (preference === "system") return systemDark ? "dark" : "light";
   return preference;
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function relativeLuminance(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0.5;
+  const lin = [rgb.r, rgb.g, rgb.b].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * lin[0]! + 0.7152 * lin[1]! + 0.0722 * lin[2]!;
+}
+
+function mixHex(a: string, b: string, t: number): string {
+  const A = hexToRgb(a);
+  const B = hexToRgb(b);
+  if (!A || !B) return a;
+  const mix = (x: number, y: number) => Math.round(x + (y - x) * t);
+  const r = mix(A.r, B.r).toString(16).padStart(2, "0");
+  const g = mix(A.g, B.g).toString(16).padStart(2, "0");
+  const bl = mix(A.b, B.b).toString(16).padStart(2, "0");
+  return `#${r}${g}${bl}`;
+}
+
+/** Brighten darker accents in night mode (Smart Grid style). */
+export function accentForResolvedTheme(
+  accent: string,
+  theme: "light" | "dark"
+): string {
+  const hex = normalizeHex(accent);
+  if (theme === "light") return hex;
+  const L = relativeLuminance(hex);
+  if (L >= 0.55) return hex;
+  return mixHex(hex, "#ffffff", 0.38);
 }
 
 /** Apply resolved theme + accent CSS variables on <html>. */
 export function applyAppearance(settings: AppearanceSettings): void {
   const root = document.documentElement;
   const resolved = resolveTheme(settings.theme);
+  const accent = accentForResolvedTheme(settings.accent, resolved);
   root.dataset.theme = resolved;
-  root.style.setProperty("--bv-accent", settings.accent);
+  root.style.colorScheme = resolved;
+  root.style.setProperty("--bv-user-accent", normalizeHex(settings.accent));
+  root.style.setProperty("--bv-accent", accent);
   root.lang = settings.language;
 }

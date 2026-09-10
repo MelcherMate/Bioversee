@@ -41,10 +41,6 @@ function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
 
   if (!open) return null;
 
-  const accentIsCustom = !ACCENT_PRESETS.some(
-    (preset) => preset.value.toLowerCase() === settings.accent.toLowerCase()
-  );
-
   return (
     <div
       className="app-settings"
@@ -85,7 +81,11 @@ function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
 
       <section className="app-settings__section">
         <p className="app-settings__label">Accent color</p>
-        <div className="app-settings__swatches" role="listbox" aria-label="Accent color">
+        <div
+          className="app-settings__swatches"
+          role="listbox"
+          aria-label="Accent color"
+        >
           {ACCENT_PRESETS.map((preset) => {
             const selected =
               settings.accent.toLowerCase() === preset.value.toLowerCase();
@@ -103,23 +103,11 @@ function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
               />
             );
           })}
-          <label
-            className={`app-settings__swatch app-settings__swatch--custom${
-              accentIsCustom ? " is-selected" : ""
-            }`}
-            title="Custom color"
-          >
-            <input
-              type="color"
-              className="app-settings__color-input"
-              value={settings.accent}
-              aria-label="Custom accent color"
-              onChange={(event) => setAccent(event.target.value)}
-            />
-            <span className="app-settings__swatch-plus" aria-hidden>
-              +
-            </span>
-          </label>
+        </div>
+        <div className="app-settings__swatch-labels">
+          {ACCENT_PRESETS.map((preset) => (
+            <span key={preset.id}>{preset.label}</span>
+          ))}
         </div>
       </section>
 
@@ -142,7 +130,7 @@ function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
           ))}
         </select>
         <p className="app-settings__hint">
-          Language preference is saved. Full UI translation comes next.
+          Saved to your account. Full UI translation comes next.
         </p>
       </section>
     </div>
