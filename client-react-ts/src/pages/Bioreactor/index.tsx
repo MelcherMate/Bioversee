@@ -3,6 +3,7 @@ import Canvas from "../../components/Canvas";
 import Chart from "../../components/Chart/index";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
+import { getMyDevice, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./Bioreactor.css";
@@ -19,6 +20,7 @@ interface BioreactorProps {
 
 function Bioreactor({ user }: BioreactorProps) {
   const [canvasRef, canvasSize] = useDimensions();
+  const [device, setDevice] = useState<Device | null>(null);
   const [cards, setCards] = useState<Card[]>([
     {
       id: "bioreactor",
@@ -26,6 +28,12 @@ function Bioreactor({ user }: BioreactorProps) {
       text: "",
     },
   ]);
+
+  useEffect(() => {
+    getMyDevice("bioreactor")
+      .then(setDevice)
+      .catch((error) => console.error(error));
+  }, [user.id]);
 
   useEffect(() => {
     setCards([
@@ -47,6 +55,14 @@ function Bioreactor({ user }: BioreactorProps) {
   const [rotorVal, setRotorVal] = useState(0);
   const [aeratorVal, setAeratorVal] = useState(0);
 
+  if (!device) {
+    return (
+      <div className="container">
+        <div className="process-loading">Loading your bioreactor…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <aside id="actuatorSide">
@@ -54,6 +70,7 @@ function Bioreactor({ user }: BioreactorProps) {
           <section className="controlPanel__section">
             <h4 className="boxTitle">Pumps</h4>
             <Switch
+              deviceId={device.id}
               name="switchWarmWaterPump"
               setVal={setWarmWVal}
               val={warmWVal}
@@ -61,6 +78,7 @@ function Bioreactor({ user }: BioreactorProps) {
               user={user}
             />
             <Switch
+              deviceId={device.id}
               name="switchColdWaterPump"
               setVal={setColdWVal}
               val={coldWVal}
@@ -68,6 +86,7 @@ function Bioreactor({ user }: BioreactorProps) {
               user={user}
             />
             <Switch
+              deviceId={device.id}
               name="switchAcidPump"
               setVal={setAcidVal}
               val={acidVal}
@@ -75,6 +94,7 @@ function Bioreactor({ user }: BioreactorProps) {
               user={user}
             />
             <Switch
+              deviceId={device.id}
               name="switchBasePump"
               setVal={setBaseVal}
               val={baseVal}
@@ -85,6 +105,7 @@ function Bioreactor({ user }: BioreactorProps) {
           <section className="controlPanel__section">
             <h4 className="boxTitle">Motion</h4>
             <Slider
+              deviceId={device.id}
               name="rotor"
               setVal={setRotorVal}
               val={rotorVal}
@@ -92,6 +113,7 @@ function Bioreactor({ user }: BioreactorProps) {
               user={user}
             />
             <Slider
+              deviceId={device.id}
               name="aerator"
               setVal={setAeratorVal}
               val={aeratorVal}
@@ -106,8 +128,12 @@ function Bioreactor({ user }: BioreactorProps) {
       </main>
       <aside id="sensorSide">
         <div className="chartBox">
-          <Chart name="temperature" label="Temperature" />
-          <Chart name="ph" label="pH value" />
+          <Chart
+            deviceId={device.id}
+            name="temperature"
+            label="Temperature"
+          />
+          <Chart deviceId={device.id} name="ph" label="pH value" />
         </div>
       </aside>
     </div>

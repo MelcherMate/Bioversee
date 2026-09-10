@@ -12,6 +12,7 @@ import {
   insertSensorReading,
   insertSliderState,
 } from "../../lib/actuators";
+import { getMyDevice, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import "../Bioreactor/Bioreactor.css";
 import "./ProcessScene.css";
@@ -23,6 +24,7 @@ type PressureVesselProps = {
 };
 
 function PressureVessel({ user }: PressureVesselProps) {
+  const [device, setDevice] = useState<Device | null>(null);
   const [fillUnits, setFillUnits] = useState(
     Math.round(VESSEL_MAX_FILL_UNITS / 2),
   );
@@ -38,13 +40,32 @@ function PressureVessel({ user }: PressureVesselProps) {
 
   fillUnitsRef.current = fillUnits;
 
+  useEffect(() => {
+    getMyDevice("pressure_vessel")
+      .then(setDevice)
+      .catch((error) => console.error(error));
+  }, [user.id]);
+
   const persistLevel = (units: number) => {
+    if (!device) return;
     const percent = fillUnitsToPercent(units);
-    insertSliderState(VESSEL_LEVEL_KEY, percent, user.id).catch(console.error);
-    insertSensorReading(VESSEL_LEVEL_KEY, percent).catch(console.error);
+    insertSliderState(
+      device.id,
+      VESSEL_LEVEL_KEY,
+      percent,
+      user.id,
+    ).catch(console.error);
+    insertSensorReading(
+      device.id,
+      VESSEL_LEVEL_KEY,
+      percent,
+      user.id,
+    ).catch(console.error);
   };
 
   useEffect(() => {
+    if (!device) return;
+
     const pull = () => {
       if (
         isFillHeld ||
@@ -54,7 +75,7 @@ function PressureVessel({ user }: PressureVesselProps) {
       ) {
         return;
       }
-      getLatestSliderState(VESSEL_LEVEL_KEY)
+      getLatestSliderState(device.id, VESSEL_LEVEL_KEY)
         .then((percent) => {
           const next = Math.round(
             (Math.min(100, Math.max(0, percent)) / 100) * VESSEL_MAX_FILL_UNITS,
@@ -68,6 +89,7 @@ function PressureVessel({ user }: PressureVesselProps) {
     const interval = setInterval(pull, 4000);
     return () => clearInterval(interval);
   }, [
+    device,
     isFillHeld,
     isDrainHeld,
     inletFill.isAnimating,
@@ -91,6 +113,14 @@ function PressureVessel({ user }: PressureVesselProps) {
     setIsDrainHeld(held);
     if (!held) persistLevel(fillUnitsRef.current);
   };
+
+  if (!device) {
+    return (
+      <div className="container">
+        <div className="process-loading">Loading your pressure vessel…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">

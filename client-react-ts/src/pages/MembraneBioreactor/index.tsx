@@ -14,6 +14,7 @@ import {
   insertSliderState,
   insertSwitchState,
 } from "../../lib/actuators";
+import { getMyDevice, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import "../Bioreactor/Bioreactor.css";
 import "../PressureVessel/ProcessScene.css";
@@ -41,6 +42,7 @@ function snapAerationLevel(value: number): MbrAerationLevel {
 }
 
 function MembraneBioreactor({ user }: MembraneBioreactorProps) {
+  const [device, setDevice] = useState<Device | null>(null);
   const [isFlowOn, setIsFlowOn] = useState(false);
   const [isAerationOn, setIsAerationOn] = useState(false);
   const [aerationLevel, setAerationLevel] = useState<MbrAerationLevel>(
@@ -49,14 +51,22 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   const flow = useMbrFlowAnimation(isFlowOn);
 
   useEffect(() => {
+    getMyDevice("membrane_bioreactor")
+      .then(setDevice)
+      .catch((error) => console.error(error));
+  }, [user.id]);
+
+  useEffect(() => {
+    if (!device) return;
+
     const pull = () => {
-      getLatestSwitchState(FLOW_KEY)
+      getLatestSwitchState(device.id, FLOW_KEY)
         .then(setIsFlowOn)
         .catch(console.error);
-      getLatestSwitchState(AERATION_KEY)
+      getLatestSwitchState(device.id, AERATION_KEY)
         .then(setIsAerationOn)
         .catch(console.error);
-      getLatestSliderState(LEVEL_KEY)
+      getLatestSliderState(device.id, LEVEL_KEY)
         .then((value) => setAerationLevel(snapAerationLevel(value)))
         .catch(console.error);
     };
@@ -64,22 +74,37 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
     pull();
     const interval = setInterval(pull, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [device]);
 
   const onFlowChange = (on: boolean) => {
+    if (!device) return;
     setIsFlowOn(on);
-    insertSwitchState(FLOW_KEY, on, user.id).catch(console.error);
+    insertSwitchState(device.id, FLOW_KEY, on, user.id).catch(console.error);
   };
 
   const onAerationChange = (on: boolean) => {
+    if (!device) return;
     setIsAerationOn(on);
-    insertSwitchState(AERATION_KEY, on, user.id).catch(console.error);
+    insertSwitchState(device.id, AERATION_KEY, on, user.id).catch(
+      console.error,
+    );
   };
 
   const onAerationLevelChange = (level: MbrAerationLevel) => {
+    if (!device) return;
     setAerationLevel(level);
-    insertSliderState(LEVEL_KEY, level, user.id).catch(console.error);
+    insertSliderState(device.id, LEVEL_KEY, level, user.id).catch(
+      console.error,
+    );
   };
+
+  if (!device) {
+    return (
+      <div className="container">
+        <div className="process-loading">Loading your membrane MBR…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">

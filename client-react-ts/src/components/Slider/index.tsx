@@ -14,6 +14,7 @@ import AnimatedNumber from "../AnimatedNumber";
 import "./Slider.css";
 
 type SliderProps = {
+  deviceId: string;
   name: string;
   label: string;
   val: number;
@@ -31,12 +32,12 @@ function Slider(props: SliderProps) {
   const percent = max === min ? 0 : ((value - min) / (max - min)) * 100;
 
   useEffect(() => {
-    if (isSliding) return;
+    if (!props.deviceId || isSliding) return;
 
-    getLatestSliderState(props.name)
+    getLatestSliderState(props.deviceId, props.name)
       .then((state) => props.setVal(Number(state)))
       .catch((error) => console.log(error));
-  }, [props.name, props.user.id, isSliding]);
+  }, [props.deviceId, props.name, props.user.id, isSliding]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = parseInt(event.target.value, 10);
@@ -47,9 +48,12 @@ function Slider(props: SliderProps) {
   const commitValue = (raw: string) => {
     const newValue = parseInt(raw, 10);
     setIsSliding(false);
-    insertSliderState(props.name, newValue, props.user.id).catch((error) =>
-      console.log(error)
-    );
+    insertSliderState(
+      props.deviceId,
+      props.name,
+      newValue,
+      props.user.id,
+    ).catch((error) => console.log(error));
   };
 
   const handleMouseUp = (event: MouseEvent<HTMLInputElement>) => {
@@ -76,7 +80,7 @@ function Slider(props: SliderProps) {
         onChange={handleChange}
         onMouseUp={handleMouseUp}
         onTouchEnd={(event) => commitValue(event.currentTarget.value)}
-        id={props.name}
+        id={`${props.deviceId}-${props.name}`}
         style={{ "--bv-slider-progress": `${percent}%` } as CSSProperties}
         aria-label={props.label}
       />

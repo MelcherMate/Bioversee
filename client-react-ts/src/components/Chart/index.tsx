@@ -14,6 +14,7 @@ import AnimatedNumber from "../AnimatedNumber";
 import "./Chart.css";
 
 interface ChartProps {
+  deviceId: string;
   name: string;
   label: string;
 }
@@ -31,7 +32,8 @@ const Chart: React.FC<ChartProps> = (props) => {
   >([]);
 
   const fetchData = () => {
-    getSensorReadings(props.name)
+    if (!props.deviceId) return;
+    getSensorReadings(props.deviceId, props.name)
       .then((rows) => setData(rows as any))
       .catch((error) => console.error("Fetch error:", error));
   };
@@ -40,7 +42,7 @@ const Chart: React.FC<ChartProps> = (props) => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, [props.name]);
+  }, [props.deviceId, props.name]);
 
   const formattedData = useMemo<ChartPoint[]>(() => {
     if (isEmpty(data)) return [];

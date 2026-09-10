@@ -7,6 +7,7 @@ import type { AppUser } from "../../lib/user";
 import "./Switch.css";
 
 type SwitchProps = {
+  deviceId: string;
   name: string;
   label: string;
   val: boolean;
@@ -16,19 +17,26 @@ type SwitchProps = {
 
 function Switch(props: SwitchProps) {
   useEffect(() => {
-    getLatestSwitchState(props.name)
+    if (!props.deviceId) return;
+    getLatestSwitchState(props.deviceId, props.name)
       .then((state) => props.setVal(Boolean(state)))
       .catch((error) => console.log(error));
-  }, [props.name, props.user.id]);
+  }, [props.deviceId, props.name, props.user.id]);
 
   const sendSwitchStateToDatabase = (newValue: boolean) => {
-    insertSwitchState(props.name, newValue, props.user.id).catch((error) =>
-      console.log(error),
-    );
+    insertSwitchState(
+      props.deviceId,
+      props.name,
+      newValue,
+      props.user.id,
+    ).catch((error) => console.log(error));
   };
 
   return (
-    <label className={`bv-switch${props.val ? " bv-switch--on" : ""}`} htmlFor={props.name}>
+    <label
+      className={`bv-switch${props.val ? " bv-switch--on" : ""}`}
+      htmlFor={`${props.deviceId}-${props.name}`}
+    >
       <div className="bv-switch__copy">
         <span className="bv-switch__label">{props.label}</span>
         <span className="bv-switch__state">{props.val ? "On" : "Off"}</span>
@@ -37,7 +45,7 @@ function Switch(props: SwitchProps) {
         type="checkbox"
         className="bv-switch__input"
         checked={props.val}
-        id={props.name}
+        id={`${props.deviceId}-${props.name}`}
         onChange={(event) => {
           const newValue = event.target.checked;
           props.setVal(newValue);

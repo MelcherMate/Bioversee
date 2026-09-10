@@ -3,6 +3,7 @@ import Canvas2 from "../../components/Canvas2";
 import Chart from "../../components/Chart";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
+import { getMyDevice, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./WaterPurifier.css";
@@ -19,6 +20,7 @@ interface WaterpurifierProps {
 
 function WaterPurifier({ user }: WaterpurifierProps) {
   const [canvasRef, canvasSize] = useDimensions();
+  const [device, setDevice] = useState<Device | null>(null);
   const [cards, setCards] = useState<Card[]>([
     {
       id: "waterpurifier",
@@ -26,6 +28,12 @@ function WaterPurifier({ user }: WaterpurifierProps) {
       text: "",
     },
   ]);
+
+  useEffect(() => {
+    getMyDevice("water_purifier")
+      .then(setDevice)
+      .catch((error) => console.error(error));
+  }, [user.id]);
 
   useEffect(() => {
     setCards([
@@ -45,6 +53,14 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   const [pump3Val, setPump3Val] = useState(false);
   const [rotorVal, setRotorVal] = useState(0);
 
+  if (!device) {
+    return (
+      <div className="container">
+        <div className="process-loading">Loading your water purifier…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <aside id="actuatorSide">
@@ -52,6 +68,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
           <section className="controlPanel__section">
             <h4 className="boxTitle">Pumps</h4>
             <Switch
+              deviceId={device.id}
               name="switchPump1"
               setVal={setPump1Val}
               val={pump1Val}
@@ -59,6 +76,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
               user={user}
             />
             <Switch
+              deviceId={device.id}
               name="switchPump2"
               setVal={setPump2Val}
               val={pump2Val}
@@ -66,6 +84,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
               user={user}
             />
             <Switch
+              deviceId={device.id}
               name="switchPump3"
               setVal={setPump3Val}
               val={pump3Val}
@@ -76,6 +95,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
           <section className="controlPanel__section">
             <h4 className="boxTitle">Motion</h4>
             <Slider
+              deviceId={device.id}
               name="agitator"
               setVal={setRotorVal}
               val={rotorVal}
@@ -95,7 +115,11 @@ function WaterPurifier({ user }: WaterpurifierProps) {
       </main>
       <aside id="sensorSide">
         <div className="chartBox">
-          <Chart name="pufferwtlvl" label="Puffer Water Level" />
+          <Chart
+            deviceId={device.id}
+            name="pufferwtlvl"
+            label="Puffer Water Level"
+          />
         </div>
       </aside>
     </div>

@@ -39,7 +39,7 @@ cp client-react-ts/.env.example client-react-ts/.env.development
 pnpm dev
 ```
 
-1. In Supabase SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql) once.
+1. In Supabase SQL Editor, follow [`supabase/CUTOVER.md`](supabase/CUTOVER.md) (wipe then [`schema.sql`](supabase/schema.sql)) for a fresh per-user device install.
 2. Enable Email and Google providers under Authentication → Providers.
 3. Add `http://localhost:5173` (and your Vercel URL) under Authentication → URL Configuration.
 

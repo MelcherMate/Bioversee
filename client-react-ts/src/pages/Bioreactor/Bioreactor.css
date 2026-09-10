@@ -99,6 +99,16 @@ aside > * {
   }
 }
 
+.process-loading {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 240px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bv-text-secondary);
+}
+
 @media (max-width: 900px) {
   aside {
     position: relative;

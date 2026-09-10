@@ -1,9 +1,13 @@
 import { supabase } from "./supabase";
 
-export async function getLatestSliderState(name: string): Promise<number> {
+export async function getLatestSliderState(
+  deviceId: string,
+  name: string,
+): Promise<number> {
   const { data, error } = await supabase
     .from("actuator_sliders")
     .select("state")
+    .eq("device_id", deviceId)
     .eq("name", name)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -14,11 +18,13 @@ export async function getLatestSliderState(name: string): Promise<number> {
 }
 
 export async function insertSliderState(
+  deviceId: string,
   name: string,
   state: number,
-  userId: string
+  userId: string,
 ) {
   const { error } = await supabase.from("actuator_sliders").insert({
+    device_id: deviceId,
     name,
     state,
     user_id: userId,
@@ -26,10 +32,14 @@ export async function insertSliderState(
   if (error) throw error;
 }
 
-export async function getLatestSwitchState(name: string): Promise<boolean> {
+export async function getLatestSwitchState(
+  deviceId: string,
+  name: string,
+): Promise<boolean> {
   const { data, error } = await supabase
     .from("actuator_switches")
     .select("state")
+    .eq("device_id", deviceId)
     .eq("name", name)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -40,11 +50,13 @@ export async function getLatestSwitchState(name: string): Promise<boolean> {
 }
 
 export async function insertSwitchState(
+  deviceId: string,
   name: string,
   state: boolean,
-  userId: string
+  userId: string,
 ) {
   const { error } = await supabase.from("actuator_switches").insert({
+    device_id: deviceId,
     name,
     state,
     user_id: userId,
@@ -59,11 +71,13 @@ export type SensorReading = {
 };
 
 export async function getSensorReadings(
-  name: string
+  deviceId: string,
+  name: string,
 ): Promise<SensorReading[]> {
   const { data, error } = await supabase
     .from("sensors")
     .select("name, value, created_at")
+    .eq("device_id", deviceId)
     .eq("name", name)
     .order("created_at", { ascending: true });
 
@@ -75,10 +89,17 @@ export async function getSensorReadings(
   }));
 }
 
-export async function insertSensorReading(name: string, value: number) {
+export async function insertSensorReading(
+  deviceId: string,
+  name: string,
+  value: number,
+  userId?: string,
+) {
   const { error } = await supabase.from("sensors").insert({
+    device_id: deviceId,
     name,
     value,
+    user_id: userId ?? null,
   });
   if (error) throw error;
 }
