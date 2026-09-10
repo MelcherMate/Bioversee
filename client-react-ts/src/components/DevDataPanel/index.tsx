@@ -5,6 +5,7 @@ import {
   insertSwitchState,
 } from "../../lib/actuators";
 import type { AppUser } from "../../lib/user";
+import { ToastStack, useToasts } from "../Toast";
 import "./DevDataPanel.css";
 
 const SENSOR_PRESETS = [
@@ -37,14 +38,17 @@ type DevDataPanelProps = {
 
 function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
   const [sensorName, setSensorName] = useState(SENSOR_PRESETS[0].name);
-  const [sensorValue, setSensorValue] = useState(String(SENSOR_PRESETS[0].sample));
+  const [sensorValue, setSensorValue] = useState(
+    String(SENSOR_PRESETS[0].sample)
+  );
   const [sliderName, setSliderName] = useState(SLIDER_PRESETS[0].name);
-  const [sliderValue, setSliderValue] = useState(String(SLIDER_PRESETS[0].sample));
+  const [sliderValue, setSliderValue] = useState(
+    String(SLIDER_PRESETS[0].sample)
+  );
   const [switchName, setSwitchName] = useState(SWITCH_PRESETS[0].name);
   const [switchValue, setSwitchValue] = useState(true);
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { toasts, push, replace, dismiss } = useToasts();
 
   useEffect(() => {
     if (!open) return;
@@ -55,15 +59,24 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const run = async (action: () => Promise<void>, okMessage: string) => {
+  const run = async (
+    action: () => Promise<void>,
+    pendingTitle: string,
+    okTitle: string,
+    okDetail?: string
+  ) => {
     setBusy(true);
-    setError(null);
-    setStatus(null);
+    const toastId = push("info", pendingTitle, "Writing to Supabase…");
     try {
       await action();
-      setStatus(okMessage);
+      replace(toastId, "success", okTitle, okDetail ?? "Upload complete");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to write data");
+      replace(
+        toastId,
+        "error",
+        "Upload failed",
+        err instanceof Error ? err.message : "Failed to write data"
+      );
     } finally {
       setBusy(false);
     }
@@ -74,7 +87,9 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
     const value = Number(sensorValue);
     void run(
       () => insertSensorReading(sensorName, value),
-      `Sensor “${sensorName}” = ${value}`
+      "Sending sensor…",
+      "Sensor uploaded",
+      `${sensorName} = ${value}`
     );
   };
 
@@ -83,7 +98,9 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
     const value = Number(sliderValue);
     void run(
       () => insertSliderState(sliderName, value, user.id),
-      `Slider “${sliderName}” = ${value}%`
+      "Sending slider…",
+      "Slider uploaded",
+      `${sliderName} = ${value}%`
     );
   };
 
@@ -91,24 +108,35 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
     event.preventDefault();
     void run(
       () => insertSwitchState(switchName, switchValue, user.id),
-      `Switch “${switchName}” = ${switchValue ? "ON" : "OFF"}`
+      "Sending switch…",
+      "Switch uploaded",
+      `${switchName} = ${switchValue ? "ON" : "OFF"}`
     );
   };
 
   const seedDemoBundle = () =>
-    run(async () => {
-      await insertSensorReading("temperature", 27 + Math.random() * 4);
-      await insertSensorReading("ph", 6.5 + Math.random() * 0.8);
-      await insertSensorReading("pufferwtlvl", 50 + Math.random() * 30);
-      await insertSliderState("rotor", 40 + Math.round(Math.random() * 40), user.id);
-      await insertSliderState(
-        "aerator",
-        35 + Math.round(Math.random() * 45),
-        user.id
-      );
-      await insertSwitchState("switchWarmWaterPump", true, user.id);
-      await insertSwitchState("switchColdWaterPump", false, user.id);
-    }, "Demo bundle written");
+    run(
+      async () => {
+        await insertSensorReading("temperature", 27 + Math.random() * 4);
+        await insertSensorReading("ph", 6.5 + Math.random() * 0.8);
+        await insertSensorReading("pufferwtlvl", 50 + Math.random() * 30);
+        await insertSliderState(
+          "rotor",
+          40 + Math.round(Math.random() * 40),
+          user.id
+        );
+        await insertSliderState(
+          "aerator",
+          35 + Math.round(Math.random() * 45),
+          user.id
+        );
+        await insertSwitchState("switchWarmWaterPump", true, user.id);
+        await insertSwitchState("switchColdWaterPump", false, user.id);
+      },
+      "Seeding demo bundle…",
+      "Demo bundle uploaded",
+      "Sensors, sliders, and switches written"
+    );
 
   return (
     <>
@@ -243,10 +271,9 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
             Send switch
           </button>
         </form>
-
-        {status && <p className="dev-panel__status">{status}</p>}
-        {error && <p className="dev-panel__error">{error}</p>}
       </aside>
+
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
   );
 }

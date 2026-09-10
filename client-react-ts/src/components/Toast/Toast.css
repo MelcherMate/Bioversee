@@ -1,0 +1,129 @@
+.bv-toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(340px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.bv-toast {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  overflow: hidden;
+  padding: 12px 12px 14px;
+  border-radius: 14px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  box-shadow: var(--bv-shadow-float);
+  animation: bv-toast-in 0.28s var(--bv-ease);
+}
+
+.bv-toast--info {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.bv-toast--success {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.bv-toast--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.bv-toast__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.bv-toast__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--bv-text);
+}
+
+.bv-toast__detail {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--bv-text-secondary);
+  word-break: break-word;
+}
+
+.bv-toast__dismiss {
+  border: none;
+  background: transparent;
+  color: var(--bv-text-tertiary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.bv-toast__dismiss:hover {
+  color: var(--bv-text);
+}
+
+.bv-toast__timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.bv-toast__timer::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: var(--bv-accent);
+  animation: bv-toast-timer 3.2s linear forwards;
+}
+
+.bv-toast--error .bv-toast__timer::after {
+  background: #ef4444;
+}
+
+@keyframes bv-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bv-toast-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bv-toast {
+    animation: none;
+  }
+
+  .bv-toast__timer::after {
+    animation: none;
+  }
+}
