@@ -68,6 +68,30 @@ export async function getMyDevice(type: DeviceType): Promise<Device> {
   return data as Device;
 }
 
+/**
+ * Resolve the device for a process page.
+ * If `preferredId` is set and the user can access it (RLS), use that
+ * (shared devices via invite). Otherwise fall back to the owned default.
+ */
+export async function getDeviceForPage(
+  type: DeviceType,
+  preferredId?: string | null
+): Promise<Device> {
+  if (preferredId) {
+    const { data, error } = await supabase
+      .from("devices")
+      .select("id, owner_id, type, name, created_at, updated_at")
+      .eq("id", preferredId)
+      .eq("type", type)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (data) return data as Device;
+  }
+
+  return getMyDevice(type);
+}
+
 export async function getMyDevicesByType(): Promise<
   Partial<Record<DeviceType, Device>>
 > {

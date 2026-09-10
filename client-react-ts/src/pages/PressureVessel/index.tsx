@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   fillUnitsToPercent,
   VESSEL_MAX_FILL_UNITS,
@@ -12,7 +13,7 @@ import {
   insertSensorReading,
   insertSliderState,
 } from "../../lib/actuators";
-import { getMyDevice, type Device } from "../../lib/devices";
+import { getDeviceForPage, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import "../Bioreactor/Bioreactor.css";
 import "./ProcessScene.css";
@@ -24,6 +25,8 @@ type PressureVesselProps = {
 };
 
 function PressureVessel({ user }: PressureVesselProps) {
+  const [searchParams] = useSearchParams();
+  const preferredDeviceId = searchParams.get("device");
   const [device, setDevice] = useState<Device | null>(null);
   const [fillUnits, setFillUnits] = useState(
     Math.round(VESSEL_MAX_FILL_UNITS / 2),
@@ -41,10 +44,10 @@ function PressureVessel({ user }: PressureVesselProps) {
   fillUnitsRef.current = fillUnits;
 
   useEffect(() => {
-    getMyDevice("pressure_vessel")
+    getDeviceForPage("pressure_vessel", preferredDeviceId)
       .then(setDevice)
       .catch((error) => console.error(error));
-  }, [user.id]);
+  }, [user.id, preferredDeviceId]);
 
   const persistLevel = (units: number) => {
     if (!device) return;

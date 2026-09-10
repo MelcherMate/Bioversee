@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Canvas2 from "../../components/Canvas2";
 import Chart from "../../components/Chart";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
-import { getMyDevice, type Device } from "../../lib/devices";
+import { getDeviceForPage, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./WaterPurifier.css";
@@ -19,6 +20,8 @@ interface WaterpurifierProps {
 }
 
 function WaterPurifier({ user }: WaterpurifierProps) {
+  const [searchParams] = useSearchParams();
+  const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
   const [device, setDevice] = useState<Device | null>(null);
   const [cards, setCards] = useState<Card[]>([
@@ -30,10 +33,10 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   ]);
 
   useEffect(() => {
-    getMyDevice("water_purifier")
+    getDeviceForPage("water_purifier", preferredDeviceId)
       .then(setDevice)
       .catch((error) => console.error(error));
-  }, [user.id]);
+  }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
     setCards([

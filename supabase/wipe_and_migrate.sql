@@ -9,6 +9,7 @@ begin;
 drop table if exists public.sensors cascade;
 drop table if exists public.actuator_sliders cascade;
 drop table if exists public.actuator_switches cascade;
+drop table if exists public.device_share_links cascade;
 drop table if exists public.device_credentials cascade;
 drop table if exists public.device_members cascade;
 drop table if exists public.devices cascade;

@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useSearchParams,
+} from "react-router-dom";
 import "./App.css";
 import DevDataPanel from "./components/DevDataPanel";
 import Footer from "./components/Footer";
@@ -8,11 +14,23 @@ import { supabase } from "./lib/supabase";
 import { type AppUser, toAppUser } from "./lib/user";
 import About from "./pages/About";
 import Bioreactor from "./pages/Bioreactor";
+import Invite from "./pages/Invite";
 import Login from "./pages/Login";
 import MembraneBioreactor from "./pages/MembraneBioreactor";
 import PressureVessel from "./pages/PressureVessel";
-import Settings from "./pages/Settings";
 import WaterPurifier from "./pages/WaterPurifier";
+
+function safeNextPath(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  return raw;
+}
+
+function HomeRedirect() {
+  const [searchParams] = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get("next"));
+  return <Navigate to={nextPath ?? "/bioreactor"} replace />;
+}
 
 const App = () => {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -106,7 +124,7 @@ const App = () => {
           <Routes>
             <Route
               path="/"
-              element={user ? <Navigate to="/bioreactor" /> : <Login />}
+              element={user ? <HomeRedirect /> : <Login />}
             />
             <Route
               path="/bioreactor"
@@ -124,8 +142,12 @@ const App = () => {
               path="/waterpurifier"
               element={user ? <WaterPurifier user={user} /> : <Login />}
             />
-            <Route path="/settings" element={user ? <Settings /> : <Login />} />
+            <Route path="/invite/:token" element={<Invite user={user} />} />
             <Route path="/about" element={<About />} />
+            <Route
+              path="/settings"
+              element={<Navigate to="/bioreactor" replace />}
+            />
           </Routes>
         </div>
         {showChrome && <Footer />}

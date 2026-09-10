@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Canvas from "../../components/Canvas";
 import Chart from "../../components/Chart/index";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
-import { getMyDevice, type Device } from "../../lib/devices";
+import { getDeviceForPage, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./Bioreactor.css";
@@ -19,6 +20,8 @@ interface BioreactorProps {
 }
 
 function Bioreactor({ user }: BioreactorProps) {
+  const [searchParams] = useSearchParams();
+  const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
   const [device, setDevice] = useState<Device | null>(null);
   const [cards, setCards] = useState<Card[]>([
@@ -30,10 +33,10 @@ function Bioreactor({ user }: BioreactorProps) {
   ]);
 
   useEffect(() => {
-    getMyDevice("bioreactor")
+    getDeviceForPage("bioreactor", preferredDeviceId)
       .then(setDevice)
       .catch((error) => console.error(error));
-  }, [user.id]);
+  }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
     setCards([

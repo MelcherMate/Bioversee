@@ -32,7 +32,12 @@ Redeploy or refresh the Vite app. On first load each signed-in user gets four pr
 2. Sign out → sign in as **User B** → confirm A’s values do not appear.
 3. Seed as B → confirm only B’s pages update.
 
+## Share links (if you already ran schema before share landed)
+
+Run [`share_links.sql`](./share_links.sql) once. Fresh installs get this from `schema.sql`.
+
 ## Notes
 
-- Share links / teams / Pi API keys are schema-ready (`device_members`, `device_credentials`) but not exposed in UI yet.
+- Share UI: navbar Share → invite link / email / roster (`device_share_links`, `device_members`).
+- Pi API keys: table ready (`device_credentials`); mint UI + Edge Function still follow-up.
 - Pi ingest should use the **service role** or a future Edge Function that validates a device credential and inserts with `device_id`.

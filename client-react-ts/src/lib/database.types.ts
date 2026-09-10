@@ -125,6 +125,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      device_share_links: {
+        Row: {
+          id: string;
+          device_id: string;
+          token: string;
+          role: Exclude<DeviceMemberRole, "owner">;
+          created_by: string;
+          expires_at: string | null;
+          revoked_at: string | null;
+          use_count: number;
+          max_uses: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          device_id: string;
+          token: string;
+          role: Exclude<DeviceMemberRole, "owner">;
+          created_by: string;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          use_count?: number;
+          max_uses?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          device_id?: string;
+          token?: string;
+          role?: Exclude<DeviceMemberRole, "owner">;
+          created_by?: string;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          use_count?: number;
+          max_uses?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       actuator_sliders: {
         Row: {
           id: string;
@@ -237,6 +276,43 @@ export type Database = {
       user_can_admin_device: {
         Args: { p_device_id: string };
         Returns: boolean;
+      };
+      create_device_share_link: {
+        Args: {
+          p_device_id: string;
+          p_role?: DeviceMemberRole;
+          p_expires_hours?: number | null;
+          p_max_uses?: number | null;
+        };
+        Returns: string;
+      };
+      redeem_device_share_link: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      invite_device_member_by_email: {
+        Args: {
+          p_device_id: string;
+          p_email: string;
+          p_role?: DeviceMemberRole;
+        };
+        Returns: undefined;
+      };
+      list_device_roster: {
+        Args: { p_device_id: string };
+        Returns: {
+          member_id: string;
+          user_id: string;
+          role: DeviceMemberRole;
+          display_name: string;
+          avatar_url: string | null;
+          email: string | null;
+          created_at: string;
+        }[];
+      };
+      revoke_device_share_link: {
+        Args: { p_link_id: string };
+        Returns: undefined;
       };
     };
     Enums: {

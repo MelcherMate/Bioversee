@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { MbrControlPanel } from "../../components/membrane-bioreactor/MbrControlPanel";
 import { MbrDrawing } from "../../components/membrane-bioreactor/MbrDrawing";
 import {
@@ -14,7 +15,7 @@ import {
   insertSliderState,
   insertSwitchState,
 } from "../../lib/actuators";
-import { getMyDevice, type Device } from "../../lib/devices";
+import { getDeviceForPage, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import "../Bioreactor/Bioreactor.css";
 import "../PressureVessel/ProcessScene.css";
@@ -42,6 +43,8 @@ function snapAerationLevel(value: number): MbrAerationLevel {
 }
 
 function MembraneBioreactor({ user }: MembraneBioreactorProps) {
+  const [searchParams] = useSearchParams();
+  const preferredDeviceId = searchParams.get("device");
   const [device, setDevice] = useState<Device | null>(null);
   const [isFlowOn, setIsFlowOn] = useState(false);
   const [isAerationOn, setIsAerationOn] = useState(false);
@@ -51,10 +54,10 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   const flow = useMbrFlowAnimation(isFlowOn);
 
   useEffect(() => {
-    getMyDevice("membrane_bioreactor")
+    getDeviceForPage("membrane_bioreactor", preferredDeviceId)
       .then(setDevice)
       .catch((error) => console.error(error));
-  }, [user.id]);
+  }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
     if (!device) return;

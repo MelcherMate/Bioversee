@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { SettingsOutline } from "react-ionicons";
+import { ShareSocialOutline } from "react-ionicons";
 import { Link, useLocation } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import type { AppUser } from "../../lib/user";
+import { supabase } from "../../lib/supabase";
+import SharePanel from "../SharePanel";
 import "./Navbar.css";
 
 type NavbarProps = {
@@ -11,31 +12,37 @@ type NavbarProps = {
 
 const Navbar = ({ user }: NavbarProps) => {
   const location = useLocation();
-  const [showPopup, setShowPopup] = useState(false);
-  const popupRef = useRef<HTMLDivElement | null>(null);
+  const [showAccount, setShowAccount] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const accountRef = useRef<HTMLDivElement | null>(null);
 
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
   useEffect(() => {
+    setShowShare(false);
+    setShowAccount(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        popupRef.current &&
+        accountRef.current &&
         event.target instanceof Node &&
-        !popupRef.current.contains(event.target)
+        !accountRef.current.contains(event.target)
       ) {
-        setShowPopup(false);
+        setShowAccount(false);
       }
     };
 
-    if (showPopup) {
+    if (showAccount) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showPopup]);
+  }, [showAccount]);
 
   return (
     <header className="topbar">
@@ -87,50 +94,65 @@ const Navbar = ({ user }: NavbarProps) => {
 
         {user && (
           <div className="topbar__right">
-            <Link
-              className={`topbar__icon-btn ${
-                location.pathname === "/settings" ? "is-active" : ""
-              }`}
-              to="/settings"
-              aria-label="Settings"
-            >
-              <SettingsOutline
-                color={"#1d1d1f"}
-                title={"Settings"}
-                height="20px"
-                width="20px"
+            <div className="topbar__share-wrap">
+              <button
+                type="button"
+                className={`topbar__icon-btn ${showShare ? "is-active" : ""}`}
+                aria-label="Share"
+                aria-expanded={showShare}
+                onClick={() => {
+                  setShowAccount(false);
+                  setShowShare((open) => !open);
+                }}
+              >
+                <ShareSocialOutline
+                  color={"#1d1d1f"}
+                  title={"Share"}
+                  height="20px"
+                  width="20px"
+                />
+              </button>
+              <SharePanel
+                user={user}
+                open={showShare}
+                onClose={() => setShowShare(false)}
               />
-            </Link>
-            <button
-              type="button"
-              className="topbar__avatar-btn"
-              onClick={() => setShowPopup((v) => !v)}
-            >
-              <img
-                src={
-                  user.avatarUrl ||
-                  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                    user.displayName
-                  )}`
-                }
-                alt=""
-                className="topbar__avatar"
-              />
-            </button>
-            {showPopup && (
-              <div className="topbar__menu" ref={popupRef}>
-                <p className="topbar__menu-label">Signed in</p>
-                <p className="topbar__menu-name">{user.displayName}</p>
-                <p className="topbar__menu-meta">{user.email}</p>
-                <button
-                  type="button"
-                  className="topbar__menu-logout"
-                  onClick={logout}
-                >
-                  Log out
-                </button>
-              </div>
-            )}
+            </div>
+            <div className="topbar__account" ref={accountRef}>
+              <button
+                type="button"
+                className="topbar__avatar-btn"
+                onClick={() => {
+                  setShowShare(false);
+                  setShowAccount((open) => !open);
+                }}
+              >
+                <img
+                  src={
+                    user.avatarUrl ||
+                    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+                      user.displayName
+                    )}`
+                  }
+                  alt=""
+                  className="topbar__avatar"
+                />
+              </button>
+              {showAccount && (
+                <div className="topbar__menu">
+                  <p className="topbar__menu-label">Signed in</p>
+                  <p className="topbar__menu-name">{user.displayName}</p>
+                  <p className="topbar__menu-meta">{user.email}</p>
+                  <button
+                    type="button"
+                    className="topbar__menu-logout"
+                    onClick={logout}
+                  >
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

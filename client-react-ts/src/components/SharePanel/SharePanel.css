@@ -1,0 +1,243 @@
+.share-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(380px, calc(100vw - 28px));
+  max-height: min(78vh, 640px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: var(--bv-radius-md);
+  background: var(--bv-card);
+  box-shadow: var(--bv-shadow-card);
+  z-index: 55;
+  animation: share-in 0.2s var(--bv-ease);
+}
+
+.share-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.share-panel__eyebrow {
+  margin: 0 0 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.share-panel__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.share-panel__close {
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--bv-fill);
+  color: var(--bv-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.share-panel__close:hover {
+  color: var(--bv-text);
+}
+
+.share-panel__label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.share-panel__select,
+.share-panel__input,
+.share-panel__role {
+  width: 100%;
+  border: 1px solid var(--bv-line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--bv-text);
+  font-size: 13px;
+}
+
+.share-panel__select {
+  margin-bottom: 14px;
+}
+
+.share-panel__hint,
+.share-panel__muted {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--bv-text-secondary);
+  line-height: 1.4;
+}
+
+.share-panel__primary,
+.share-panel__secondary {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s var(--bv-ease), transform 0.15s var(--bv-ease);
+}
+
+.share-panel__primary {
+  width: 100%;
+  margin-top: 14px;
+  background: var(--bv-cta);
+  color: #fff;
+}
+
+.share-panel__primary:hover:not(:disabled) {
+  background: var(--bv-cta-hover);
+}
+
+.share-panel__primary:disabled,
+.share-panel__secondary:disabled,
+.share-panel__text-btn:disabled,
+.share-panel__role:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.share-panel__secondary {
+  background: var(--bv-accent-soft);
+  color: var(--bv-accent-hover);
+  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
+  white-space: nowrap;
+}
+
+.share-panel__email {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--bv-line);
+}
+
+.share-panel__email-row {
+  display: flex;
+  gap: 8px;
+}
+
+.share-panel__section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--bv-line);
+}
+
+.share-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.share-panel__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.share-panel__person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.share-panel__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.share-panel__name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.share-panel__meta {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: var(--bv-text-secondary);
+  word-break: break-all;
+}
+
+.share-panel__pill {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--bv-accent-hover);
+  background: var(--bv-accent-soft);
+}
+
+.share-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.share-panel__role {
+  width: auto;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.share-panel__text-btn {
+  border: none;
+  background: transparent;
+  color: var(--bv-danger);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.share-panel__success {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--bv-success);
+}
+
+.share-panel__error {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--bv-danger);
+}
+
+@keyframes share-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

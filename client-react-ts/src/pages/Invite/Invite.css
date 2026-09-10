@@ -1,0 +1,57 @@
+.invite-page {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--bv-accent-muted), transparent),
+    var(--bv-surface);
+}
+
+.invite-card {
+  width: min(420px, 100%);
+  padding: 28px 24px;
+  border-radius: var(--bv-radius-lg);
+  background: var(--bv-card);
+  box-shadow: var(--bv-shadow-card);
+}
+
+.invite-card__eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.invite-card__title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.invite-card__body {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--bv-text-secondary);
+}
+
+.invite-card__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--bv-cta);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.invite-card__cta:hover {
+  background: var(--bv-cta-hover);
+}

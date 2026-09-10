@@ -111,14 +111,21 @@
   gap: 8px;
 }
 
+.topbar__share-wrap,
+.topbar__account {
+  position: relative;
+}
+
 .topbar__icon-btn {
   display: grid;
   place-items: center;
   width: 36px;
   height: 36px;
+  border: none;
   border-radius: 50%;
   background: var(--bv-fill);
   text-decoration: none;
+  cursor: pointer;
   transition: background 0.2s var(--bv-ease), box-shadow 0.2s var(--bv-ease);
 }
 

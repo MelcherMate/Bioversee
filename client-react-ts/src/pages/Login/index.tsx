@@ -1,17 +1,38 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Google from "../../img/google.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import SegmentedControl from "../../components/SegmentedControl";
 import { supabase } from "../../lib/supabase";
 import "./Login.css";
 
+function safeNextPath(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  return raw;
+}
+
 const Login = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get("next"));
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session && nextPath) {
+        navigate(nextPath, { replace: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate, nextPath]);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -26,6 +47,9 @@ const Login = () => {
           password,
         });
         if (signInError) throw signInError;
+        if (nextPath) {
+          navigate(nextPath, { replace: true });
+        }
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
@@ -43,11 +67,12 @@ const Login = () => {
 
   const signInWithGoogle = async () => {
     setError(null);
+    const redirectTo = nextPath
+      ? `${window.location.origin}${nextPath}`
+      : window.location.origin;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
+      options: { redirectTo },
     });
     if (oauthError) {
       setError(oauthError.message);
