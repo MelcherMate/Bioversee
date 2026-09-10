@@ -20,6 +20,7 @@ import { type AppUser, toAppUser } from "./lib/user";
 import About from "./pages/About";
 import Bioreactor from "./pages/Bioreactor";
 import Invite from "./pages/Invite";
+import IosAuthBridge from "./pages/IosAuthBridge";
 import Login from "./pages/Login";
 import MembraneBioreactor from "./pages/MembraneBioreactor";
 import PressureVessel from "./pages/PressureVessel";
@@ -150,7 +151,8 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
   const { pathname } = useLocation();
   const addingAccount = pathname === "/add-account";
   const onInvite = pathname.startsWith("/invite/");
-  const showChrome = Boolean(user) && !addingAccount;
+  const onIosAuth = pathname === "/ios-auth";
+  const showChrome = Boolean(user) && !addingAccount && !onIosAuth;
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
 
   return (
@@ -179,6 +181,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
             element={user ? <WaterPurifier user={user} /> : <Login />}
           />
           <Route path="/invite/:token" element={<Invite user={user} />} />
+          <Route path="/ios-auth" element={<IosAuthBridge />} />
           <Route path="/about" element={<About />} />
           <Route
             path="/settings"

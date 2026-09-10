@@ -271,5 +271,11 @@
   },
   "app": {
     "loading": "Bioversee betöltése…"
+  },
+  "iosAuth": {
+    "title": "Bioversee megnyitása…",
+    "body": "Visszatérés a Bioversee iOS alkalmazásba a bejelentkezés befejezéséhez.",
+    "missing": "Nincs bejelentkezési adat. Zárja be az oldalt, és próbálja újra a Google bejelentkezést az appból.",
+    "openApp": "Bioversee app megnyitása"
   }
 }

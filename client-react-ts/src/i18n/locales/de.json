@@ -271,5 +271,11 @@
   },
   "app": {
     "loading": "Bioversee wird geladen…"
+  },
+  "iosAuth": {
+    "title": "Bioversee wird geöffnet…",
+    "body": "Sie werden zur Bioversee-iOS-App zurückgeleitet, um die Anmeldung abzuschließen.",
+    "missing": "Keine Anmeldedaten gefunden. Schließen Sie diese Seite und starten Sie Google-Anmeldung erneut in der App.",
+    "openApp": "Bioversee-App öffnen"
   }
 }

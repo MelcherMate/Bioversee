@@ -271,5 +271,11 @@
   },
   "app": {
     "loading": "Loading Bioversee…"
+  },
+  "iosAuth": {
+    "title": "Opening Bioversee…",
+    "body": "Returning you to the Bioversee iOS app to finish sign-in.",
+    "missing": "No sign-in data found. Close this page and try Google sign-in again from the app.",
+    "openApp": "Open Bioversee app"
   }
 }

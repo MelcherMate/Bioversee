@@ -104,19 +104,26 @@ struct LoginView: View {
                             Task { await signInWithGoogle() }
                         }
 
-                        if let infoMessage {
-                            Text(infoMessage)
-                                .font(.system(size: 13))
-                                .foregroundStyle(BVTheme.textSecondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
+                if let pending = session.oauthPendingMessage {
+                    Text(pending)
+                        .font(.system(size: 13))
+                        .foregroundStyle(BVTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
-                        if let error = session.errorMessage {
-                            Text(error)
-                                .font(.system(size: 13))
-                                .foregroundStyle(BVTheme.danger)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
+                if let infoMessage {
+                    Text(infoMessage)
+                        .font(.system(size: 13))
+                        .foregroundStyle(BVTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if let error = session.errorMessage {
+                    Text(error)
+                        .font(.system(size: 13))
+                        .foregroundStyle(BVTheme.danger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                         Text("Demo site for Bioversee prototypes")
                             .font(.system(size: 12))

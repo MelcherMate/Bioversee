@@ -1,12 +1,14 @@
 import AuthenticationServices
 import Foundation
 import Supabase
+import UIKit
 
 @MainActor
 final class AppSession: ObservableObject {
     @Published private(set) var session: Session?
     @Published private(set) var isBootstrapping = true
     @Published var errorMessage: String?
+    @Published var oauthPendingMessage: String?
 
     private var authTask: Task<Void, Never>?
 
@@ -33,7 +35,13 @@ final class AppSession: ObservableObject {
 
     func bootstrap() async {
         do {
-            session = try await SupabaseManager.client.auth.session
+            // Keychain-backed session with refresh — no 7-day web vault cut-off on iOS.
+            let current = try await SupabaseManager.client.auth.session
+            if current.isExpired {
+                session = try await SupabaseManager.client.auth.refreshSession()
+            } else {
+                session = current
+            }
         } catch {
             session = nil
         }
@@ -44,6 +52,23 @@ final class AppSession: ObservableObject {
         for await (_, nextSession) in SupabaseManager.client.auth.authStateChanges {
             session = nextSession
             isBootstrapping = false
+            if nextSession != nil {
+                oauthPendingMessage = nil
+            }
+        }
+    }
+
+    func refreshIfNeeded() async {
+        guard session != nil else { return }
+        do {
+            let current = try await SupabaseManager.client.auth.session
+            if current.isExpired {
+                session = try await SupabaseManager.client.auth.refreshSession()
+            } else {
+                session = current
+            }
+        } catch {
+            // Keep existing session on transient errors — never force weekly logout.
         }
     }
 
@@ -73,29 +98,36 @@ final class AppSession: ObservableObject {
         }
     }
 
+    /**
+     Google → HTTPS bridge (`/ios-auth`) → deep link into the app.
+
+     Supabase must allow `https://bioversee.com/ios-auth` (Additional Redirect URLs).
+     The bridge page then navigates to `com.bioversee.app://login-callback…`, which
+     ASWebAuthenticationSession captures so control returns to the native app.
+     */
     func signInWithGoogle() async {
         errorMessage = nil
+        oauthPendingMessage = nil
         do {
             session = try await SupabaseManager.client.auth.signInWithOAuth(
                 provider: .google,
-                redirectTo: AppConfig.oauthRedirectURL
+                redirectTo: AppConfig.oauthBridgeURL
             ) { (webAuthSession: ASWebAuthenticationSession) in
                 webAuthSession.prefersEphemeralWebBrowserSession = false
             }
         } catch {
             let message = error.localizedDescription
-            // User cancelled the browser sheet — don't treat as a hard error.
             if message.localizedCaseInsensitiveContains("cancel") { return }
             errorMessage = message
         }
     }
 
-    /// Handles deep-link / Universal Link callbacks if the OS delivers the
-    /// OAuth redirect outside ASWebAuthenticationSession.
     func handleIncomingURL(_ url: URL) async {
         guard url.scheme == AppConfig.oauthCallbackScheme else { return }
+        errorMessage = nil
         do {
             session = try await SupabaseManager.client.auth.session(from: url)
+            oauthPendingMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -103,6 +135,7 @@ final class AppSession: ObservableObject {
 
     func signOut() async {
         errorMessage = nil
+        oauthPendingMessage = nil
         do {
             try await SupabaseManager.client.auth.signOut()
             session = nil
