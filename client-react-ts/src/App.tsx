@@ -9,6 +9,8 @@ import { type AppUser, toAppUser } from "./lib/user";
 import About from "./pages/About";
 import Bioreactor from "./pages/Bioreactor";
 import Login from "./pages/Login";
+import MembraneBioreactor from "./pages/MembraneBioreactor";
+import PressureVessel from "./pages/PressureVessel";
 import Settings from "./pages/Settings";
 import WaterPurifier from "./pages/WaterPurifier";
 
@@ -109,6 +111,14 @@ const App = () => {
             <Route
               path="/bioreactor"
               element={user ? <Bioreactor user={user} /> : <Login />}
+            />
+            <Route
+              path="/pressure-vessel"
+              element={user ? <PressureVessel /> : <Login />}
+            />
+            <Route
+              path="/membrane-bioreactor"
+              element={user ? <MembraneBioreactor /> : <Login />}
             />
             <Route
               path="/waterpurifier"

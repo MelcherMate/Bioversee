@@ -50,6 +50,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .topbar__link {
@@ -60,6 +62,7 @@
   font-weight: 600;
   color: var(--bv-text-secondary);
   transition: background 0.2s var(--bv-ease), color 0.2s var(--bv-ease);
+  white-space: nowrap;
 }
 
 .topbar__link:hover {

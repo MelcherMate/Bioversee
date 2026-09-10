@@ -1,0 +1,24 @@
+.process-scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  z-index: 1;
+  overflow: auto;
+  padding: 24px 16px;
+}
+
+.process-scene__stage {
+  position: relative;
+  width: 640px;
+  height: 556px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .process-scene {
+    order: -1;
+  }
+}

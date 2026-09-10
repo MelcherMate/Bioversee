@@ -57,6 +57,22 @@ const Navbar = ({ user }: NavbarProps) => {
               </Link>
               <Link
                 className={`topbar__link ${
+                  location.pathname === "/pressure-vessel" ? "is-active" : ""
+                }`}
+                to="/pressure-vessel"
+              >
+                Pressure Vessel
+              </Link>
+              <Link
+                className={`topbar__link ${
+                  location.pathname === "/membrane-bioreactor" ? "is-active" : ""
+                }`}
+                to="/membrane-bioreactor"
+              >
+                Membrane MBR
+              </Link>
+              <Link
+                className={`topbar__link ${
                   location.pathname === "/waterpurifier" ? "is-active" : ""
                 }`}
                 to="/waterpurifier"
