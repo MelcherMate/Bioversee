@@ -1,6 +1,6 @@
 import InfoCard from "../../components/infoCard";
 import Mate from "../../img/Mate.png";
-import Logo from "../../img/new_logo.png";
+import Logo from "../../utils/svgs/new_logo.svg";
 import "./About.css";
 
 function About() {
@@ -17,6 +17,7 @@ function About() {
         imagePath={Logo}
         subtitle="Bioversee"
         content="Bioversee aims to create an affordable and playful solution for industrial automation as well as becoming a proper educational software for engineering students"
+        imageContain
       />
     </main>
   );

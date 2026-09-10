@@ -58,16 +58,17 @@
   height: 48px;
   border-radius: 14px;
   overflow: hidden;
-  background: linear-gradient(180deg, #f0fdfa 0%, #ccfbf1 100%);
+  background: #fff;
   box-shadow: 0 0 0 1px var(--bv-accent-border);
   display: grid;
   place-items: center;
 }
 
 .auth-card__mark img {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
+  display: block;
 }
 
 .auth-card__eyebrow {

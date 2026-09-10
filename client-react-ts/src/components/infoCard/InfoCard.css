@@ -39,6 +39,12 @@
   box-shadow: 0 0 0 1px var(--bv-line);
 }
 
+#image.infoCard__image--contain {
+  object-fit: contain;
+  padding: 16px;
+  background: #fff;
+}
+
 #text {
   margin: 0;
   font-size: 14px;

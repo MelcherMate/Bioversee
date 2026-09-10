@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import Google from "../../img/google.png";
-import Logo from "../../img/new_logo.png";
+import Logo from "../../utils/svgs/new_logo.svg";
 import { supabase } from "../../lib/supabase";
 import "./Login.css";
 
