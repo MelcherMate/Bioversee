@@ -36,4 +36,6 @@ Your Mac already sees **IPHONE 17 Pro** when it’s plugged in.
 | Inbox | Notifications + accept / decline invites |
 | Account | Email + log out |
 
-Uses the same Supabase backend as `client-react-ts` (see `Bioversee/App/AppConfig.swift`). Email/password auth for now.
+Uses the same Supabase backend as `client-react-ts` (see `Bioversee/App/AppConfig.swift`).
+
+**Auth:** email / password only on iOS. Google sign-in stays on the web.

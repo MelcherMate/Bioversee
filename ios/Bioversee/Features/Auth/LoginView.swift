@@ -18,6 +18,28 @@ struct LoginView: View {
         NavigationStack {
             Form {
                 Section {
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 12) {
+                            Image("BioverseeLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 88, height: 88)
+                                .foregroundStyle(Color.accentColor)
+                            Text("Bioversee")
+                                .font(.title2.weight(.semibold))
+                            Text("Sign in with email — same account as the web app.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.vertical, 8)
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                }
+
+                Section {
                     Picker("Mode", selection: $mode) {
                         ForEach(Mode.allCases, id: \.self) { item in
                             Text(item.rawValue).tag(item)
@@ -29,12 +51,12 @@ struct LoginView: View {
                         .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
                         .autocorrectionDisabled()
+                        .textContentType(.username)
 
                     SecureField("Password", text: $password)
-                } header: {
-                    Text("Bioversee")
+                        .textContentType(mode == .signIn ? .password : .newPassword)
                 } footer: {
-                    Text("Sign in with the same account you use on the web app.")
+                    Text("Google sign-in is only available on the web. Use email and password here.")
                 }
 
                 if let infoMessage {
@@ -68,6 +90,7 @@ struct LoginView: View {
                 }
             }
             .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
