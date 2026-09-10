@@ -91,7 +91,7 @@ function DeviceSettingsPanel({
       <div className="device-settings__head">
         <div className="device-settings__title-row">
           <span className="device-settings__icon">
-            <Icon color="#0f766e" height="18px" width="18px" />
+            <Icon color="var(--bv-accent-hover)" height="18px" width="18px" />
           </span>
           <div>
             <p className="device-settings__eyebrow">Settings</p>

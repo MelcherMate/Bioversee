@@ -1,7 +1,7 @@
 .share-panel {
   position: absolute;
   top: calc(100% + 10px);
-  right: 0;
+  left: 0;
   width: min(380px, calc(100vw - 28px));
   max-height: min(78vh, 640px);
   overflow: auto;

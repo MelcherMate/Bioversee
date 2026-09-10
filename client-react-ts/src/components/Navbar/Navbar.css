@@ -141,7 +141,7 @@
   display: block;
   width: 14px;
   height: 14px;
-  border: 2px solid #fff;
+  border: 2px solid var(--bv-card);
   border-radius: 50%;
   overflow: hidden;
   box-sizing: content-box;
@@ -185,7 +185,7 @@
   flex-shrink: 0;
 }
 
-.topbar__share-wrap,
+.topbar__settings-wrap,
 .topbar__notif-wrap,
 .topbar__account {
   position: relative;
@@ -225,7 +225,7 @@
   font-weight: 700;
   line-height: 18px;
   text-align: center;
-  box-shadow: 0 0 0 2px #fff;
+  box-shadow: 0 0 0 2px var(--bv-card);
   pointer-events: none;
 }
 
@@ -248,7 +248,7 @@
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--bv-line);
+  box-shadow: 0 0 0 2px var(--bv-card), 0 0 0 3px var(--bv-line);
 }
 
 .topbar__menu {

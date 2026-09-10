@@ -8,7 +8,7 @@ import {
 import {
   AddOutline,
   NotificationsOutline,
-  ShareSocialOutline,
+  SettingsOutline,
 } from "react-ionicons";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -37,6 +37,7 @@ import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
 import AddDevicePanel from "../AddDevicePanel";
+import AppSettingsPanel from "../AppSettingsPanel";
 import DeviceContextMenu from "../DeviceContextMenu";
 import DeviceSettingsPanel from "../DeviceSettingsPanel";
 import NotificationsPanel from "../NotificationsPanel";
@@ -58,9 +59,10 @@ const Navbar = ({ user }: NavbarProps) => {
   const { connectivity, issue } = useAppStatus();
 
   const [showAccount, setShowAccount] = useState(false);
-  const [showShare, setShowShare] = useState(false);
+  const [shareDevice, setShareDevice] = useState<AccessibleDevice | null>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAppSettings, setShowAppSettings] = useState(false);
   const [settingsDevice, setSettingsDevice] =
     useState<AccessibleDevice | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -120,19 +122,21 @@ const Navbar = ({ user }: NavbarProps) => {
   }, [user.id]);
 
   useEffect(() => {
-    setShowShare(false);
+    setShareDevice(null);
     setShowAccount(false);
     setShowAddDevice(false);
     setShowNotifications(false);
+    setShowAppSettings(false);
     setContextMenu(null);
     setSettingsDevice(null);
   }, [location.pathname, location.search]);
 
   const closeOverlays = () => {
     setShowAccount(false);
-    setShowShare(false);
+    setShareDevice(null);
     setShowAddDevice(false);
     setShowNotifications(false);
+    setShowAppSettings(false);
     setContextMenu(null);
   };
 
@@ -321,12 +325,19 @@ const Navbar = ({ user }: NavbarProps) => {
               title="Add device"
               onClick={() => {
                 setShowAccount(false);
-                setShowShare(false);
+                setShareDevice(null);
+                setSettingsDevice(null);
+                setShowAppSettings(false);
                 setShowNotifications(false);
                 setShowAddDevice((open) => !open);
               }}
             >
-              <AddOutline color="#0f766e" height="18px" width="18px" title="" />
+              <AddOutline
+                color="var(--bv-accent-hover)"
+                height="18px"
+                width="18px"
+                title=""
+              />
             </button>
             <AddDevicePanel
               open={showAddDevice}
@@ -354,7 +365,9 @@ const Navbar = ({ user }: NavbarProps) => {
                   onContextMenu={(event) => onDeviceContextMenu(event, device)}
                 >
                   <Icon
-                    color={active ? "#0f766e" : "#1d1d1f"}
+                    color={
+                      active ? "var(--bv-accent-hover)" : "var(--bv-text)"
+                    }
                     height="18px"
                     width="18px"
                     title={device.name}
@@ -377,16 +390,12 @@ const Navbar = ({ user }: NavbarProps) => {
           </div>
 
           <div className="topbar__settings-anchor">
-            <DeviceSettingsPanel
-              device={settingsDevice}
-              open={Boolean(settingsDevice)}
-              onClose={() => setSettingsDevice(null)}
-              onRenamed={() => {
-                void refreshDevices();
-              }}
-              onRequestDelete={(device) => {
-                void onDeleteDevice(device);
-              }}
+            <SharePanel
+              user={user}
+              open={Boolean(shareDevice)}
+              initialDeviceId={shareDevice?.id ?? null}
+              onClose={() => setShareDevice(null)}
+              onDevicesChanged={refreshDevices}
             />
           </div>
         </div>
@@ -397,7 +406,19 @@ const Navbar = ({ user }: NavbarProps) => {
             x={contextMenu.x}
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
-            onSettings={(device) => setSettingsDevice(device)}
+            onSettings={(device) => {
+              setShareDevice(null);
+              setShowNotifications(false);
+              setShowAccount(false);
+              setShowAddDevice(false);
+              setShowAppSettings(false);
+              setSettingsDevice(device);
+            }}
+            onShare={(device) => {
+              setSettingsDevice(null);
+              setShowAppSettings(false);
+              setShareDevice(device);
+            }}
             onDelete={(device) => {
               void onDeleteDevice(device);
             }}
@@ -408,31 +429,43 @@ const Navbar = ({ user }: NavbarProps) => {
         )}
 
         <div className="topbar__right">
-          <div className="topbar__share-wrap">
+          <div className="topbar__settings-wrap">
             <button
               type="button"
-              className={`topbar__icon-btn ${showShare ? "is-active" : ""}`}
-              aria-label="Share"
-              aria-expanded={showShare}
+              className={`topbar__icon-btn ${showAppSettings ? "is-active" : ""}`}
+              aria-label="Settings"
+              aria-expanded={showAppSettings}
+              title="Settings"
               onClick={() => {
                 setShowAccount(false);
                 setShowAddDevice(false);
                 setShowNotifications(false);
-                setShowShare((open) => !open);
+                setShareDevice(null);
+                setSettingsDevice(null);
+                setShowAppSettings((open) => !open);
               }}
             >
-              <ShareSocialOutline
-                color="#1d1d1f"
-                title="Share"
+              <SettingsOutline
+                color="var(--bv-text)"
+                title="Settings"
                 height="20px"
                 width="20px"
               />
             </button>
-            <SharePanel
-              user={user}
-              open={showShare}
-              onClose={() => setShowShare(false)}
-              onDevicesChanged={refreshDevices}
+            <AppSettingsPanel
+              open={showAppSettings}
+              onClose={() => setShowAppSettings(false)}
+            />
+            <DeviceSettingsPanel
+              device={settingsDevice}
+              open={Boolean(settingsDevice)}
+              onClose={() => setSettingsDevice(null)}
+              onRenamed={() => {
+                void refreshDevices();
+              }}
+              onRequestDelete={(device) => {
+                void onDeleteDevice(device);
+              }}
             />
           </div>
 
@@ -449,12 +482,14 @@ const Navbar = ({ user }: NavbarProps) => {
               onClick={() => {
                 setShowAccount(false);
                 setShowAddDevice(false);
-                setShowShare(false);
+                setShareDevice(null);
+                setSettingsDevice(null);
+                setShowAppSettings(false);
                 setShowNotifications((open) => !open);
               }}
             >
               <NotificationsOutline
-                color="#1d1d1f"
+                color="var(--bv-text)"
                 title="Notifications"
                 height="20px"
                 width="20px"
@@ -479,7 +514,9 @@ const Navbar = ({ user }: NavbarProps) => {
               className="topbar__avatar-btn"
               aria-label="Account menu"
               onClick={() => {
-                setShowShare(false);
+                setShareDevice(null);
+                setSettingsDevice(null);
+                setShowAppSettings(false);
                 setShowAddDevice(false);
                 setShowNotifications(false);
                 setShowAccount((open) => !open);

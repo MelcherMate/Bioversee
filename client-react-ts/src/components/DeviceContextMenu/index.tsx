@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import {
   ExitOutline,
   SettingsOutline,
+  ShareSocialOutline,
   TrashOutline,
 } from "react-ionicons";
 import type { AccessibleDevice } from "../../lib/devices";
@@ -13,6 +14,7 @@ type DeviceContextMenuProps = {
   y: number;
   onClose: () => void;
   onSettings: (device: AccessibleDevice) => void;
+  onShare: (device: AccessibleDevice) => void;
   onDelete: (device: AccessibleDevice) => void;
   onLeave: (device: AccessibleDevice) => void;
 };
@@ -23,6 +25,7 @@ function DeviceContextMenu({
   y,
   onClose,
   onSettings,
+  onShare,
   onDelete,
   onLeave,
 }: DeviceContextMenuProps) {
@@ -51,7 +54,7 @@ function DeviceContextMenu({
 
   const menuWidth = 200;
   const left = Math.min(x, window.innerWidth - menuWidth - 12);
-  const top = Math.min(y, window.innerHeight - 160);
+  const top = Math.min(y, window.innerHeight - 200);
 
   return (
     <div
@@ -73,6 +76,23 @@ function DeviceContextMenu({
       >
         <SettingsOutline color="#1d1d1f" height="16px" width="16px" title="" />
         Device settings
+      </button>
+      <button
+        type="button"
+        className="device-ctx__item"
+        role="menuitem"
+        onClick={() => {
+          onShare(device);
+          onClose();
+        }}
+      >
+        <ShareSocialOutline
+          color="#1d1d1f"
+          height="16px"
+          width="16px"
+          title=""
+        />
+        Share
       </button>
       {device.isOwner ? (
         <button

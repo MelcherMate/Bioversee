@@ -21,11 +21,11 @@
     0 12px 32px -8px rgba(0, 0, 0, 0.12);
   --bv-overlay: rgba(29, 29, 31, 0.45);
   --bv-accent: #0d9488;
-  --bv-accent-hover: #0f766e;
-  --bv-accent-bright: #14b8a6;
-  --bv-accent-muted: #ccfbf1;
-  --bv-accent-soft: #f0fdfa;
-  --bv-accent-border: #99f6e4;
+  --bv-accent-hover: color-mix(in srgb, var(--bv-accent) 82%, #000);
+  --bv-accent-bright: color-mix(in srgb, var(--bv-accent) 72%, #fff);
+  --bv-accent-muted: color-mix(in srgb, var(--bv-accent) 18%, #fff);
+  --bv-accent-soft: color-mix(in srgb, var(--bv-accent) 8%, #fff);
+  --bv-accent-border: color-mix(in srgb, var(--bv-accent) 42%, #fff);
   --bv-glass: rgba(255, 255, 255, 0.82);
   --bv-glass-border: rgba(255, 255, 255, 0.6);
   --bv-cta: #1d1d1f;
@@ -35,6 +35,38 @@
   --bv-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Rolling number (odometer) motion */
   --bv-num-duration: 420ms;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bv-text: #f5f5f7;
+  --bv-text-secondary: #a1a1a6;
+  --bv-text-tertiary: #8e8e93;
+  --bv-line: rgba(255, 255, 255, 0.1);
+  --bv-surface: #0f0f10;
+  --bv-surface-elevated: #161618;
+  --bv-card: #1c1c1e;
+  --bv-fill: #2c2c2e;
+  --bv-shadow-card:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 48px -12px rgba(0, 0, 0, 0.55),
+    0 8px 20px -8px rgba(0, 0, 0, 0.4);
+  --bv-shadow-float:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 32px -8px rgba(0, 0, 0, 0.5);
+  --bv-overlay: rgba(0, 0, 0, 0.55);
+  --bv-accent-hover: color-mix(in srgb, var(--bv-accent) 78%, #fff);
+  --bv-accent-bright: color-mix(in srgb, var(--bv-accent) 65%, #fff);
+  --bv-accent-muted: color-mix(in srgb, var(--bv-accent) 28%, #1c1c1e);
+  --bv-accent-soft: color-mix(in srgb, var(--bv-accent) 16%, #1c1c1e);
+  --bv-accent-border: color-mix(in srgb, var(--bv-accent) 45%, #1c1c1e);
+  --bv-glass: rgba(28, 28, 30, 0.88);
+  --bv-glass-border: rgba(255, 255, 255, 0.1);
+  --bv-cta: #f5f5f7;
+  --bv-cta-hover: #ffffff;
+  --bv-danger: #f87171;
+  --bv-success: #34d399;
+  color-scheme: dark;
 }
 
 * {
@@ -55,7 +87,8 @@ body,
 }
 
 button,
-input {
+input,
+select {
   font-family: inherit;
 }
 

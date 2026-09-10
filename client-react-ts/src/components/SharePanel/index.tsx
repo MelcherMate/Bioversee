@@ -31,6 +31,8 @@ type SharePanelProps = {
   open: boolean;
   onClose: () => void;
   onDevicesChanged?: () => void | Promise<void>;
+  /** Prefer this device when the panel opens (e.g. from context menu). */
+  initialDeviceId?: string | null;
 };
 
 function shortToken(token: string) {
@@ -42,6 +44,7 @@ function SharePanel({
   open,
   onClose,
   onDevicesChanged,
+  initialDeviceId = null,
 }: SharePanelProps) {
   const location = useLocation();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -102,6 +105,8 @@ function SharePanel({
         setDevices(list);
         const preferredType = deviceTypeFromPath(location.pathname);
         const preferred =
+          (initialDeviceId &&
+            list.find((d) => d.id === initialDeviceId)) ||
           (preferredType && list.find((d) => d.type === preferredType)) ||
           list[0];
         setDeviceId(preferred?.id ?? "");
@@ -117,7 +122,7 @@ function SharePanel({
     return () => {
       cancelled = true;
     };
-  }, [open, location.pathname, user.id]);
+  }, [open, location.pathname, user.id, initialDeviceId]);
 
   useEffect(() => {
     if (!open || !deviceId) {
