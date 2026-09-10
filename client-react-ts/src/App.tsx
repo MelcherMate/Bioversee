@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
+import DevDataPanel from "./components/DevDataPanel";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
 import { supabase } from "./lib/supabase";
@@ -14,6 +15,7 @@ import WaterPurifier from "./pages/WaterPurifier";
 const App = () => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [devPanelOpen, setDevPanelOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -36,6 +38,48 @@ const App = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setDevPanelOpen(false);
+      return;
+    }
+
+    const pressed = new Set<string>();
+
+    const normalize = (key: string) => key.toLowerCase();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      pressed.add(normalize(event.key));
+      if (pressed.has("l") && pressed.has("b")) {
+        event.preventDefault();
+        setDevPanelOpen((open) => !open);
+        pressed.clear();
+      }
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      pressed.delete(normalize(event.key));
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [user]);
 
   if (loading) {
     return (
@@ -75,6 +119,13 @@ const App = () => {
           </Routes>
         </div>
         {showChrome && <Footer />}
+        {user && (
+          <DevDataPanel
+            open={devPanelOpen}
+            onClose={() => setDevPanelOpen(false)}
+            user={user}
+          />
+        )}
       </div>
     </BrowserRouter>
   );

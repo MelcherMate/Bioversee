@@ -110,4 +110,9 @@ create policy "Sensors readable by authenticated"
   to authenticated
   using (true);
 
--- Device writers can use the service role key (bypasses RLS).
+create policy "Sensors insert by authenticated"
+  on public.sensors for insert
+  to authenticated
+  with check (true);
+
+-- Device writers can also use the service role key (bypasses RLS).

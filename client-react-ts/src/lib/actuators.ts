@@ -74,3 +74,11 @@ export async function getSensorReadings(
     created_at: row.created_at,
   }));
 }
+
+export async function insertSensorReading(name: string, value: number) {
+  const { error } = await supabase.from("sensors").insert({
+    name,
+    value,
+  });
+  if (error) throw error;
+}
