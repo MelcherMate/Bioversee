@@ -1,3 +1,5 @@
+import AnimatedNumber from "../AnimatedNumber";
+import "../Switch/Switch.css";
 import {
   MBR_AERATION_LEVELS,
   type MbrAerationLevel,
@@ -24,60 +26,109 @@ export function MbrControlPanel({
   disabled = false,
 }: MbrControlPanelProps) {
   const aerationControlsDisabled = disabled || !isAerationOn;
+  const displayLevel = isAerationOn ? aerationLevel : 0;
 
   return (
     <div className="controlPanel mbr-panel">
       <section className="controlPanel__section">
         <h4 className="boxTitle">Flow</h4>
-        <button
-          type="button"
-          onClick={() => onFlowChange(!isFlowOn)}
+        <LocalToggle
+          id="mbr-flow"
+          label="Circulation"
+          checked={isFlowOn}
           disabled={disabled}
-          aria-label="Flow"
-          aria-pressed={isFlowOn}
-          className={`mbr-panel__toggle${isFlowOn ? " is-on" : ""}`}
-        >
-          <span className="mbr-panel__toggle-label">Circulation</span>
-          <span className="mbr-panel__toggle-state">
-            {isFlowOn ? "On" : "Off"}
-          </span>
-        </button>
+          onChange={onFlowChange}
+        />
       </section>
 
       <section className="controlPanel__section">
         <h4 className="boxTitle">Aeration</h4>
-        <button
-          type="button"
-          onClick={() => onAerationChange(!isAerationOn)}
+        <LocalToggle
+          id="mbr-aeration"
+          label="Diffuser"
+          checked={isAerationOn}
           disabled={disabled}
-          aria-label="Aeration"
-          aria-pressed={isAerationOn}
-          className={`mbr-panel__toggle${isAerationOn ? " is-on" : ""}`}
-        >
-          <span className="mbr-panel__toggle-label">Diffuser</span>
-          <span className="mbr-panel__toggle-state">
-            {isAerationOn ? "On" : "Off"}
-          </span>
-        </button>
+          onChange={onAerationChange}
+        />
 
-        <div className="mbr-panel__levels" role="group" aria-label="Aeration level">
-          {MBR_AERATION_LEVELS.map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={() => onAerationLevelChange(level)}
-              disabled={aerationControlsDisabled}
-              aria-label={`${level}% aeration`}
-              aria-pressed={isAerationOn && aerationLevel === level}
-              className={`mbr-panel__level${
-                isAerationOn && aerationLevel === level ? " is-active" : ""
-              }`}
-            >
-              {level}%
-            </button>
-          ))}
+        <div
+          className={`mbr-panel__intensity${
+            aerationControlsDisabled ? " is-disabled" : ""
+          }`}
+        >
+          <div className="mbr-panel__intensity-meta">
+            <span className="mbr-panel__intensity-label">Intensity</span>
+            <AnimatedNumber
+              className="mbr-panel__intensity-value"
+              value={displayLevel}
+              decimals={0}
+              suffix="%"
+            />
+          </div>
+
+          <div
+            className="mbr-panel__segment"
+            role="group"
+            aria-label="Aeration level"
+          >
+            {MBR_AERATION_LEVELS.map((level) => {
+              const active = aerationLevel === level;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => onAerationLevelChange(level)}
+                  disabled={aerationControlsDisabled}
+                  aria-label={`${level}% aeration`}
+                  aria-pressed={isAerationOn && active}
+                  className={`mbr-panel__segment-btn${active ? " is-active" : ""}`}
+                >
+                  {level}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
     </div>
+  );
+}
+
+function LocalToggle({
+  id,
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label
+      className={`bv-switch${checked ? " bv-switch--on" : ""}${
+        disabled ? " bv-switch--disabled" : ""
+      }`}
+      htmlFor={id}
+    >
+      <div className="bv-switch__copy">
+        <span className="bv-switch__label">{label}</span>
+        <span className="bv-switch__state">{checked ? "On" : "Off"}</span>
+      </div>
+      <input
+        type="checkbox"
+        className="bv-switch__input"
+        checked={checked}
+        id={id}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span className="bv-switch__track" aria-hidden="true">
+        <span className="bv-switch__thumb" />
+      </span>
+    </label>
   );
 }
