@@ -360,16 +360,16 @@ const Navbar = ({ user }: NavbarProps) => {
                     title={device.name}
                   />
                   {!device.isOwner && (
-                    <img
+                    <span
                       className="topbar__device-owner"
-                      src={ownerAvatarSrc(device)}
-                      alt=""
                       title={
                         device.ownerDisplayName
                           ? `Shared by ${device.ownerDisplayName}`
                           : "Shared device"
                       }
-                    />
+                    >
+                      <img src={ownerAvatarSrc(device)} alt="" />
+                    </span>
                   )}
                 </button>
               );
@@ -468,6 +468,7 @@ const Navbar = ({ user }: NavbarProps) => {
               open={showNotifications}
               onClose={() => setShowNotifications(false)}
               onUnreadChange={setUnread}
+              onDevicesChanged={refreshDevices}
             />
           </div>
 

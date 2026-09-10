@@ -15,6 +15,7 @@ type NotificationsPanelProps = {
   open: boolean;
   onClose: () => void;
   onUnreadChange?: (count: number) => void;
+  onDevicesChanged?: () => void | Promise<void>;
 };
 
 function timeAgo(iso: string): string {
@@ -32,6 +33,7 @@ function NotificationsPanel({
   open,
   onClose,
   onUnreadChange,
+  onDevicesChanged,
 }: NotificationsPanelProps) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -89,6 +91,7 @@ function NotificationsPanel({
     try {
       const result = await acceptDeviceInvite(inviteId);
       await refresh();
+      await onDevicesChanged?.();
       onClose();
       navigate(
         openSharedDeviceUrl({

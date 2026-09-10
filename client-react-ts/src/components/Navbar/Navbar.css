@@ -122,22 +122,38 @@
 .topbar__device-icon {
   position: relative;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .topbar__device-icon.is-shared {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
+.topbar__device-icon.is-shared.is-active {
+  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
+}
+
 .topbar__device-owner {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
+  right: -3px;
+  bottom: -3px;
+  z-index: 1;
+  display: block;
   width: 14px;
   height: 14px;
+  border: 2px solid #fff;
   border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 0 0 2px #fff;
+  overflow: hidden;
+  box-sizing: content-box;
   background: var(--bv-fill);
+  pointer-events: none;
+}
+
+.topbar__device-owner img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .topbar__devices {
@@ -146,7 +162,7 @@
   gap: 6px;
   min-width: 0;
   overflow-x: auto;
-  padding: 2px 0;
+  padding: 6px 8px 6px 4px;
   scrollbar-width: none;
 }
 
