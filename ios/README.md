@@ -1,6 +1,15 @@
 # Bioversee iOS
 
-SwiftUI companion app: **login**, **device selection**, **controls**, and **notifications**. No process visualization (that stays on the web app).
+Native SwiftUI companion app for Bioversee — same idea as the GitHub app for github.com.
+
+It is **not** a website wrapper. Screens, navigation, and controls are native. It talks to the same Supabase backend as the web app.
+
+| Area | In the app |
+|---|---|
+| Auth | Email/password + **Google** |
+| Devices | List, create, open |
+| Controls | Switches & sliders (no charts) |
+| Inbox | Notifications / invites |
 
 ## Open in Xcode
 
@@ -9,43 +18,21 @@ cd ios
 open Bioversee.xcodeproj
 ```
 
-If you change `project.yml` later, regenerate with:
+Regenerate after `project.yml` changes: `xcodegen generate`
 
-```bash
-xcodegen generate
-```
+## Run on iPhone
 
-## Run on your iPhone
+1. Unlock the phone and trust this Mac.
+2. Target **Bioversee** → **Signing & Capabilities** → pick your **Team**.
+3. Choose your iPhone as the run destination → **Run**.
+4. Trust the developer certificate on device if prompted.
 
-Your Mac already sees **IPHONE 17 Pro** when it’s plugged in.
+## Google sign-in
 
-1. Unlock the iPhone and trust this Mac if prompted.
-2. Open `ios/Bioversee.xcodeproj` in Xcode.
-3. Select target **Bioversee** → **Signing & Capabilities**:
-   - set **Team** to your Apple ID / developer team
-   - keep **Automatically manage signing** on
-4. In the run destination menu (toolbar), pick **IPHONE 17 Pro** (not a simulator).
-5. Press **Run** (▶).
-6. If iOS blocks the app: **Settings → General → VPN & Device Management** → trust your developer certificate, then open Bioversee again.
-
-## What’s in the app
-
-| Tab | Features |
-|---|---|
-| Devices | List devices, create device, open controls |
-| Inbox | Notifications + accept / decline invites |
-| Account | Email + log out |
-
-Uses the same Supabase backend as `client-react-ts` (see `Bioversee/App/AppConfig.swift`).
-
-**Auth:** email/password **and Google** (ASWebAuthenticationSession).
-
-### Google redirect (one-time Supabase setup)
-
-In [Supabase Auth URL config](https://supabase.com/dashboard/project/_/auth/url-configuration), add this to **Additional Redirect URLs**:
+Google uses the system auth sheet (standard for native apps), then returns into Bioversee. Add this redirect URL in Supabase → Authentication → URL Configuration → **Additional Redirect URLs**:
 
 ```text
 com.bioversee.app://login-callback
 ```
 
-Google provider must already be enabled (same as the web app).
+Google provider must already be enabled (same as web).
