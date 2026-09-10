@@ -1,4 +1,9 @@
-import type { CSSProperties, ChangeEvent } from "react";
+import {
+  useCallback,
+  useState,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import AnimatedNumber from "../AnimatedNumber";
 import "../Slider/Slider.css";
 import {
@@ -36,22 +41,29 @@ export function WaterLevelPanel({
   onDrainHoldChange,
   drainDisabled = false,
 }: WaterLevelPanelProps) {
-  const percent = fillUnitsToPercent(fillUnits);
+  const [isDragging, setIsDragging] = useState(false);
+  const displayPercent = fillUnitsToPercent(fillUnits);
+  // Continuous ratio so fill/drain moves the thumb smoothly instead of 1% jumps.
+  const progress = Math.min(
+    100,
+    Math.max(0, (fillUnits / VESSEL_MAX_FILL_UNITS) * 100),
+  );
+  const animateTrack = !isDragging && (isFillHeld || isDrainHeld);
 
   const bindHoldButton = (onHoldChange?: (held: boolean) => void) => ({
     type: "button" as const,
-    onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
+    onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
       onHoldChange?.(true);
     },
-    onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
+    onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
       onHoldChange?.(false);
     },
-    onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => {
+    onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
@@ -61,9 +73,11 @@ export function WaterLevelPanel({
   });
 
   const handleSliderChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextPercent = parseInt(event.target.value, 10);
+    const nextPercent = Number(event.target.value);
     onChange(percentToFillUnits(nextPercent));
   };
+
+  const endDrag = useCallback(() => setIsDragging(false), []);
 
   const atFull = fillUnits >= VESSEL_MAX_FILL_UNITS;
   const atEmpty = fillUnits <= 0;
@@ -78,22 +92,43 @@ export function WaterLevelPanel({
           {showPercent ? (
             <AnimatedNumber
               className="bv-slider__value"
-              value={percent}
+              value={displayPercent}
               decimals={0}
               suffix="%"
             />
           ) : null}
         </div>
-        <input
-          type="range"
-          className="bv-slider__input"
-          min={0}
-          max={100}
-          value={percent}
-          onChange={handleSliderChange}
-          aria-label="Water level"
-          style={{ "--bv-slider-progress": `${percent}%` } as CSSProperties}
-        />
+
+        <div
+          className={`pv-hslider${animateTrack ? " is-live" : ""}${
+            isDragging ? " is-dragging" : ""
+          }`}
+        >
+          <div className="pv-hslider__rail" aria-hidden="true">
+            <div
+              className="pv-hslider__fill"
+              style={{ width: `${progress}%` }}
+            />
+            <div
+              className="pv-hslider__thumb"
+              style={{ left: `${progress}%` }}
+            />
+          </div>
+          <input
+            type="range"
+            className="pv-hslider__input"
+            min={0}
+            max={100}
+            step="any"
+            value={progress}
+            onChange={handleSliderChange}
+            onPointerDown={() => setIsDragging(true)}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onBlur={endDrag}
+            aria-label="Water level"
+          />
+        </div>
       </div>
 
       <div className="pv-panel__actions">
