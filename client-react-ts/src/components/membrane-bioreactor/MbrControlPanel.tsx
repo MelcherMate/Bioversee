@@ -1,4 +1,5 @@
 import AnimatedNumber from "../AnimatedNumber";
+import SegmentedControl from "../SegmentedControl";
 import "../Switch/Switch.css";
 import {
   MBR_AERATION_LEVELS,
@@ -66,28 +67,18 @@ export function MbrControlPanel({
             />
           </div>
 
-          <div
-            className="mbr-panel__segment"
-            role="group"
+          <SegmentedControl
             aria-label="Aeration level"
-          >
-            {MBR_AERATION_LEVELS.map((level) => {
-              const active = aerationLevel === level;
-              return (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => onAerationLevelChange(level)}
-                  disabled={aerationControlsDisabled}
-                  aria-label={`${level}% aeration`}
-                  aria-pressed={isAerationOn && active}
-                  className={`mbr-panel__segment-btn${active ? " is-active" : ""}`}
-                >
-                  {level}
-                </button>
-              );
-            })}
-          </div>
+            accent
+            disabled={aerationControlsDisabled}
+            value={aerationLevel}
+            onChange={onAerationLevelChange}
+            options={MBR_AERATION_LEVELS.map((level) => ({
+              value: level,
+              label: level,
+              ariaLabel: `${level}% aeration`,
+            }))}
+          />
         </div>
       </section>
     </div>

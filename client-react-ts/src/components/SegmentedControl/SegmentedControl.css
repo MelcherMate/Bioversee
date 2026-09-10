@@ -1,0 +1,113 @@
+.bv-segment {
+  --bv-segment-pad: 4px;
+  --bv-segment-gap: 0px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--bv-segment-count, 2), minmax(0, 1fr));
+  gap: var(--bv-segment-gap);
+  padding: var(--bv-segment-pad);
+  background: var(--bv-fill);
+  border: 1px solid var(--bv-line);
+  isolation: isolate;
+}
+
+.bv-segment--rounded {
+  border-radius: 12px;
+}
+
+.bv-segment--pill {
+  border-radius: 999px;
+  border-color: transparent;
+}
+
+.bv-segment__thumb {
+  position: absolute;
+  top: var(--bv-segment-pad);
+  bottom: var(--bv-segment-pad);
+  left: var(--bv-segment-pad);
+  width: calc(
+    (100% - (var(--bv-segment-pad) * 2)) / var(--bv-segment-count, 2)
+  );
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translate3d(
+    calc(var(--bv-segment-index, 0) * 100%),
+    0,
+    0
+  );
+  transition: transform var(--bv-segment-duration, 380ms) var(--bv-ease);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bv-segment--rounded .bv-segment__thumb {
+  border-radius: 9px;
+  box-shadow:
+    0 0 0 1px var(--bv-accent-border),
+    0 2px 6px rgba(13, 148, 136, 0.16);
+}
+
+.bv-segment--pill .bv-segment__thumb {
+  border-radius: 999px;
+  box-shadow: var(--bv-shadow-float);
+}
+
+.bv-segment--accent .bv-segment__btn.is-active {
+  color: var(--bv-accent-hover);
+}
+
+.bv-segment__btn {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 9px 8px;
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--bv-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s var(--bv-ease);
+}
+
+.bv-segment--pill .bv-segment__btn {
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.bv-segment__btn.is-active {
+  color: var(--bv-text);
+}
+
+.bv-segment__btn:hover:not(:disabled):not(.is-active) {
+  color: var(--bv-text);
+}
+
+.bv-segment__btn:disabled {
+  cursor: not-allowed;
+}
+
+.bv-segment__btn:focus-visible {
+  outline: none;
+}
+
+.bv-segment__btn:focus-visible.is-active {
+  box-shadow: 0 0 0 3px var(--bv-accent-muted);
+  border-radius: inherit;
+}
+
+.bv-segment--disabled .bv-segment__btn {
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bv-segment__thumb {
+    transition: none;
+  }
+}

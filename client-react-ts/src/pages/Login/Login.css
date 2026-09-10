@@ -103,31 +103,7 @@
 }
 
 .auth-segment {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--bv-fill);
-}
-
-.auth-segment button {
-  border: none;
-  background: transparent;
-  border-radius: 999px;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--bv-text-secondary);
-  cursor: pointer;
-  transition: background 0.3s var(--bv-ease), color 0.3s var(--bv-ease),
-    box-shadow 0.3s var(--bv-ease);
-}
-
-.auth-segment button.is-active {
-  background: var(--bv-card);
-  color: var(--bv-text);
-  box-shadow: var(--bv-shadow-float);
+  width: 100%;
 }
 
 .auth-form {

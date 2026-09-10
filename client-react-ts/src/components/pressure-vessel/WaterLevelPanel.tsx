@@ -1,10 +1,10 @@
-import { useRef } from "react";
+import type { CSSProperties, ChangeEvent } from "react";
+import AnimatedNumber from "../AnimatedNumber";
+import "../Slider/Slider.css";
 import {
   fillUnitsToPercent,
   VESSEL_MAX_FILL_UNITS,
 } from "./constants";
-import { VerticalSlider } from "./VerticalSlider";
-import AnimatedNumber from "../AnimatedNumber";
 import "./WaterLevelPanel.css";
 
 type WaterLevelPanelProps = {
@@ -37,55 +37,33 @@ export function WaterLevelPanel({
   drainDisabled = false,
 }: WaterLevelPanelProps) {
   const percent = fillUnitsToPercent(fillUnits);
-  const fillUnitsRef = useRef(fillUnits);
-  const onChangeRef = useRef(onChange);
 
-  fillUnitsRef.current = fillUnits;
-  onChangeRef.current = onChange;
-
-  const bindFillButton = () => ({
+  const bindHoldButton = (onHoldChange?: (held: boolean) => void) => ({
     type: "button" as const,
     onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      onFillHoldChange?.(true);
+      onHoldChange?.(true);
     },
     onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
-      onFillHoldChange?.(false);
+      onHoldChange?.(false);
     },
     onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
-      onFillHoldChange?.(false);
+      onHoldChange?.(false);
     },
-    onLostPointerCapture: () => onFillHoldChange?.(false),
+    onLostPointerCapture: () => onHoldChange?.(false),
   });
 
-  const bindDrainButton = () => ({
-    type: "button" as const,
-    onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.currentTarget.setPointerCapture(event.pointerId);
-      onDrainHoldChange?.(true);
-    },
-    onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      onDrainHoldChange?.(false);
-    },
-    onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      onDrainHoldChange?.(false);
-    },
-    onLostPointerCapture: () => onDrainHoldChange?.(false),
-  });
+  const handleSliderChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextPercent = parseInt(event.target.value, 10);
+    onChange(percentToFillUnits(nextPercent));
+  };
 
   const atFull = fillUnits >= VESSEL_MAX_FILL_UNITS;
   const atEmpty = fillUnits <= 0;
@@ -93,35 +71,34 @@ export function WaterLevelPanel({
   return (
     <div className="controlPanel pv-panel">
       <h4 className="boxTitle">{title}</h4>
-      {showPercent ? (
-        <div className="pv-panel__level">
-          <AnimatedNumber
-            className="pv-panel__percent"
-            value={percent}
-            decimals={0}
-            suffix="%"
-          />
-        </div>
-      ) : null}
 
-      <div className="pv-panel__slider-row">
-        <div className="pv-panel__ends">
-          <span>Full</span>
-          <span>Empty</span>
+      <div className="bv-slider pv-panel__slider">
+        <div className="bv-slider__meta">
+          <span className="bv-slider__label">Level</span>
+          {showPercent ? (
+            <AnimatedNumber
+              className="bv-slider__value"
+              value={percent}
+              decimals={0}
+              suffix="%"
+            />
+          ) : null}
         </div>
-        <VerticalSlider
+        <input
+          type="range"
+          className="bv-slider__input"
           min={0}
-          max={VESSEL_MAX_FILL_UNITS}
-          value={fillUnits}
-          onChange={onChange}
+          max={100}
+          value={percent}
+          onChange={handleSliderChange}
           aria-label="Water level"
-          className="pv-panel__slider"
+          style={{ "--bv-slider-progress": `${percent}%` } as CSSProperties}
         />
       </div>
 
       <div className="pv-panel__actions">
         <button
-          {...bindFillButton()}
+          {...bindHoldButton(onFillHoldChange)}
           disabled={atFull || fillDisabled}
           aria-label={`${fillLabel} tank`}
           aria-pressed={isFillHeld}
@@ -130,7 +107,7 @@ export function WaterLevelPanel({
           {fillLabel}
         </button>
         <button
-          {...bindDrainButton()}
+          {...bindHoldButton(onDrainHoldChange)}
           disabled={atEmpty || drainDisabled}
           aria-label={`${drainLabel} tank`}
           aria-pressed={isDrainHeld}
@@ -141,4 +118,9 @@ export function WaterLevelPanel({
       </div>
     </div>
   );
+}
+
+function percentToFillUnits(percent: number) {
+  const clamped = Math.min(100, Math.max(0, percent));
+  return Math.round((clamped / 100) * VESSEL_MAX_FILL_UNITS);
 }

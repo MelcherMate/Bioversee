@@ -54,6 +54,7 @@ const Navbar = ({ user }: NavbarProps) => {
                 to="/bioreactor"
               >
                 Bioreactor
+                <span className="topbar__badge topbar__badge--legacy">Legacy</span>
               </Link>
               <Link
                 className={`topbar__link ${
@@ -78,6 +79,7 @@ const Navbar = ({ user }: NavbarProps) => {
                 to="/waterpurifier"
               >
                 Water Purifier
+                <span className="topbar__badge topbar__badge--legacy">Legacy</span>
               </Link>
             </nav>
           )}

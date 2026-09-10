@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import Google from "../../img/google.png";
 import Logo from "../../utils/svgs/new_logo.svg";
+import SegmentedControl from "../../components/SegmentedControl";
 import { supabase } from "../../lib/supabase";
 import "./Login.css";
 
@@ -74,22 +75,17 @@ const Login = () => {
         </header>
 
         <div className="auth-card__body">
-          <div className="auth-segment" role="tablist">
-            <button
-              type="button"
-              className={mode === "signin" ? "is-active" : undefined}
-              onClick={() => setMode("signin")}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              className={mode === "signup" ? "is-active" : undefined}
-              onClick={() => setMode("signup")}
-            >
-              Sign up
-            </button>
-          </div>
+          <SegmentedControl<"signin" | "signup">
+            className="auth-segment"
+            shape="pill"
+            aria-label="Authentication mode"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "signin", label: "Sign in" },
+              { value: "signup", label: "Sign up" },
+            ]}
+          />
 
           <form className="auth-form" onSubmit={onSubmit}>
             <label className="auth-field">
