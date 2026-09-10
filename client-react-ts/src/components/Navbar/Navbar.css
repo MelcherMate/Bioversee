@@ -108,6 +108,17 @@
   box-shadow: inset 0 0 0 1px var(--bv-accent-border);
 }
 
+.topbar__add-btn {
+  background: var(--bv-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
+}
+
+.topbar__add-btn:hover,
+.topbar__add-btn.is-active {
+  background: var(--bv-accent-muted);
+  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
+}
+
 .topbar__device-icon {
   position: relative;
   flex-shrink: 0;
@@ -117,15 +128,16 @@
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-.topbar__device-shared-dot {
+.topbar__device-owner {
   position: absolute;
-  right: 2px;
-  bottom: 2px;
-  width: 8px;
-  height: 8px;
+  right: -2px;
+  bottom: -2px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--bv-accent);
+  object-fit: cover;
   box-shadow: 0 0 0 2px #fff;
+  background: var(--bv-fill);
 }
 
 .topbar__devices {

@@ -4,6 +4,7 @@ import Canvas2 from "../../components/Canvas2";
 import Chart from "../../components/Chart";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
+import EmptyDeviceState from "../../components/EmptyDeviceState";
 import { getDeviceForPage, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
@@ -24,6 +25,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
   const [device, setDevice] = useState<Device | null>(null);
+  const [ready, setReady] = useState(false);
   const [cards, setCards] = useState<Card[]>([
     {
       id: "waterpurifier",
@@ -33,9 +35,22 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   ]);
 
   useEffect(() => {
+    let cancelled = false;
+    setReady(false);
     getDeviceForPage("water_purifier", preferredDeviceId)
-      .then(setDevice)
-      .catch((error) => console.error(error));
+      .then((next) => {
+        if (!cancelled) setDevice(next);
+      })
+      .catch((error) => {
+        console.error(error);
+        if (!cancelled) setDevice(null);
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
@@ -56,12 +71,16 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   const [pump3Val, setPump3Val] = useState(false);
   const [rotorVal, setRotorVal] = useState(0);
 
-  if (!device) {
+  if (!ready) {
     return (
       <div className="container">
         <div className="process-loading">Loading your water purifier…</div>
       </div>
     );
+  }
+
+  if (!device) {
+    return <EmptyDeviceState processLabel="Water Purifier" />;
   }
 
   return (

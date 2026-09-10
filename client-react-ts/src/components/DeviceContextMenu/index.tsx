@@ -4,10 +4,8 @@ import {
   SettingsOutline,
   TrashOutline,
 } from "react-ionicons";
-import type { Device } from "../../lib/devices";
+import type { AccessibleDevice } from "../../lib/devices";
 import "./DeviceContextMenu.css";
-
-export type AccessibleDevice = Device & { role: string; isOwner: boolean };
 
 type DeviceContextMenuProps = {
   device: AccessibleDevice;

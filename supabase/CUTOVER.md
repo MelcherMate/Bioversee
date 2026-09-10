@@ -19,12 +19,12 @@ This creates:
 - `devices`, `device_members`, `device_credentials`
 - device-scoped `actuator_sliders`, `actuator_switches`, `sensors`
 - RLS helpers (`user_can_access_device`, `user_can_operate_device`, …)
-- `ensure_my_devices` / signup provisioning of all four device types
-- backfill: `ensure_user_devices` for every existing `auth.users` row
+- no auto-provisioning — users add devices via **+** (`create_my_device`)
+- share invites, notifications, rename/delete/leave
 
 ## 3. App
 
-Redeploy or refresh the Vite app. On first load each signed-in user gets four private devices (Bioreactor, Pressure Vessel, Membrane MBR, Water Purifier).
+Redeploy or refresh the Vite app. New accounts start with **no** devices; use **+** in the header to create one.
 
 ## 4. Verify isolation
 
@@ -48,11 +48,16 @@ Run [`create_device.sql`](./create_device.sql) once so the **+** button can crea
 
 Run [`device_manage.sql`](./device_manage.sql) once for rename, delete, and leave.
 
+## No auto devices
+
+Run [`no_auto_devices.sql`](./no_auto_devices.sql) so new accounts start with **zero** devices (users add via **+**). Also enables reading owner avatars on shared device icons.
+
 ## Notes
 
 - Share UI: navbar Share → invite link / email / roster.
 - Recipients get a notification and must **Accept** before the device appears.
 - Header: **+** adds a device; circular icons open each instance (hover shows name).
+- Shared devices show the **owner’s avatar** on the icon.
 - Right-click a device icon → **Settings** or **Delete** / **Leave**.
 - Pi API keys: table ready (`device_credentials`); mint UI + Edge Function still follow-up.
 - Pi ingest should use the **service role** or a future Edge Function that validates a device credential and inserts with `device_id`.

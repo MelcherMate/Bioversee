@@ -2,17 +2,17 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { TrashOutline } from "react-ionicons";
 import {
   renameMyDevice,
-  type Device,
+  type AccessibleDevice,
 } from "../../lib/devices";
 import { DEVICE_TYPE_META } from "../../lib/deviceIcons";
 import "./DeviceSettingsPanel.css";
 
 type DeviceSettingsPanelProps = {
-  device: (Device & { role: string; isOwner: boolean }) | null;
+  device: AccessibleDevice | null;
   open: boolean;
   onClose: () => void;
   onRenamed: () => void;
-  onRequestDelete: (device: Device & { role: string; isOwner: boolean }) => void;
+  onRequestDelete: (device: AccessibleDevice) => void;
 };
 
 function DeviceSettingsPanel({

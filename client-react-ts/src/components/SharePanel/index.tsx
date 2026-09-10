@@ -244,7 +244,7 @@ function SharePanel({ user, open, onClose }: SharePanelProps) {
         <p className="share-panel__muted">Loading your devices…</p>
       ) : devices.length === 0 ? (
         <p className="share-panel__muted">
-          No devices you can share yet. Open a process page once so defaults are provisioned.
+          No devices you can share yet. Create one with + in the header first.
         </p>
       ) : (
         <>

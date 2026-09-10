@@ -157,7 +157,11 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
 
   const deviceIdFor = (type: DeviceType) => {
     const device = devicesByType[type];
-    if (!device) throw new Error(`Device not ready: ${type}`);
+    if (!device) {
+      throw new Error(
+        `No ${String(type).replace(/_/g, " ")} device — create one with + first`
+      );
+    }
     return device.id;
   };
 
@@ -246,80 +250,84 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
         const byType = await getMyDevicesByType();
         setDevicesByType(byType);
 
-        const bio = byType.bioreactor!.id;
-        const vessel = byType.pressure_vessel!.id;
-        const mbr = byType.membrane_bioreactor!.id;
-        const water = byType.water_purifier!.id;
+        const bio = byType.bioreactor?.id;
+        const vessel = byType.pressure_vessel?.id;
+        const mbr = byType.membrane_bioreactor?.id;
+        const water = byType.water_purifier?.id;
 
-        await insertSensorReading(
-          bio,
-          "temperature",
-          27 + Math.random() * 4,
-          user.id,
-        );
-        await insertSensorReading(bio, "ph", 6.5 + Math.random() * 0.8, user.id);
-        await insertSliderState(
-          bio,
-          "rotor",
-          40 + Math.round(Math.random() * 40),
-          user.id,
-        );
-        await insertSliderState(
-          bio,
-          "aerator",
-          35 + Math.round(Math.random() * 45),
-          user.id,
-        );
-        await insertSwitchState(bio, "switchWarmWaterPump", true, user.id);
-        await insertSwitchState(bio, "switchColdWaterPump", false, user.id);
+        if (!bio && !vessel && !mbr && !water) {
+          throw new Error("Create at least one device with + before seeding");
+        }
 
-        const vesselPct = 35 + Math.round(Math.random() * 45);
-        await insertSensorReading(vessel, "vesselLevel", vesselPct, user.id);
-        await insertSliderState(vessel, "vesselLevel", vesselPct, user.id);
+        if (bio) {
+          await insertSensorReading(
+            bio,
+            "temperature",
+            27 + Math.random() * 4,
+            user.id,
+          );
+          await insertSensorReading(
+            bio,
+            "ph",
+            6.5 + Math.random() * 0.8,
+            user.id,
+          );
+          await insertSliderState(
+            bio,
+            "rotor",
+            40 + Math.round(Math.random() * 40),
+            user.id,
+          );
+          await insertSliderState(
+            bio,
+            "aerator",
+            35 + Math.round(Math.random() * 45),
+            user.id,
+          );
+          await insertSwitchState(bio, "switchWarmWaterPump", true, user.id);
+          await insertSwitchState(bio, "switchColdWaterPump", false, user.id);
+        }
 
-        const aerationLevels = [25, 50, 75, 100] as const;
-        const aeration =
-          aerationLevels[Math.floor(Math.random() * aerationLevels.length)];
-        await insertSensorReading(
-          mbr,
-          "mbrTankLevel",
-          92 + Math.random() * 6,
-          user.id,
-        );
-        await insertSliderState(mbr, "mbrAerationLevel", aeration, user.id);
-        await insertSwitchState(mbr, "mbrFlow", Math.random() > 0.4, user.id);
-        await insertSwitchState(
-          mbr,
-          "mbrAeration",
-          Math.random() > 0.35,
-          user.id,
-        );
+        if (vessel) {
+          const vesselPct = 35 + Math.round(Math.random() * 45);
+          await insertSensorReading(vessel, "vesselLevel", vesselPct, user.id);
+          await insertSliderState(vessel, "vesselLevel", vesselPct, user.id);
+        }
 
-        await insertSensorReading(
-          water,
-          "pufferwtlvl",
-          50 + Math.random() * 30,
-          user.id,
-        );
-        await insertSliderState(
-          water,
-          "agitator",
-          30 + Math.round(Math.random() * 50),
-          user.id,
-        );
-        await insertSwitchState(
-          water,
-          "switchPump1",
-          Math.random() > 0.5,
-          user.id,
-        );
+        if (mbr) {
+          await insertSensorReading(mbr, "mbrTankLevel", 95, user.id);
+          await insertSliderState(
+            mbr,
+            "mbrAerationLevel",
+            50 + Math.round(Math.random() * 40),
+            user.id,
+          );
+          await insertSwitchState(mbr, "mbrFlow", true, user.id);
+          await insertSwitchState(mbr, "mbrAeration", true, user.id);
+        }
+
+        if (water) {
+          await insertSensorReading(
+            water,
+            "pufferwtlvl",
+            50 + Math.round(Math.random() * 40),
+            user.id,
+          );
+          await insertSliderState(
+            water,
+            "agitator",
+            30 + Math.round(Math.random() * 50),
+            user.id,
+          );
+          await insertSwitchState(water, "switchPump1", true, user.id);
+        }
       },
-      "Seeding your devices…",
+      "Seeding demo data…",
       "Demo bundle uploaded",
-      "Only your four devices were seeded",
+      "Only your existing devices were seeded",
     );
 
-  const devicesReady = Object.keys(devicesByType).length >= 4;
+  const devicesReady = Object.keys(devicesByType).length > 0;
 
   return (
     <>

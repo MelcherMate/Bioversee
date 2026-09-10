@@ -27,6 +27,8 @@ import {
   deleteMyDevice,
   leaveDevice,
   listAccessibleDevices,
+  ownerAvatarSrc,
+  type AccessibleDevice,
   type Device,
   type DeviceType,
 } from "../../lib/devices";
@@ -35,9 +37,7 @@ import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
 import AddDevicePanel from "../AddDevicePanel";
-import DeviceContextMenu, {
-  type AccessibleDevice,
-} from "../DeviceContextMenu";
+import DeviceContextMenu from "../DeviceContextMenu";
 import DeviceSettingsPanel from "../DeviceSettingsPanel";
 import NotificationsPanel from "../NotificationsPanel";
 import SharePanel from "../SharePanel";
@@ -313,7 +313,9 @@ const Navbar = ({ user }: NavbarProps) => {
           <div className="topbar__add" ref={addRef}>
             <button
               type="button"
-              className={`topbar__round-btn ${showAddDevice ? "is-active" : ""}`}
+              className={`topbar__round-btn topbar__add-btn ${
+                showAddDevice ? "is-active" : ""
+              }`}
               aria-label="Add device"
               aria-expanded={showAddDevice}
               title="Add device"
@@ -324,7 +326,7 @@ const Navbar = ({ user }: NavbarProps) => {
                 setShowAddDevice((open) => !open);
               }}
             >
-              <AddOutline color="#1d1d1f" height="18px" width="18px" title="" />
+              <AddOutline color="#0f766e" height="18px" width="18px" title="" />
             </button>
             <AddDevicePanel
               open={showAddDevice}
@@ -358,7 +360,16 @@ const Navbar = ({ user }: NavbarProps) => {
                     title={device.name}
                   />
                   {!device.isOwner && (
-                    <span className="topbar__device-shared-dot" aria-hidden />
+                    <img
+                      className="topbar__device-owner"
+                      src={ownerAvatarSrc(device)}
+                      alt=""
+                      title={
+                        device.ownerDisplayName
+                          ? `Shared by ${device.ownerDisplayName}`
+                          : "Shared device"
+                      }
+                    />
                   )}
                 </button>
               );

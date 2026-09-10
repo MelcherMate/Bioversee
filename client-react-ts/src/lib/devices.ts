@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { avatarForAccount } from "./accountSessions";
 
 export type DeviceType =
   | "bioreactor"
@@ -15,18 +16,19 @@ export type Device = {
   updated_at: string;
 };
 
+export type AccessibleDevice = Device & {
+  role: string;
+  isOwner: boolean;
+  ownerDisplayName: string | null;
+  ownerAvatarUrl: string | null;
+};
+
 const DEVICE_TYPES: DeviceType[] = [
   "bioreactor",
   "pressure_vessel",
   "membrane_bioreactor",
   "water_purifier",
 ];
-
-/** Idempotent: creates the four default devices for the signed-in user. */
-export async function ensureMyDevices(): Promise<void> {
-  const { error } = await supabase.rpc("ensure_my_devices");
-  if (error) throw error;
-}
 
 export async function listMyDevices(): Promise<Device[]> {
   const { data, error } = await supabase
@@ -39,12 +41,9 @@ export async function listMyDevices(): Promise<Device[]> {
 }
 
 /**
- * Returns the caller’s owned device of the given type.
- * Ensures defaults exist first so first login always has a device.
+ * Returns the caller’s owned device of the given type, or null if none.
  */
-export async function getMyDevice(type: DeviceType): Promise<Device> {
-  await ensureMyDevices();
-
+export async function getMyDevice(type: DeviceType): Promise<Device | null> {
   const {
     data: { user },
     error: userError,
@@ -62,21 +61,17 @@ export async function getMyDevice(type: DeviceType): Promise<Device> {
     .maybeSingle();
 
   if (error) throw error;
-  if (!data) {
-    throw new Error(`No ${type} device found for this user`);
-  }
-  return data as Device;
+  return (data as Device | null) ?? null;
 }
 
 /**
  * Resolve the device for a process page.
- * If `preferredId` is set and the user can access it (RLS), use that
- * (shared devices via invite). Otherwise fall back to the owned default.
+ * Prefer `preferredId` when accessible; otherwise the first owned device of that type.
  */
 export async function getDeviceForPage(
   type: DeviceType,
   preferredId?: string | null
-): Promise<Device> {
+): Promise<Device | null> {
   if (preferredId) {
     const { data, error } = await supabase
       .from("devices")
@@ -92,11 +87,10 @@ export async function getDeviceForPage(
   return getMyDevice(type);
 }
 
+/** Owned devices keyed by type (first of each). Missing types are omitted. */
 export async function getMyDevicesByType(): Promise<
   Partial<Record<DeviceType, Device>>
 > {
-  await ensureMyDevices();
-
   const {
     data: { user },
     error: userError,
@@ -118,25 +112,16 @@ export async function getMyDevicesByType(): Promise<
       byType[device.type] = device;
     }
   }
-  for (const type of DEVICE_TYPES) {
-    if (!byType[type]) {
-      throw new Error(`Missing provisioned device: ${type}`);
-    }
-  }
   return byType;
 }
 
-export async function listAccessibleDevices(): Promise<
-  Array<Device & { role: string; isOwner: boolean }>
-> {
+export async function listAccessibleDevices(): Promise<AccessibleDevice[]> {
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
   if (userError) throw userError;
   if (!user) throw new Error("Not authenticated");
-
-  await ensureMyDevices();
 
   const { data: memberships, error: memberError } = await supabase
     .from("device_members")
@@ -160,14 +145,45 @@ export async function listAccessibleDevices(): Promise<
 
   if (error) throw error;
 
+  const devices = (data ?? []) as Device[];
+  const ownerIds = [
+    ...new Set(
+      devices.filter((device) => device.owner_id !== user.id).map((d) => d.owner_id)
+    ),
+  ];
+
+  const ownerById = new Map<
+    string,
+    { display_name: string | null; avatar_url: string | null }
+  >();
+
+  if (ownerIds.length > 0) {
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", ownerIds);
+    if (profileError) throw profileError;
+    for (const profile of profiles ?? []) {
+      ownerById.set(profile.id, {
+        display_name: profile.display_name,
+        avatar_url: profile.avatar_url,
+      });
+    }
+  }
+
   const typeOrder = new Map(DEVICE_TYPES.map((type, index) => [type, index]));
 
-  return ((data ?? []) as Device[])
-    .map((device) => ({
-      ...device,
-      role: roleByDevice.get(device.id) ?? "viewer",
-      isOwner: device.owner_id === user.id,
-    }))
+  return devices
+    .map((device) => {
+      const owner = ownerById.get(device.owner_id);
+      return {
+        ...device,
+        role: roleByDevice.get(device.id) ?? "viewer",
+        isOwner: device.owner_id === user.id,
+        ownerDisplayName: owner?.display_name ?? null,
+        ownerAvatarUrl: owner?.avatar_url ?? null,
+      };
+    })
     .sort((a, b) => {
       if (a.isOwner !== b.isOwner) return a.isOwner ? -1 : 1;
       const typeDiff =
@@ -175,6 +191,13 @@ export async function listAccessibleDevices(): Promise<
       if (typeDiff !== 0) return typeDiff;
       return a.name.localeCompare(b.name);
     });
+}
+
+export function ownerAvatarSrc(device: AccessibleDevice): string {
+  return avatarForAccount({
+    displayName: device.ownerDisplayName || device.name,
+    avatarUrl: device.ownerAvatarUrl,
+  });
 }
 
 export async function createMyDevice(input: {

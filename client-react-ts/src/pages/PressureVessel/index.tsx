@@ -15,6 +15,7 @@ import {
 } from "../../lib/actuators";
 import { getDeviceForPage, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
+import EmptyDeviceState from "../../components/EmptyDeviceState";
 import "../Bioreactor/Bioreactor.css";
 import "./ProcessScene.css";
 
@@ -28,6 +29,7 @@ function PressureVessel({ user }: PressureVesselProps) {
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
   const [device, setDevice] = useState<Device | null>(null);
+  const [ready, setReady] = useState(false);
   const [fillUnits, setFillUnits] = useState(
     Math.round(VESSEL_MAX_FILL_UNITS / 2),
   );
@@ -44,9 +46,22 @@ function PressureVessel({ user }: PressureVesselProps) {
   fillUnitsRef.current = fillUnits;
 
   useEffect(() => {
+    let cancelled = false;
+    setReady(false);
     getDeviceForPage("pressure_vessel", preferredDeviceId)
-      .then(setDevice)
-      .catch((error) => console.error(error));
+      .then((next) => {
+        if (!cancelled) setDevice(next);
+      })
+      .catch((error) => {
+        console.error(error);
+        if (!cancelled) setDevice(null);
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user.id, preferredDeviceId]);
 
   const persistLevel = (units: number) => {
@@ -117,12 +132,16 @@ function PressureVessel({ user }: PressureVesselProps) {
     if (!held) persistLevel(fillUnitsRef.current);
   };
 
-  if (!device) {
+  if (!ready) {
     return (
       <div className="container">
         <div className="process-loading">Loading your pressure vessel…</div>
       </div>
     );
+  }
+
+  if (!device) {
+    return <EmptyDeviceState processLabel="Pressure Vessel" />;
   }
 
   return (

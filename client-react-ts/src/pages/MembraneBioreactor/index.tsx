@@ -17,6 +17,7 @@ import {
 } from "../../lib/actuators";
 import { getDeviceForPage, type Device } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
+import EmptyDeviceState from "../../components/EmptyDeviceState";
 import "../Bioreactor/Bioreactor.css";
 import "../PressureVessel/ProcessScene.css";
 
@@ -46,6 +47,7 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
   const [device, setDevice] = useState<Device | null>(null);
+  const [ready, setReady] = useState(false);
   const [isFlowOn, setIsFlowOn] = useState(false);
   const [isAerationOn, setIsAerationOn] = useState(false);
   const [aerationLevel, setAerationLevel] = useState<MbrAerationLevel>(
@@ -54,9 +56,22 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   const flow = useMbrFlowAnimation(isFlowOn);
 
   useEffect(() => {
+    let cancelled = false;
+    setReady(false);
     getDeviceForPage("membrane_bioreactor", preferredDeviceId)
-      .then(setDevice)
-      .catch((error) => console.error(error));
+      .then((next) => {
+        if (!cancelled) setDevice(next);
+      })
+      .catch((error) => {
+        console.error(error);
+        if (!cancelled) setDevice(null);
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
@@ -101,12 +116,16 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
     );
   };
 
-  if (!device) {
+  if (!ready) {
     return (
       <div className="container">
         <div className="process-loading">Loading your membrane MBR…</div>
       </div>
     );
+  }
+
+  if (!device) {
+    return <EmptyDeviceState processLabel="Membrane MBR" />;
   }
 
   return (
