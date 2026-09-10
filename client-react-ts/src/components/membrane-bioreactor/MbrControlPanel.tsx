@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import AnimatedNumber from "../AnimatedNumber";
 import SegmentedControl from "../SegmentedControl";
 import "../Switch/Switch.css";
@@ -26,16 +27,17 @@ export function MbrControlPanel({
   onAerationLevelChange,
   disabled = false,
 }: MbrControlPanelProps) {
+  const { t } = useTranslation();
   const aerationControlsDisabled = disabled || !isAerationOn;
   const displayLevel = isAerationOn ? aerationLevel : 0;
 
   return (
     <div className="controlPanel mbr-panel">
       <section className="controlPanel__section">
-        <h4 className="boxTitle">Flow</h4>
+        <h4 className="boxTitle">{t("process.flow")}</h4>
         <LocalToggle
           id="mbr-flow"
-          label="Circulation"
+          label={t("process.circulation")}
           checked={isFlowOn}
           disabled={disabled}
           onChange={onFlowChange}
@@ -43,10 +45,10 @@ export function MbrControlPanel({
       </section>
 
       <section className="controlPanel__section">
-        <h4 className="boxTitle">Aeration</h4>
+        <h4 className="boxTitle">{t("process.aeration")}</h4>
         <LocalToggle
           id="mbr-aeration"
-          label="Diffuser"
+          label={t("process.diffuser")}
           checked={isAerationOn}
           disabled={disabled}
           onChange={onAerationChange}
@@ -58,7 +60,9 @@ export function MbrControlPanel({
           }`}
         >
           <div className="mbr-panel__intensity-meta">
-            <span className="mbr-panel__intensity-label">Intensity</span>
+            <span className="mbr-panel__intensity-label">
+              {t("process.intensity")}
+            </span>
             <AnimatedNumber
               className="mbr-panel__intensity-value"
               value={displayLevel}
@@ -68,7 +72,7 @@ export function MbrControlPanel({
           </div>
 
           <SegmentedControl
-            aria-label="Aeration level"
+            aria-label={t("process.aeration")}
             accent
             disabled={aerationControlsDisabled}
             value={aerationLevel}
@@ -76,7 +80,7 @@ export function MbrControlPanel({
             options={MBR_AERATION_LEVELS.map((level) => ({
               value: level,
               label: level,
-              ariaLabel: `${level}% aeration`,
+              ariaLabel: `${level}%`,
             }))}
           />
         </div>
@@ -98,6 +102,8 @@ function LocalToggle({
   disabled?: boolean;
   onChange: (next: boolean) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <label
       className={`bv-switch${checked ? " bv-switch--on" : ""}${
@@ -107,7 +113,9 @@ function LocalToggle({
     >
       <div className="bv-switch__copy">
         <span className="bv-switch__label">{label}</span>
-        <span className="bv-switch__state">{checked ? "On" : "Off"}</span>
+        <span className="bv-switch__state">
+          {checked ? t("common.on") : t("common.off")}
+        </span>
       </div>
       <input
         type="checkbox"

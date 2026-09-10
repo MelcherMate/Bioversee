@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ACCENT_PRESETS,
   LANGUAGE_OPTIONS,
@@ -14,6 +15,7 @@ type AppSettingsPanelProps = {
 };
 
 function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const { settings, setTheme, setAccent, setLanguage } = useAppearance();
 
@@ -46,49 +48,59 @@ function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
       className="app-settings"
       ref={panelRef}
       role="dialog"
-      aria-label="Settings"
+      aria-label={t("nav.settings")}
     >
       <div className="app-settings__head">
         <div>
-          <p className="app-settings__eyebrow">Settings</p>
-          <h2 className="app-settings__title">Appearance</h2>
+          <p className="app-settings__eyebrow">{t("appearance.eyebrow")}</p>
+          <h2 className="app-settings__title">{t("appearance.title")}</h2>
         </div>
         <button
           type="button"
           className="app-settings__close"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           ×
         </button>
       </div>
 
       <section className="app-settings__section">
-        <p className="app-settings__label">Theme</p>
+        <p className="app-settings__label">{t("appearance.theme")}</p>
         <SegmentedControl
-          aria-label="Theme"
+          aria-label={t("appearance.theme")}
           shape="rounded"
           accent
           value={settings.theme}
           onChange={(value) => setTheme(value as ThemePreference)}
           options={[
-            { value: "light", label: "Light" },
-            { value: "dark", label: "Dark" },
-            { value: "system", label: "System" },
+            { value: "light", label: t("appearance.light") },
+            {
+              value: "dark",
+              label: (
+                <span className="app-settings__seg-label">
+                  {t("appearance.dark")}
+                  <span className="app-settings__beta">{t("common.beta")}</span>
+                </span>
+              ),
+              ariaLabel: `${t("appearance.dark")} (${t("common.beta")})`,
+            },
+            { value: "system", label: t("appearance.system") },
           ]}
         />
       </section>
 
       <section className="app-settings__section">
-        <p className="app-settings__label">Accent color</p>
+        <p className="app-settings__label">{t("appearance.accent")}</p>
         <div
           className="app-settings__swatches"
           role="listbox"
-          aria-label="Accent color"
+          aria-label={t("appearance.accent")}
         >
           {ACCENT_PRESETS.map((preset) => {
             const selected =
               settings.accent.toLowerCase() === preset.value.toLowerCase();
+            const label = t(`appearance.${preset.id}`);
             return (
               <button
                 key={preset.id}
@@ -97,8 +109,8 @@ function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
                 aria-selected={selected}
                 className={`app-settings__swatch${selected ? " is-selected" : ""}`}
                 style={{ background: preset.value }}
-                title={preset.label}
-                aria-label={preset.label}
+                title={label}
+                aria-label={label}
                 onClick={() => setAccent(preset.value)}
               />
             );
@@ -106,32 +118,45 @@ function AppSettingsPanel({ open, onClose }: AppSettingsPanelProps) {
         </div>
         <div className="app-settings__swatch-labels">
           {ACCENT_PRESETS.map((preset) => (
-            <span key={preset.id}>{preset.label}</span>
+            <span key={preset.id}>{t(`appearance.${preset.id}`)}</span>
           ))}
         </div>
       </section>
 
       <section className="app-settings__section">
-        <label className="app-settings__label" htmlFor="app-settings-language">
-          Language
-        </label>
-        <select
-          id="app-settings-language"
-          className="app-settings__select"
+        <p className="app-settings__label">{t("appearance.language")}</p>
+        <SegmentedControl
+          aria-label={t("appearance.language")}
+          shape="rounded"
+          accent
+          className="app-settings__lang"
           value={settings.language}
-          onChange={(event) =>
-            setLanguage(event.target.value as typeof settings.language)
+          onChange={(value) =>
+            setLanguage(value as typeof settings.language)
           }
-        >
-          {LANGUAGE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.native} ({option.label})
-            </option>
-          ))}
-        </select>
-        <p className="app-settings__hint">
-          Saved to your account. Full UI translation comes next.
-        </p>
+          options={LANGUAGE_OPTIONS.map((option) => {
+            const isBeta = option.value === "de" || option.value === "hu";
+            return {
+              value: option.value,
+              ariaLabel: isBeta
+                ? `${option.native} (${t("common.beta")})`
+                : option.native,
+              label: (
+                <span className="app-settings__seg-label">
+                  <span className="app-settings__lang-code">
+                    {option.value.toUpperCase()}
+                  </span>
+                  {isBeta ? (
+                    <span className="app-settings__beta">
+                      {t("common.beta")}
+                    </span>
+                  ) : null}
+                </span>
+              ),
+            };
+          })}
+        />
+        <p className="app-settings__hint">{t("appearance.hint")}</p>
       </section>
     </div>
   );

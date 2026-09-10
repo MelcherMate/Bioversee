@@ -115,15 +115,44 @@
   text-align: center;
 }
 
-.app-settings__select {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--bv-radius-md);
-  border: 1px solid var(--bv-line);
-  background: var(--bv-fill);
-  color: var(--bv-text);
-  font-size: 13px;
-  font-weight: 550;
+.app-settings__seg-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  line-height: 1.1;
+}
+
+.app-settings__lang-code {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.app-settings__beta {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.22);
+}
+
+:root[data-theme="dark"] .app-settings__beta {
+  color: #93c5fd;
+  background: rgba(96, 165, 250, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.28);
+}
+
+.app-settings__lang .bv-segment__btn {
+  padding: 8px 4px;
+  font-size: 11px;
 }
 
 .app-settings__hint {

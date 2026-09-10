@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import Canvas from "../../components/Canvas";
 import Chart from "../../components/Chart/index";
@@ -25,6 +26,7 @@ interface BioreactorProps {
 }
 
 function Bioreactor({ user }: BioreactorProps) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
@@ -80,13 +82,13 @@ function Bioreactor({ user }: BioreactorProps) {
   if (!ready) {
     return (
       <div className="container">
-        <div className="process-loading">Loading your bioreactor…</div>
+        <div className="process-loading">{t("process.loadingBioreactor")}</div>
       </div>
     );
   }
 
   if (!device) {
-    return <EmptyDeviceState processLabel="Bioreactor" />;
+    return <EmptyDeviceState processLabel={t("devices.bioreactor")} />;
   }
 
   const readOnly = !canOperateDevice(device.role);
@@ -96,13 +98,13 @@ function Bioreactor({ user }: BioreactorProps) {
       <aside id="actuatorSide">
         <div className="controlPanel">
           <section className="controlPanel__section">
-            <h4 className="boxTitle">Pumps</h4>
+            <h4 className="boxTitle">{t("process.pumps")}</h4>
             <Switch
               deviceId={device.id}
               name="switchWarmWaterPump"
               setVal={setWarmWVal}
               val={warmWVal}
-              label="Warm water"
+              label={t("process.warmWater")}
               user={user}
               disabled={readOnly}
             />
@@ -111,7 +113,7 @@ function Bioreactor({ user }: BioreactorProps) {
               name="switchColdWaterPump"
               setVal={setColdWVal}
               val={coldWVal}
-              label="Cold water"
+              label={t("process.coldWater")}
               user={user}
               disabled={readOnly}
             />
@@ -120,7 +122,7 @@ function Bioreactor({ user }: BioreactorProps) {
               name="switchAcidPump"
               setVal={setAcidVal}
               val={acidVal}
-              label="Acid"
+              label={t("process.acid")}
               user={user}
               disabled={readOnly}
             />
@@ -129,19 +131,19 @@ function Bioreactor({ user }: BioreactorProps) {
               name="switchBasePump"
               setVal={setBaseVal}
               val={baseVal}
-              label="Base"
+              label={t("process.base")}
               user={user}
               disabled={readOnly}
             />
           </section>
           <section className="controlPanel__section">
-            <h4 className="boxTitle">Motion</h4>
+            <h4 className="boxTitle">{t("process.motion")}</h4>
             <Slider
               deviceId={device.id}
               name="rotor"
               setVal={setRotorVal}
               val={rotorVal}
-              label="Rotor"
+              label={t("process.rotor")}
               user={user}
               disabled={readOnly}
             />
@@ -150,7 +152,7 @@ function Bioreactor({ user }: BioreactorProps) {
               name="aerator"
               setVal={setAeratorVal}
               val={aeratorVal}
-              label="Aerator"
+              label={t("process.aerator")}
               user={user}
               disabled={readOnly}
             />
@@ -165,9 +167,9 @@ function Bioreactor({ user }: BioreactorProps) {
           <Chart
             deviceId={device.id}
             name="temperature"
-            label="Temperature"
+            label={t("process.temperature")}
           />
-          <Chart deviceId={device.id} name="ph" label="pH value" />
+          <Chart deviceId={device.id} name="ph" label={t("process.ph")} />
         </div>
       </aside>
     </div>

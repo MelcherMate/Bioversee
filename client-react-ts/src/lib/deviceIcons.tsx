@@ -17,29 +17,29 @@ type IonIconProps = {
 export const DEVICE_TYPE_META: Record<
   DeviceType,
   {
-    label: string;
-    description: string;
+    labelKey: string;
+    descriptionKey: string;
     Icon: ComponentType<IonIconProps>;
   }
 > = {
   bioreactor: {
-    label: "Bioreactor",
-    description: "Culture vessel with rotor and aerator controls",
+    labelKey: "devices.bioreactor",
+    descriptionKey: "devices.bioreactorDesc",
     Icon: BeakerOutline,
   },
   pressure_vessel: {
-    label: "Pressure Vessel",
-    description: "Fill and drain level control",
+    labelKey: "devices.pressure_vessel",
+    descriptionKey: "devices.pressure_vesselDesc",
     Icon: CubeOutline,
   },
   membrane_bioreactor: {
-    label: "Membrane MBR",
-    description: "Membrane filtration with aeration",
+    labelKey: "devices.membrane_bioreactor",
+    descriptionKey: "devices.membrane_bioreactorDesc",
     Icon: FunnelOutline,
   },
   water_purifier: {
-    label: "Water Purifier",
-    description: "Legacy water treatment process",
+    labelKey: "devices.water_purifier",
+    descriptionKey: "devices.water_purifierDesc",
     Icon: ColorFilterOutline,
   },
 };

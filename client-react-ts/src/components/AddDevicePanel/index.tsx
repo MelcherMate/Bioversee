@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createMyDevice, type DeviceType } from "../../lib/devices";
 import { DEVICE_TYPE_META, DEVICE_TYPE_ORDER } from "../../lib/deviceIcons";
 import {
@@ -21,6 +22,7 @@ type MemberDraft = {
 };
 
 function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [type, setType] = useState<DeviceType>("bioreactor");
   const [name, setName] = useState("");
@@ -33,12 +35,12 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
   useEffect(() => {
     if (!open) return;
     setType("bioreactor");
-    setName(DEVICE_TYPE_META.bioreactor.label);
+    setName(t(DEVICE_TYPE_META.bioreactor.labelKey));
     setMemberEmail("");
     setMemberRole("viewer");
     setMembers([]);
     setError(null);
-  }, [open]);
+  }, [open, t]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +68,7 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
     const email = memberEmail.trim().toLowerCase();
     if (!email) return;
     if (members.some((m) => m.email === email)) {
-      setError("That email is already on the list");
+      setError(t("addDevice.emailAlreadyListed"));
       return;
     }
     setMembers((prev) => [...prev, { email, role: memberRole }]);
@@ -90,7 +92,7 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
       onCreated(deviceId, type);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create device");
+      setError(err instanceof Error ? err.message : t("addDevice.couldNotCreate"));
     } finally {
       setBusy(false);
     }
@@ -105,30 +107,31 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
       className="add-device"
       ref={panelRef}
       role="dialog"
-      aria-label="Add device"
+      aria-label={t("nav.addDevice")}
     >
       <div className="add-device__head">
         <div>
-          <p className="add-device__eyebrow">New device</p>
-          <h2 className="add-device__title">Add a device</h2>
+          <p className="add-device__eyebrow">{t("addDevice.eyebrow")}</p>
+          <h2 className="add-device__title">{t("addDevice.title")}</h2>
         </div>
         <button
           type="button"
           className="add-device__close"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           ×
         </button>
       </div>
 
       <form className="add-device__form" onSubmit={onSubmit}>
-        <p className="add-device__label">Type</p>
-        <div className="add-device__types" role="listbox" aria-label="Device type">
+        <p className="add-device__label">{t("addDevice.type")}</p>
+        <div className="add-device__types" role="listbox" aria-label={t("addDevice.type")}>
           {DEVICE_TYPE_ORDER.map((deviceType) => {
             const item = DEVICE_TYPE_META[deviceType];
             const Icon = item.Icon;
             const active = type === deviceType;
+            const itemLabel = t(item.labelKey);
             return (
               <button
                 key={deviceType}
@@ -140,11 +143,9 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
                   setType(deviceType);
                   setName((current) => {
                     const wasDefault = DEVICE_TYPE_ORDER.some(
-                      (t) => DEVICE_TYPE_META[t].label === current
+                      (dt) => t(DEVICE_TYPE_META[dt].labelKey) === current
                     );
-                    return wasDefault || !current.trim()
-                      ? item.label
-                      : current;
+                    return wasDefault || !current.trim() ? itemLabel : current;
                   });
                 }}
               >
@@ -155,47 +156,44 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
                     width="18px"
                   />
                 </span>
-                <span className="add-device__type-label">{item.label}</span>
+                <span className="add-device__type-label">{itemLabel}</span>
               </button>
             );
           })}
         </div>
-        <p className="add-device__hint">{meta.description}</p>
+        <p className="add-device__hint">{t(meta.descriptionKey)}</p>
 
         <label className="add-device__label" htmlFor="add-device-name">
-          Name
+          {t("addDevice.name")}
         </label>
         <input
           id="add-device-name"
           className="add-device__input"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder={meta.label}
+          placeholder={t("addDevice.namePlaceholder")}
           maxLength={80}
           required
         />
 
-        <p className="add-device__label">Assign members</p>
-        <p className="add-device__hint">
-          Optional. They need a Bioversee account and must accept from
-          Notifications.
-        </p>
+        <p className="add-device__label">{t("addDevice.assignMembers")}</p>
+        <p className="add-device__hint">{t("addDevice.membersHint")}</p>
         <SegmentedControl
-          aria-label="Member role"
+          aria-label={t("share.accessLevel")}
           shape="rounded"
           accent
           value={memberRole}
           onChange={(value) => setMemberRole(value as ShareRole)}
           options={SHARE_ROLE_OPTIONS.map((option) => ({
             value: option.value,
-            label: option.label,
+            label: t(option.labelKey),
           }))}
         />
         <div className="add-device__member-row">
           <input
             type="email"
             className="add-device__input"
-            placeholder="colleague@company.com"
+            placeholder={t("addDevice.emailPlaceholder")}
             value={memberEmail}
             onChange={(event) => setMemberEmail(event.target.value)}
             onKeyDown={(event) => {
@@ -211,7 +209,7 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
             onClick={addMember}
             disabled={!memberEmail.trim()}
           >
-            Add
+            {t("addDevice.add")}
           </button>
         </div>
 
@@ -232,7 +230,7 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
                     )
                   }
                 >
-                  Remove
+                  {t("common.remove")}
                 </button>
               </li>
             ))}
@@ -244,7 +242,7 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
           className="add-device__primary"
           disabled={busy || !name.trim()}
         >
-          {busy ? "Creating…" : "Create device"}
+          {busy ? t("addDevice.creating") : t("addDevice.create")}
         </button>
         {error && <p className="add-device__error">{error}</p>}
       </form>

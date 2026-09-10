@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import {
   fillUnitsToPercent,
@@ -30,6 +31,7 @@ type PressureVesselProps = {
 };
 
 function PressureVessel({ user }: PressureVesselProps) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
   const [device, setDevice] = useState<DeviceWithAccess | null>(null);
@@ -143,13 +145,13 @@ function PressureVessel({ user }: PressureVesselProps) {
   if (!ready) {
     return (
       <div className="container">
-        <div className="process-loading">Loading your pressure vessel…</div>
+        <div className="process-loading">{t("process.loadingPressureVessel")}</div>
       </div>
     );
   }
 
   if (!device) {
-    return <EmptyDeviceState processLabel="Pressure Vessel" />;
+    return <EmptyDeviceState processLabel={t("devices.pressure_vessel")} />;
   }
 
   const readOnly = !canOperateDevice(device.role);

@@ -5,6 +5,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AddOutline,
   NotificationsOutline,
@@ -53,6 +54,7 @@ function deviceHref(device: Pick<Device, "id" | "type">) {
 }
 
 const Navbar = ({ user }: NavbarProps) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -197,7 +199,7 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const onDeleteDevice = async (device: AccessibleDevice) => {
     const ok = window.confirm(
-      `Delete “${device.name}”? This removes its data for everyone.`
+      t("nav.deleteConfirm", { name: device.name })
     );
     if (!ok) return;
     try {
@@ -208,12 +210,12 @@ const Navbar = ({ user }: NavbarProps) => {
         navigate("/bioreactor", { replace: true });
       }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Could not delete");
+      window.alert(err instanceof Error ? err.message : t("nav.couldNotDelete"));
     }
   };
 
   const onLeaveDevice = async (device: AccessibleDevice) => {
-    const ok = window.confirm(`Leave “${device.name}? You can be re-invited later.`);
+    const ok = window.confirm(t("nav.leaveConfirm", { name: device.name }));
     if (!ok) return;
     try {
       await leaveDevice(device.id);
@@ -223,7 +225,7 @@ const Navbar = ({ user }: NavbarProps) => {
         navigate("/bioreactor", { replace: true });
       }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Could not leave");
+      window.alert(err instanceof Error ? err.message : t("nav.couldNotLeave"));
     }
   };
 
@@ -253,7 +255,7 @@ const Navbar = ({ user }: NavbarProps) => {
         );
         return;
       }
-      setError(message || "Could not switch account");
+      setError(message || t("nav.couldNotSwitch"));
       refreshAccounts();
     } finally {
       setBusy(false);
@@ -281,7 +283,7 @@ const Navbar = ({ user }: NavbarProps) => {
         navigate("/bioreactor", { replace: true });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not log out");
+      setError(err instanceof Error ? err.message : t("nav.couldNotLogOut"));
     } finally {
       setBusy(false);
     }
@@ -295,7 +297,7 @@ const Navbar = ({ user }: NavbarProps) => {
       setShowAccount(false);
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not log out");
+      setError(err instanceof Error ? err.message : t("nav.couldNotLogOut"));
     } finally {
       setBusy(false);
     }
@@ -310,7 +312,7 @@ const Navbar = ({ user }: NavbarProps) => {
               className={`topbar__mark topbar__mark--${connectivity}`}
               aria-hidden
             />
-            <span className="topbar__brand-text">Bioversee</span>
+            <span className="topbar__brand-text">{t("common.brand")}</span>
             <span className="topbar__sr-only">{statusTitle}</span>
           </Link>
 
@@ -320,9 +322,9 @@ const Navbar = ({ user }: NavbarProps) => {
               className={`topbar__round-btn topbar__add-btn ${
                 showAddDevice ? "is-active" : ""
               }`}
-              aria-label="Add device"
+              aria-label={t("nav.addDevice")}
               aria-expanded={showAddDevice}
-              title="Add device"
+              title={t("nav.addDevice")}
               onClick={() => {
                 setShowAccount(false);
                 setShareDevice(null);
@@ -346,7 +348,7 @@ const Navbar = ({ user }: NavbarProps) => {
             />
           </div>
 
-          <div className="topbar__devices" ref={devicesRef} role="toolbar" aria-label="Devices">
+          <div className="topbar__devices" ref={devicesRef} role="toolbar" aria-label={t("nav.devices")}>
             {devices.map((device) => {
               const meta = DEVICE_TYPE_META[device.type];
               const Icon = meta.Icon;
@@ -377,8 +379,8 @@ const Navbar = ({ user }: NavbarProps) => {
                       className="topbar__device-owner"
                       title={
                         device.ownerDisplayName
-                          ? `Shared by ${device.ownerDisplayName}`
-                          : "Shared device"
+                          ? t("nav.sharedBy", { name: device.ownerDisplayName })
+                          : t("nav.sharedDevice")
                       }
                     >
                       <img src={ownerAvatarSrc(device)} alt="" />
@@ -433,9 +435,9 @@ const Navbar = ({ user }: NavbarProps) => {
             <button
               type="button"
               className={`topbar__icon-btn ${showAppSettings ? "is-active" : ""}`}
-              aria-label="Settings"
+              aria-label={t("nav.settings")}
               aria-expanded={showAppSettings}
-              title="Settings"
+              title={t("nav.settings")}
               onClick={() => {
                 setShowAccount(false);
                 setShowAddDevice(false);
@@ -447,7 +449,7 @@ const Navbar = ({ user }: NavbarProps) => {
             >
               <SettingsOutline
                 color="var(--bv-text)"
-                title="Settings"
+                title={t("nav.settings")}
                 height="20px"
                 width="20px"
               />
@@ -475,8 +477,8 @@ const Navbar = ({ user }: NavbarProps) => {
               className={`topbar__icon-btn ${showNotifications ? "is-active" : ""}`}
               aria-label={
                 unread > 0
-                  ? `Notifications, ${unread} unread`
-                  : "Notifications"
+                  ? t("nav.notificationsUnread", { count: unread })
+                  : t("nav.notifications")
               }
               aria-expanded={showNotifications}
               onClick={() => {
@@ -490,7 +492,7 @@ const Navbar = ({ user }: NavbarProps) => {
             >
               <NotificationsOutline
                 color="var(--bv-text)"
-                title="Notifications"
+                title={t("nav.notifications")}
                 height="20px"
                 width="20px"
               />
@@ -512,7 +514,7 @@ const Navbar = ({ user }: NavbarProps) => {
             <button
               type="button"
               className="topbar__avatar-btn"
-              aria-label="Account menu"
+              aria-label={t("nav.accountMenu")}
               onClick={() => {
                 setShareDevice(null);
                 setSettingsDevice(null);
@@ -530,7 +532,7 @@ const Navbar = ({ user }: NavbarProps) => {
             </button>
             {showAccount && (
               <div className="topbar__menu">
-                <p className="topbar__menu-label">Current account</p>
+                <p className="topbar__menu-label">{t("nav.currentAccount")}</p>
                 <div className="topbar__account-row topbar__account-row--active">
                   <img
                     src={avatarForAccount(user)}
@@ -542,14 +544,14 @@ const Navbar = ({ user }: NavbarProps) => {
                     <p className="topbar__menu-meta">{user.email}</p>
                   </div>
                   <span className="topbar__account-status topbar__account-status--in">
-                    Signed in
+                    {t("nav.signedIn")}
                   </span>
                 </div>
 
                 {otherAccounts.length > 0 && (
                   <>
                     <p className="topbar__menu-label topbar__menu-label--spaced">
-                      Other accounts
+                      {t("nav.otherAccounts")}
                     </p>
                     <ul className="topbar__account-list">
                       {otherAccounts.map((account) => {
@@ -586,7 +588,7 @@ const Navbar = ({ user }: NavbarProps) => {
                                     : "topbar__account-status--out"
                                 }`}
                               >
-                                {signedIn ? "Signed in" : "Logged out"}
+                                {signedIn ? t("nav.signedIn") : t("nav.loggedOut")}
                               </span>
                             </button>
                           </li>
@@ -602,7 +604,7 @@ const Navbar = ({ user }: NavbarProps) => {
                   disabled={busy}
                   onClick={onAddAccount}
                 >
-                  Add account
+                  {t("nav.addAccount")}
                 </button>
                 <button
                   type="button"
@@ -611,8 +613,8 @@ const Navbar = ({ user }: NavbarProps) => {
                   onClick={onLogout}
                 >
                   {otherAccounts.length > 0
-                    ? "Log out of this account"
-                    : "Log out"}
+                    ? t("nav.logOutThis")
+                    : t("nav.logOut")}
                 </button>
                 {accounts.length > 1 && (
                   <button
@@ -621,7 +623,7 @@ const Navbar = ({ user }: NavbarProps) => {
                     disabled={busy}
                     onClick={onLogoutAll}
                   >
-                    Log out of all accounts
+                    {t("nav.logOutAll")}
                   </button>
                 )}
                 {error && <p className="topbar__menu-error">{error}</p>}

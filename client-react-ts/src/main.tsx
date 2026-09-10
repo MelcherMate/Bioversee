@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import { applyAppearance, loadAppearance } from "./lib/appearance";
 import { AppearanceProvider } from "./lib/AppearanceProvider";
+import "./i18n";
 import "./index.css";
 
 applyAppearance(loadAppearance());

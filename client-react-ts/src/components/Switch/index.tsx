@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getLatestSwitchState,
   insertSwitchState,
@@ -17,6 +18,7 @@ type SwitchProps = {
 };
 
 function Switch(props: SwitchProps) {
+  const { t } = useTranslation();
   const disabled = Boolean(props.disabled);
 
   useEffect(() => {
@@ -45,7 +47,9 @@ function Switch(props: SwitchProps) {
     >
       <div className="bv-switch__copy">
         <span className="bv-switch__label">{props.label}</span>
-        <span className="bv-switch__state">{props.val ? "On" : "Off"}</span>
+        <span className="bv-switch__state">
+          {props.val ? t("common.on") : t("common.off")}
+        </span>
       </div>
       <input
         type="checkbox"

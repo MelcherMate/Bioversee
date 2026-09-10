@@ -1,3 +1,4 @@
+import i18n from "../i18n";
 import { supabase } from "./supabase";
 import type { Device, DeviceType } from "./devices";
 import type { DeviceMemberRole } from "./database.types";
@@ -96,13 +97,13 @@ export async function listShareableDevices(): Promise<Device[]> {
 export function roleLabel(role: string): string {
   switch (role) {
     case "owner":
-      return "Owner";
+      return i18n.t("common.owner");
     case "admin":
-      return "Admin";
+      return i18n.t("common.admin");
     case "operator":
-      return "Operator";
+      return i18n.t("common.operator");
     case "viewer":
-      return "Viewer";
+      return i18n.t("common.viewer");
     default:
       return role;
   }
@@ -205,21 +206,24 @@ export async function revokeShareLink(linkId: string): Promise<void> {
   if (error) throw error;
 }
 
-export const SHARE_ROLE_OPTIONS: { value: ShareRole; label: string; hint: string }[] =
-  [
-    {
-      value: "viewer",
-      label: "Viewer",
-      hint: "Can view live data and charts",
-    },
-    {
-      value: "operator",
-      label: "Operator",
-      hint: "Can change controls and inject readings",
-    },
-    {
-      value: "admin",
-      label: "Admin",
-      hint: "Can manage people and invite links",
-    },
-  ];
+export const SHARE_ROLE_OPTIONS: {
+  value: ShareRole;
+  labelKey: string;
+  hintKey: string;
+}[] = [
+  {
+    value: "viewer",
+    labelKey: "roles.viewer",
+    hintKey: "roles.viewerHint",
+  },
+  {
+    value: "operator",
+    labelKey: "roles.operator",
+    hintKey: "roles.operatorHint",
+  },
+  {
+    value: "admin",
+    labelKey: "roles.admin",
+    hintKey: "roles.adminHint",
+  },
+];

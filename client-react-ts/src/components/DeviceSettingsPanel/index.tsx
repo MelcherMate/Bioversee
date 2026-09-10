@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { TrashOutline } from "react-ionicons";
 import {
   canAdminDevice,
@@ -23,6 +24,7 @@ function DeviceSettingsPanel({
   onRenamed,
   onRequestDelete,
 }: DeviceSettingsPanelProps) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -75,7 +77,7 @@ function DeviceSettingsPanel({
       setSaved(true);
       onRenamed();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save");
+      setError(err instanceof Error ? err.message : t("deviceSettings.couldNotSave"));
     } finally {
       setBusy(false);
     }
@@ -86,7 +88,7 @@ function DeviceSettingsPanel({
       className="device-settings"
       ref={panelRef}
       role="dialog"
-      aria-label="Device settings"
+      aria-label={t("deviceSettings.aria")}
     >
       <div className="device-settings__head">
         <div className="device-settings__title-row">
@@ -94,15 +96,15 @@ function DeviceSettingsPanel({
             <Icon color="var(--bv-accent-hover)" height="18px" width="18px" />
           </span>
           <div>
-            <p className="device-settings__eyebrow">Settings</p>
-            <h2 className="device-settings__title">{meta.label}</h2>
+            <p className="device-settings__eyebrow">{t("deviceSettings.eyebrow")}</p>
+            <h2 className="device-settings__title">{t(meta.labelKey)}</h2>
           </div>
         </div>
         <button
           type="button"
           className="device-settings__close"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           ×
         </button>
@@ -110,7 +112,7 @@ function DeviceSettingsPanel({
 
       <form onSubmit={onSubmit}>
         <label className="device-settings__label" htmlFor="device-settings-name">
-          Device name
+          {t("deviceSettings.deviceName")}
         </label>
         <input
           id="device-settings-name"
@@ -122,9 +124,7 @@ function DeviceSettingsPanel({
           required
         />
         {!canRename && (
-          <p className="device-settings__hint">
-            Only owners and admins can rename this device.
-          </p>
+          <p className="device-settings__hint">{t("deviceSettings.renameHint")}</p>
         )}
 
         {canRename && (
@@ -133,7 +133,11 @@ function DeviceSettingsPanel({
             className="device-settings__primary"
             disabled={busy || !name.trim() || name.trim() === device.name}
           >
-            {busy ? "Saving…" : saved ? "Saved" : "Save name"}
+            {busy
+              ? t("deviceSettings.saving")
+              : saved
+                ? t("deviceSettings.saved")
+                : t("deviceSettings.saveName")}
           </button>
         )}
       </form>
@@ -145,7 +149,7 @@ function DeviceSettingsPanel({
           onClick={() => onRequestDelete(device)}
         >
           <TrashOutline color="#b42318" height="16px" width="16px" title="" />
-          Delete device
+          {t("deviceSettings.deleteDevice")}
         </button>
       )}
 

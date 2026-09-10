@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import {
   canAdminDevice,
@@ -46,6 +47,7 @@ function SharePanel({
   onDevicesChanged,
   initialDeviceId = null,
 }: SharePanelProps) {
+  const { t } = useTranslation();
   const location = useLocation();
   const panelRef = useRef<HTMLDivElement | null>(null);
 
@@ -63,8 +65,9 @@ function SharePanel({
 
   const selected = devices.find((d) => d.id === deviceId) ?? null;
   const canAdmin = selected ? canAdminDevice(selected.role) : false;
-  const roleHint =
-    SHARE_ROLE_OPTIONS.find((option) => option.value === role)?.hint ?? "";
+  const roleHintKey =
+    SHARE_ROLE_OPTIONS.find((option) => option.value === role)?.hintKey;
+  const roleHint = roleHintKey ? t(roleHintKey) : "";
 
   useEffect(() => {
     if (!open) return;
@@ -113,7 +116,7 @@ function SharePanel({
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load devices");
+        setError(err instanceof Error ? err.message : t("share.failedLoadDevices"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -122,7 +125,7 @@ function SharePanel({
     return () => {
       cancelled = true;
     };
-  }, [open, location.pathname, user.id, initialDeviceId]);
+  }, [open, location.pathname, user.id, initialDeviceId, t]);
 
   useEffect(() => {
     if (!open || !deviceId) {
@@ -147,7 +150,7 @@ function SharePanel({
         }
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load roster");
+        setError(err instanceof Error ? err.message : t("share.failedLoadRoster"));
       }
     };
 
@@ -155,7 +158,7 @@ function SharePanel({
     return () => {
       cancelled = true;
     };
-  }, [open, deviceId, canAdmin]);
+  }, [open, deviceId, canAdmin, t]);
 
   const refreshAccess = async () => {
     if (!deviceId) return;
@@ -180,12 +183,10 @@ function SharePanel({
       const url = inviteUrlForToken(token);
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setMessage(
-        "Invite link copied. Recipients must accept from their notifications bell."
-      );
+      setMessage(t("share.linkCopiedMsg"));
       await refreshAccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create link");
+      setError(err instanceof Error ? err.message : t("share.couldNotCreateLink"));
     } finally {
       setBusy(false);
     }
@@ -198,14 +199,13 @@ function SharePanel({
     setError(null);
     setMessage(null);
     try {
-      await inviteByEmail(deviceId, email.trim(), role);
+      const trimmed = email.trim();
+      await inviteByEmail(deviceId, trimmed, role);
       setEmail("");
-      setMessage(
-        `Invite sent to ${email.trim()}. They must accept it from Notifications.`
-      );
+      setMessage(t("share.inviteSent", { email: trimmed }));
       await refreshAccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invite failed");
+      setError(err instanceof Error ? err.message : t("share.inviteFailed"));
     } finally {
       setBusy(false);
     }
@@ -219,7 +219,7 @@ function SharePanel({
       await updateMemberRole(member.member_id, next);
       await refreshAccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update role");
+      setError(err instanceof Error ? err.message : t("share.couldNotUpdateRole"));
     } finally {
       setBusy(false);
     }
@@ -233,7 +233,7 @@ function SharePanel({
       await removeMember(member.member_id);
       await refreshAccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove member");
+      setError(err instanceof Error ? err.message : t("share.couldNotRemove"));
     } finally {
       setBusy(false);
     }
@@ -248,7 +248,7 @@ function SharePanel({
       await onDevicesChanged?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not leave device");
+      setError(err instanceof Error ? err.message : t("share.couldNotLeave"));
     } finally {
       setBusy(false);
     }
@@ -262,7 +262,7 @@ function SharePanel({
       await revokeShareLink(link.id);
       await refreshAccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not revoke link");
+      setError(err instanceof Error ? err.message : t("share.couldNotRevoke"));
     } finally {
       setBusy(false);
     }
@@ -271,30 +271,27 @@ function SharePanel({
   if (!open) return null;
 
   return (
-    <div className="share-panel" ref={panelRef} role="dialog" aria-label="Share device">
+    <div className="share-panel" ref={panelRef} role="dialog" aria-label={t("share.title")}>
       <div className="share-panel__head">
         <div>
-          <p className="share-panel__eyebrow">Share</p>
+          <p className="share-panel__eyebrow">{t("share.title")}</p>
           <h2 className="share-panel__title">
-            {canAdmin ? "Invite people" : "People with access"}
+            {canAdmin ? t("share.invitePeople") : t("share.peopleWithAccess")}
           </h2>
         </div>
-        <button type="button" className="share-panel__close" onClick={onClose} aria-label="Close">
+        <button type="button" className="share-panel__close" onClick={onClose} aria-label={t("common.close")}>
           ×
         </button>
       </div>
 
       {loading ? (
-        <p className="share-panel__muted">Loading your devices…</p>
+        <p className="share-panel__muted">{t("share.loadingDevices")}</p>
       ) : devices.length === 0 ? (
-        <p className="share-panel__muted">
-          No devices yet. Create one with + in the header, or accept a share
-          invite.
-        </p>
+        <p className="share-panel__muted">{t("share.noDevices")}</p>
       ) : (
         <>
           <label className="share-panel__label" htmlFor="share-device">
-            Device
+            {t("share.device")}
           </label>
           <select
             id="share-device"
@@ -312,16 +309,16 @@ function SharePanel({
 
           {canAdmin ? (
             <>
-              <p className="share-panel__label">Access level</p>
+              <p className="share-panel__label">{t("share.accessLevel")}</p>
               <SegmentedControl
-                aria-label="Share role"
+                aria-label={t("share.accessLevel")}
                 shape="rounded"
                 accent
                 value={role}
                 onChange={(value) => setRole(value as ShareRole)}
                 options={SHARE_ROLE_OPTIONS.map((option) => ({
                   value: option.value,
-                  label: option.label,
+                  label: t(option.labelKey),
                 }))}
               />
               <p className="share-panel__hint">{roleHint}</p>
@@ -332,19 +329,19 @@ function SharePanel({
                 onClick={onCopyLink}
                 disabled={busy}
               >
-                {copied ? "Link copied" : "Copy invite link"}
+                {copied ? t("share.linkCopied") : t("share.copyLink")}
               </button>
 
               <form className="share-panel__email" onSubmit={onInviteEmail}>
                 <label className="share-panel__label" htmlFor="share-email">
-                  Invite by email
+                  {t("share.inviteByEmail")}
                 </label>
                 <div className="share-panel__email-row">
                   <input
                     id="share-email"
                     type="email"
                     className="share-panel__input"
-                    placeholder="colleague@company.com"
+                    placeholder={t("share.emailPlaceholder")}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     disabled={busy}
@@ -355,26 +352,20 @@ function SharePanel({
                     className="share-panel__secondary"
                     disabled={busy || !email.trim()}
                   >
-                    Invite
+                    {t("share.invite")}
                   </button>
                 </div>
-                <p className="share-panel__hint">
-                  They need a Bioversee account and must accept from the bell
-                  icon before the device appears for them.
-                </p>
+                <p className="share-panel__hint">{t("share.inviteHint")}</p>
               </form>
             </>
           ) : (
-            <p className="share-panel__hint">
-              You can view who has access. Only owners and admins can invite or
-              change roles.
-            </p>
+            <p className="share-panel__hint">{t("share.viewOnlyHint")}</p>
           )}
 
           <div className="share-panel__section">
-            <p className="share-panel__label">People with access</p>
+            <p className="share-panel__label">{t("share.peopleWithAccess")}</p>
             {roster.length === 0 ? (
-              <p className="share-panel__muted">Only you so far.</p>
+              <p className="share-panel__muted">{t("share.onlyYou")}</p>
             ) : (
               <ul className="share-panel__list">
                 {roster.map((member) => {
@@ -396,15 +387,15 @@ function SharePanel({
                         <div>
                           <p className="share-panel__name">
                             {member.display_name}
-                            {isSelf ? " (you)" : ""}
+                            {isSelf ? ` ${t("common.you")}` : ""}
                           </p>
                           <p className="share-panel__meta">
-                            {member.email ?? "No email"}
+                            {member.email ?? t("common.noEmail")}
                           </p>
                         </div>
                       </div>
                       {isOwnerRole ? (
-                        <span className="share-panel__pill">Owner</span>
+                        <span className="share-panel__pill">{t("common.owner")}</span>
                       ) : canAdmin ? (
                         <div className="share-panel__actions">
                           <select
@@ -421,7 +412,7 @@ function SharePanel({
                           >
                             {SHARE_ROLE_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>
-                                {option.label}
+                                {t(option.labelKey)}
                               </option>
                             ))}
                           </select>
@@ -431,7 +422,7 @@ function SharePanel({
                             disabled={busy}
                             onClick={() => onRemove(member)}
                           >
-                            Remove
+                            {t("common.remove")}
                           </button>
                         </div>
                       ) : isSelf ? (
@@ -445,7 +436,7 @@ function SharePanel({
                             disabled={busy}
                             onClick={() => void onLeave()}
                           >
-                            Leave
+                            {t("common.leave")}
                           </button>
                         </div>
                       ) : (
@@ -462,18 +453,20 @@ function SharePanel({
 
           {canAdmin && links.length > 0 && (
             <div className="share-panel__section">
-              <p className="share-panel__label">Active invite links</p>
+              <p className="share-panel__label">{t("share.activeLinks")}</p>
               <ul className="share-panel__list">
                 {links.map((link) => (
                   <li key={link.id} className="share-panel__row">
                     <div>
                       <p className="share-panel__name">
-                        {link.role} · {shortToken(link.token)}
+                        {roleLabel(link.role)} · {shortToken(link.token)}
                       </p>
                       <p className="share-panel__meta">
-                        Used {link.use_count}
+                        {t("share.used", { count: link.use_count })}
                         {link.expires_at
-                          ? ` · expires ${new Date(link.expires_at).toLocaleDateString()}`
+                          ? ` · ${t("share.expires", {
+                              date: new Date(link.expires_at).toLocaleDateString(),
+                            })}`
                           : ""}
                       </p>
                     </div>
@@ -483,7 +476,7 @@ function SharePanel({
                       disabled={busy}
                       onClick={() => onRevokeLink(link)}
                     >
-                      Revoke
+                      {t("share.revoke")}
                     </button>
                   </li>
                 ))}

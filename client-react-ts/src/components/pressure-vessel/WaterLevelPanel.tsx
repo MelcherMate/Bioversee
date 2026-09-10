@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 import AnimatedNumber from "../AnimatedNumber";
 import "../Slider/Slider.css";
 import {
@@ -37,9 +38,9 @@ export function WaterLevelPanel({
   fillUnits,
   onChange,
   onCommit,
-  title = "Water level",
-  fillLabel = "Fill",
-  drainLabel = "Drain",
+  title,
+  fillLabel,
+  drainLabel,
   showPercent = true,
   isFillHeld = false,
   onFillHoldChange,
@@ -49,6 +50,10 @@ export function WaterLevelPanel({
   drainDisabled = false,
   disabled = false,
 }: WaterLevelPanelProps) {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t("process.waterLevel");
+  const resolvedFillLabel = fillLabel ?? t("process.fill");
+  const resolvedDrainLabel = drainLabel ?? t("process.drain");
   const [isDragging, setIsDragging] = useState(false);
   // Local visual level updated every frame so the thumb never freezes/jumps
   // while React state catches up from fill/drain animation.
@@ -144,11 +149,11 @@ export function WaterLevelPanel({
     <div
       className={`controlPanel pv-panel${controlsLocked ? " pv-panel--disabled" : ""}`}
     >
-      <h4 className="boxTitle">{title}</h4>
+      <h4 className="boxTitle">{resolvedTitle}</h4>
 
       <div className="bv-slider pv-panel__slider">
         <div className="bv-slider__meta">
-          <span className="bv-slider__label">Level</span>
+          <span className="bv-slider__label">{t("process.level")}</span>
           {showPercent ? (
             <AnimatedNumber
               className="bv-slider__value"
@@ -185,7 +190,7 @@ export function WaterLevelPanel({
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
             onBlur={endDrag}
-            aria-label="Water level"
+            aria-label={resolvedTitle}
           />
         </div>
       </div>
@@ -194,20 +199,20 @@ export function WaterLevelPanel({
         <button
           {...bindHoldButton(onFillHoldChange)}
           disabled={controlsLocked || atFull || fillDisabled}
-          aria-label={`${fillLabel} tank`}
+          aria-label={resolvedFillLabel}
           aria-pressed={isFillHeld}
           className={`pv-panel__btn pv-panel__btn--fill${isFillHeld ? " is-active" : ""}`}
         >
-          {fillLabel}
+          {resolvedFillLabel}
         </button>
         <button
           {...bindHoldButton(onDrainHoldChange)}
           disabled={controlsLocked || atEmpty || drainDisabled}
-          aria-label={`${drainLabel} tank`}
+          aria-label={resolvedDrainLabel}
           aria-pressed={isDrainHeld}
           className={`pv-panel__btn pv-panel__btn--drain${isDrainHeld ? " is-active" : ""}`}
         >
-          {drainLabel}
+          {resolvedDrainLabel}
         </button>
       </div>
     </div>

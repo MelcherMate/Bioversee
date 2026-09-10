@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "./EmptyDeviceState.css";
 
 type EmptyDeviceStateProps = {
@@ -6,18 +7,18 @@ type EmptyDeviceStateProps = {
 };
 
 function EmptyDeviceState({ processLabel }: EmptyDeviceStateProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="empty-device">
       <div className="empty-device__card">
-        <p className="empty-device__eyebrow">No device yet</p>
-        <h1 className="empty-device__title">Add a {processLabel}</h1>
-        <p className="empty-device__body">
-          Devices aren’t created automatically. Use the <strong>+</strong> button
-          next to Bioversee to add one, or accept a share invite from
-          Notifications.
-        </p>
+        <p className="empty-device__eyebrow">{t("emptyDevice.title")}</p>
+        <h1 className="empty-device__title">
+          {t("emptyDevice.heading", { process: processLabel })}
+        </h1>
+        <p className="empty-device__body">{t("emptyDevice.body")}</p>
         <Link className="empty-device__hint" to="/bioreactor">
-          Stay here after you create one — pick it from the header icons.
+          {t("emptyDevice.hint")}
         </Link>
       </div>
     </div>

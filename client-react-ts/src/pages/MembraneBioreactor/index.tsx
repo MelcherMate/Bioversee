@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { MbrControlPanel } from "../../components/membrane-bioreactor/MbrControlPanel";
 import { MbrDrawing } from "../../components/membrane-bioreactor/MbrDrawing";
@@ -48,6 +49,7 @@ function snapAerationLevel(value: number): MbrAerationLevel {
 }
 
 function MembraneBioreactor({ user }: MembraneBioreactorProps) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
   const [device, setDevice] = useState<DeviceWithAccess | null>(null);
@@ -123,13 +125,13 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   if (!ready) {
     return (
       <div className="container">
-        <div className="process-loading">Loading your membrane MBR…</div>
+        <div className="process-loading">{t("process.loadingMbr")}</div>
       </div>
     );
   }
 
   if (!device) {
-    return <EmptyDeviceState processLabel="Membrane MBR" />;
+    return <EmptyDeviceState processLabel={t("devices.membrane_bioreactor")} />;
   }
 
   const readOnly = !canOperateDevice(device.role);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import "./Toast.css";
 
 export type ToastTone = "info" | "success" | "error";
@@ -34,6 +35,8 @@ function ToastCard({
   toast: ToastItem;
   onDismiss: (id: string) => void;
 }) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (toast.tone === "info") return;
     const timer = window.setTimeout(() => onDismiss(toast.id), AUTO_MS);
@@ -50,7 +53,7 @@ function ToastCard({
         type="button"
         className="bv-toast__dismiss"
         onClick={() => onDismiss(toast.id)}
-        aria-label="Dismiss"
+        aria-label={t("common.dismiss")}
       >
         ×
       </button>

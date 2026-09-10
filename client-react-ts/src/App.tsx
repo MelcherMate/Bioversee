@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   BrowserRouter,
   Navigate,
@@ -36,6 +37,7 @@ function HomeRedirect() {
 }
 
 const App = () => {
+  const { t } = useTranslation();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [devPanelOpen, setDevPanelOpen] = useState(false);
@@ -118,7 +120,7 @@ const App = () => {
       <div className="appContainer appContainer--loading">
         <div className="app-loader">
           <span className="app-loader__dot" />
-          Loading Bioversee…
+          {t("app.loading")}
         </div>
       </div>
     );

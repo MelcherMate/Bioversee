@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   acceptDeviceInvite,
@@ -18,15 +19,18 @@ type NotificationsPanelProps = {
   onDevicesChanged?: () => void | Promise<void>;
 };
 
-function timeAgo(iso: string): string {
+function timeAgo(
+  iso: string,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("notifications.justNow");
+  if (mins < 60) return t("notifications.minutesAgo", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("notifications.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t("notifications.daysAgo", { count: days });
 }
 
 function NotificationsPanel({
@@ -35,6 +39,7 @@ function NotificationsPanel({
   onUnreadChange,
   onDevicesChanged,
 }: NotificationsPanelProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [items, setItems] = useState<AppNotification[]>([]);
@@ -50,7 +55,7 @@ function NotificationsPanel({
       setItems(list);
       onUnreadChange?.(unreadCount(list));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load");
+      setError(err instanceof Error ? err.message : t("notifications.failedLoad"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +105,7 @@ function NotificationsPanel({
         })
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not accept");
+      setError(err instanceof Error ? err.message : t("notifications.couldNotAccept"));
     } finally {
       setBusyId(null);
     }
@@ -115,7 +120,7 @@ function NotificationsPanel({
       await declineDeviceInvite(inviteId);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not decline");
+      setError(err instanceof Error ? err.message : t("notifications.couldNotDecline"));
     } finally {
       setBusyId(null);
     }
@@ -153,27 +158,27 @@ function NotificationsPanel({
       className="notif-panel"
       ref={panelRef}
       role="dialog"
-      aria-label="Notifications"
+      aria-label={t("notifications.title")}
     >
       <div className="notif-panel__head">
         <div>
-          <p className="notif-panel__eyebrow">Inbox</p>
-          <h2 className="notif-panel__title">Notifications</h2>
+          <p className="notif-panel__eyebrow">{t("notifications.inbox")}</p>
+          <h2 className="notif-panel__title">{t("notifications.title")}</h2>
         </div>
         <button
           type="button"
           className="notif-panel__close"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           ×
         </button>
       </div>
 
       {loading && items.length === 0 ? (
-        <p className="notif-panel__muted">Loading…</p>
+        <p className="notif-panel__muted">{t("notifications.loading")}</p>
       ) : items.length === 0 ? (
-        <p className="notif-panel__muted">No notifications yet.</p>
+        <p className="notif-panel__muted">{t("notifications.empty")}</p>
       ) : (
         <ul className="notif-panel__list">
           {items.map((notification) => {
@@ -193,7 +198,7 @@ function NotificationsPanel({
                 <div className="notif-panel__item-top">
                   <p className="notif-panel__item-title">{notification.title}</p>
                   <span className="notif-panel__time">
-                    {timeAgo(notification.created_at)}
+                    {timeAgo(notification.created_at, t)}
                   </span>
                 </div>
                 {notification.body && (
@@ -208,7 +213,7 @@ function NotificationsPanel({
                       disabled={busyId === notification.id}
                       onClick={() => onAccept(notification)}
                     >
-                      Accept
+                      {t("notifications.accept")}
                     </button>
                     <button
                       type="button"
@@ -216,14 +221,16 @@ function NotificationsPanel({
                       disabled={busyId === notification.id}
                       onClick={() => onDecline(notification)}
                     >
-                      Decline
+                      {t("notifications.decline")}
                     </button>
                   </div>
                 ) : (
                   <div className="notif-panel__footer">
                     {resolved && (
                       <span className="notif-panel__resolved">
-                        {resolved === "accepted" ? "Accepted" : "Declined"}
+                        {resolved === "accepted"
+                          ? t("notifications.accepted")
+                          : t("notifications.declined")}
                       </span>
                     )}
                     {!notification.read_at && !pendingInvite && (
@@ -232,7 +239,7 @@ function NotificationsPanel({
                         className="notif-panel__text-btn"
                         onClick={() => onMarkRead(notification)}
                       >
-                        Mark read
+                        {t("notifications.markRead")}
                       </button>
                     )}
                   </div>

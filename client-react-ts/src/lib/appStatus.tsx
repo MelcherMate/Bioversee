@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
+import i18n from "../i18n";
+
 export type AppConnectivity = "online" | "offline" | "degraded";
 
 type AppStatusContextValue = {
@@ -72,10 +74,10 @@ export function useAppStatus(): AppStatusContextValue {
 export function connectivityLabel(status: AppConnectivity): string {
   switch (status) {
     case "online":
-      return "Online";
+      return i18n.t("status.online");
     case "offline":
-      return "Offline — app stays open";
+      return i18n.t("status.offline");
     case "degraded":
-      return "Something needs attention";
+      return i18n.t("status.attention");
   }
 }

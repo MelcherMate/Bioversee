@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   openSharedDeviceUrl,
   redeemShareLink,
+  roleLabel,
   type RedeemResult,
 } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
@@ -13,6 +15,7 @@ type InviteProps = {
 };
 
 function Invite({ user }: InviteProps) {
+  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">(
@@ -56,27 +59,26 @@ function Invite({ user }: InviteProps) {
         if (cancelled) return;
         setStatus("error");
         setError(
-          err instanceof Error ? err.message : "Could not process invite"
+          err instanceof Error ? err.message : t("invite.failedBody")
         );
       });
 
     return () => {
       cancelled = true;
     };
-  }, [user, token, navigate]);
+  }, [user, token, navigate, t]);
 
   if (!user) {
     return (
       <div className="invite-page">
         <div className="invite-card">
-          <p className="invite-card__eyebrow">Invite</p>
-          <h1 className="invite-card__title">Sign in to continue</h1>
+          <p className="invite-card__eyebrow">{t("invite.title")}</p>
+          <h1 className="invite-card__title">{t("invite.signInToContinue")}</h1>
           <p className="invite-card__body">
-            You need a Bioversee account before you can review this device
-            invite.
+            {t("auth.subtitle")}
           </p>
           <Link className="invite-card__cta" to={`/?next=/invite/${token ?? ""}`}>
-            Sign in
+            {t("invite.signIn")}
           </Link>
         </div>
       </div>
@@ -86,40 +88,33 @@ function Invite({ user }: InviteProps) {
   return (
     <div className="invite-page">
       <div className="invite-card">
-        <p className="invite-card__eyebrow">Invite</p>
+        <p className="invite-card__eyebrow">{t("invite.title")}</p>
         {status === "working" && (
           <>
-            <h1 className="invite-card__title">Opening invite…</h1>
-            <p className="invite-card__body">
-              Preparing a notification for you to accept.
-            </p>
+            <h1 className="invite-card__title">{t("invite.opening")}</h1>
+            <p className="invite-card__body">{t("invite.pendingBody")}</p>
           </>
         )}
         {status === "done" && result?.status === "pending" && (
           <>
-            <h1 className="invite-card__title">Invite received</h1>
+            <h1 className="invite-card__title">{t("invite.received")}</h1>
             <p className="invite-card__body">
-              <strong>{result.name}</strong> was shared with you as{" "}
-              {result.role}. Open the bell icon to accept before it appears in
-              your devices.
+              {t("invite.acceptedBody", { role: roleLabel(result.role) })}
             </p>
           </>
         )}
         {status === "done" && result?.status === "already_member" && (
           <>
-            <h1 className="invite-card__title">Already shared</h1>
-            <p className="invite-card__body">
-              You already have access to <strong>{result.name}</strong>. Opening
-              it now…
-            </p>
+            <h1 className="invite-card__title">{t("invite.alreadyShared")}</h1>
+            <p className="invite-card__body">{t("invite.alreadyMemberBody")}</p>
           </>
         )}
         {status === "error" && (
           <>
-            <h1 className="invite-card__title">Invite unavailable</h1>
-            <p className="invite-card__body">{error}</p>
+            <h1 className="invite-card__title">{t("invite.unavailable")}</h1>
+            <p className="invite-card__body">{error ?? t("invite.failedBody")}</p>
             <Link className="invite-card__cta" to="/bioreactor">
-              Back to app
+              {t("invite.backToApp")}
             </Link>
           </>
         )}

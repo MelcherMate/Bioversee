@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Google from "../../img/google.png";
 import Logo from "../../utils/svgs/new_logo.svg";
@@ -18,6 +19,7 @@ type LoginProps = {
 };
 
 const Login = ({ mode: loginMode = "default" }: LoginProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const addingAccount = loginMode === "add-account";
@@ -94,10 +96,10 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           password,
         });
         if (signUpError) throw signUpError;
-        setMessage("Check your email to confirm your account, then sign in.");
+        setMessage(t("auth.checkEmail"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      setError(err instanceof Error ? err.message : t("auth.authFailed"));
     } finally {
       setBusy(false);
     }
@@ -135,14 +137,14 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
               <img src={Logo} alt="" />
             </div>
             <div className="auth-card__headline">
-              <p className="auth-card__eyebrow">Bioversee</p>
+              <p className="auth-card__eyebrow">{t("common.brand")}</p>
               <h1 className="auth-card__title">
-                {addingAccount ? "Add account" : "Welcome"}
+                {addingAccount ? t("auth.addAccount") : t("auth.welcome")}
               </h1>
               <p className="auth-card__subtitle">
                 {addingAccount
-                  ? "Sign in with another account. Your current account stays signed in on this device."
-                  : "Automation for everyone — control industrial equipment from the cloud."}
+                  ? t("auth.addAccountSubtitle")
+                  : t("auth.subtitle")}
               </p>
             </div>
           </div>
@@ -152,21 +154,21 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           <SegmentedControl<"signin" | "signup">
             className="auth-segment"
             shape="pill"
-            aria-label="Authentication mode"
+            aria-label={t("auth.signIn")}
             value={mode}
             onChange={setMode}
             options={[
-              { value: "signin", label: "Sign in" },
-              { value: "signup", label: "Sign up" },
+              { value: "signin", label: t("auth.signIn") },
+              { value: "signup", label: t("auth.signUp") },
             ]}
           />
 
           <form className="auth-form" onSubmit={onSubmit}>
             <label className="auth-field">
-              <span>Email</span>
+              <span>{t("auth.email")}</span>
               <input
                 type="email"
-                placeholder="you@company.com"
+                placeholder={t("auth.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -174,7 +176,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
               />
             </label>
             <label className="auth-field">
-              <span>Password</span>
+              <span>{t("auth.password")}</span>
               <input
                 type="password"
                 placeholder="••••••••"
@@ -189,17 +191,17 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
             </label>
             <button type="submit" className="auth-cta" disabled={busy}>
               {busy
-                ? "Please wait…"
+                ? t("auth.pleaseWait")
                 : mode === "signin"
                   ? addingAccount
-                    ? "Add account"
-                    : "Sign in"
-                  : "Create account"}
+                    ? t("auth.addAccount")
+                    : t("auth.signIn")
+                  : t("auth.createAccount")}
             </button>
           </form>
 
           <div className="auth-or">
-            <span>or</span>
+            <span>{t("common.or")}</span>
           </div>
 
           <button
@@ -208,12 +210,12 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
             onClick={signInWithGoogle}
           >
             <img src={Google} alt="" />
-            Continue with Google
+            {t("auth.continueGoogle")}
           </button>
 
           {addingAccount && (
             <Link className="auth-note auth-note--link" to="/bioreactor">
-              Cancel and stay on current account
+              {t("auth.cancelStay")}
             </Link>
           )}
 
@@ -221,7 +223,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           {message && <p className="auth-message">{message}</p>}
 
           {!addingAccount && (
-            <p className="auth-note">Demo site for Bioversee prototypes</p>
+            <p className="auth-note">{t("auth.demoNote")}</p>
           )}
         </div>
       </div>

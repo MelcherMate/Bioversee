@@ -17,6 +17,7 @@ import {
   type AppLanguage,
   type ThemePreference,
 } from "./appearance";
+import i18n from "../i18n";
 import { supabase } from "./supabase";
 import {
   loadAppearanceFromCloud,
@@ -62,6 +63,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyAppearance(settings);
     saveAppearance(settings);
+    void i18n.changeLanguage(settings.language);
   }, [settings]);
 
   useEffect(() => {

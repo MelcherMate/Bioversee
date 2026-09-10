@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ExitOutline,
   SettingsOutline,
@@ -29,6 +30,7 @@ function DeviceContextMenu({
   onDelete,
   onLeave,
 }: DeviceContextMenuProps) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ function DeviceContextMenu({
       className="device-ctx"
       style={{ left, top }}
       role="menu"
-      aria-label={`${device.name} options`}
+      aria-label={t("deviceMenu.options", { name: device.name })}
     >
       <p className="device-ctx__name">{device.name}</p>
       <button
@@ -75,7 +77,7 @@ function DeviceContextMenu({
         }}
       >
         <SettingsOutline color="#1d1d1f" height="16px" width="16px" title="" />
-        Device settings
+        {t("deviceMenu.settings")}
       </button>
       <button
         type="button"
@@ -92,7 +94,7 @@ function DeviceContextMenu({
           width="16px"
           title=""
         />
-        Share
+        {t("deviceMenu.share")}
       </button>
       {device.isOwner ? (
         <button
@@ -105,7 +107,7 @@ function DeviceContextMenu({
           }}
         >
           <TrashOutline color="#b42318" height="16px" width="16px" title="" />
-          Delete device
+          {t("deviceMenu.delete")}
         </button>
       ) : (
         <button
@@ -118,7 +120,7 @@ function DeviceContextMenu({
           }}
         >
           <ExitOutline color="#b42318" height="16px" width="16px" title="" />
-          Leave device
+          {t("deviceMenu.leave")}
         </button>
       )}
     </div>
