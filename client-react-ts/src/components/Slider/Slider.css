@@ -1,52 +1,93 @@
-.slider {
+.bv-slider {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin: 0 0 12px;
+  gap: 8px;
+  margin: 0 0 14px;
 }
 
-.slider:last-child {
+.bv-slider:last-child {
   margin-bottom: 0;
 }
 
-.slider input[type="range"] {
-  width: 100%;
-  appearance: none;
-  height: 6px;
-  border-radius: 999px;
-  background: #e2e8f0;
-  outline: none;
+.bv-slider__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.slider input[type="range"]::-webkit-slider-thumb {
+.bv-slider__label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--bv-text);
+}
+
+.bv-slider__value {
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--bv-accent-hover);
+}
+
+.bv-slider__input {
+  -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--bv-accent);
-  box-shadow: 0 0 0 4px var(--bv-accent-muted);
+  width: 100%;
+  height: 6px;
+  margin: 6px 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--bv-accent) 0%,
+    var(--bv-accent) var(--bv-slider-progress, 0%),
+    #e2e8f0 var(--bv-slider-progress, 0%),
+    #e2e8f0 100%
+  );
+  outline: none;
   cursor: pointer;
 }
 
-.slider input[type="range"]::-moz-range-thumb {
+.bv-slider__input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.bv-slider__input::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.bv-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bv-accent);
+  box-shadow: 0 0 0 4px var(--bv-accent-muted);
+  cursor: grab;
+}
+
+.bv-slider__input:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.bv-slider__input::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border: none;
   border-radius: 50%;
   background: var(--bv-accent);
   box-shadow: 0 0 0 4px var(--bv-accent-muted);
-  cursor: pointer;
+  cursor: grab;
 }
 
-.sliderValue {
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  color: var(--bv-accent-hover);
-}
-
-.slider span:last-child {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--bv-text);
+.bv-slider__input:focus-visible {
+  box-shadow: 0 0 0 3px var(--bv-accent-glow);
 }
