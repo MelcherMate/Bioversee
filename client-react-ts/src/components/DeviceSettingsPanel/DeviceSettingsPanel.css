@@ -11,6 +11,12 @@
   animation: device-settings-in 0.2s var(--bv-ease);
 }
 
+.device-settings--anchored {
+  position: fixed;
+  right: auto;
+  z-index: 70;
+}
+
 .device-settings__head {
   display: flex;
   align-items: flex-start;

@@ -67,6 +67,10 @@ const Navbar = ({ user }: NavbarProps) => {
   const [showAppSettings, setShowAppSettings] = useState(false);
   const [settingsDevice, setSettingsDevice] =
     useState<AccessibleDevice | null>(null);
+  const [settingsAnchor, setSettingsAnchor] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     device: AccessibleDevice;
     x: number;
@@ -131,6 +135,7 @@ const Navbar = ({ user }: NavbarProps) => {
     setShowAppSettings(false);
     setContextMenu(null);
     setSettingsDevice(null);
+    setSettingsAnchor(null);
   }, [location.pathname, location.search]);
 
   const closeOverlays = () => {
@@ -178,6 +183,7 @@ const Navbar = ({ user }: NavbarProps) => {
   const onSelectDevice = (device: AccessibleDevice) => {
     closeOverlays();
     setSettingsDevice(null);
+    setSettingsAnchor(null);
     navigate(deviceHref(device));
   };
 
@@ -194,6 +200,7 @@ const Navbar = ({ user }: NavbarProps) => {
     event.stopPropagation();
     closeOverlays();
     setSettingsDevice(null);
+    setSettingsAnchor(null);
     setContextMenu({ device, x: event.clientX, y: event.clientY });
   };
 
@@ -205,6 +212,7 @@ const Navbar = ({ user }: NavbarProps) => {
     try {
       await deleteMyDevice(device.id);
       setSettingsDevice(null);
+      setSettingsAnchor(null);
       await refreshDevices();
       if (preferredDeviceId === device.id || activeDevice?.id === device.id) {
         navigate("/bioreactor", { replace: true });
@@ -357,6 +365,7 @@ const Navbar = ({ user }: NavbarProps) => {
                 <button
                   key={device.id}
                   type="button"
+                  data-device-id={device.id}
                   className={`topbar__device-icon ${active ? "is-active" : ""} ${
                     device.isOwner ? "" : "is-shared"
                   }`}
@@ -414,10 +423,20 @@ const Navbar = ({ user }: NavbarProps) => {
               setShowAccount(false);
               setShowAddDevice(false);
               setShowAppSettings(false);
+              const btn = devicesRef.current?.querySelector(
+                `[data-device-id="${device.id}"]`
+              );
+              const rect = btn?.getBoundingClientRect();
+              setSettingsAnchor(
+                rect
+                  ? { x: rect.left, y: rect.bottom }
+                  : { x: contextMenu.x, y: contextMenu.y }
+              );
               setSettingsDevice(device);
             }}
             onShare={(device) => {
               setSettingsDevice(null);
+              setSettingsAnchor(null);
               setShowAppSettings(false);
               setShareDevice(device);
             }}
@@ -444,6 +463,7 @@ const Navbar = ({ user }: NavbarProps) => {
                 setShowNotifications(false);
                 setShareDevice(null);
                 setSettingsDevice(null);
+                setSettingsAnchor(null);
                 setShowAppSettings((open) => !open);
               }}
             >
@@ -458,18 +478,23 @@ const Navbar = ({ user }: NavbarProps) => {
               open={showAppSettings}
               onClose={() => setShowAppSettings(false)}
             />
-            <DeviceSettingsPanel
-              device={settingsDevice}
-              open={Boolean(settingsDevice)}
-              onClose={() => setSettingsDevice(null)}
-              onRenamed={() => {
-                void refreshDevices();
-              }}
-              onRequestDelete={(device) => {
-                void onDeleteDevice(device);
-              }}
-            />
           </div>
+
+          <DeviceSettingsPanel
+            device={settingsDevice}
+            open={Boolean(settingsDevice)}
+            anchor={settingsAnchor}
+            onClose={() => {
+              setSettingsDevice(null);
+              setSettingsAnchor(null);
+            }}
+            onRenamed={() => {
+              void refreshDevices();
+            }}
+            onRequestDelete={(device) => {
+              void onDeleteDevice(device);
+            }}
+          />
 
           <div className="topbar__notif-wrap">
             <button

@@ -15,6 +15,8 @@ type DeviceSettingsPanelProps = {
   onClose: () => void;
   onRenamed: () => void;
   onRequestDelete: (device: AccessibleDevice) => void;
+  /** Viewport coords — panel opens below this point (near the device icon). */
+  anchor?: { x: number; y: number } | null;
 };
 
 function DeviceSettingsPanel({
@@ -23,6 +25,7 @@ function DeviceSettingsPanel({
   onClose,
   onRenamed,
   onRequestDelete,
+  anchor = null,
 }: DeviceSettingsPanelProps) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -65,6 +68,14 @@ function DeviceSettingsPanel({
   const meta = DEVICE_TYPE_META[device.type];
   const Icon = meta.Icon;
   const canRename = canAdminDevice(device.role);
+  const panelWidth = Math.min(320, typeof window !== "undefined" ? window.innerWidth - 28 : 320);
+  const left = anchor
+    ? Math.max(
+        12,
+        Math.min(anchor.x, (typeof window !== "undefined" ? window.innerWidth : 400) - panelWidth - 12)
+      )
+    : undefined;
+  const top = anchor ? Math.min(anchor.y + 8, (typeof window !== "undefined" ? window.innerHeight : 600) - 80) : undefined;
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -85,10 +96,15 @@ function DeviceSettingsPanel({
 
   return (
     <div
-      className="device-settings"
+      className={`device-settings${anchor ? " device-settings--anchored" : ""}`}
       ref={panelRef}
       role="dialog"
       aria-label={t("deviceSettings.aria")}
+      style={
+        anchor
+          ? { top, left, width: panelWidth }
+          : undefined
+      }
     >
       <div className="device-settings__head">
         <div className="device-settings__title-row">
