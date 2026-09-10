@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import "./Bioreactor.css";
 
 function BioreactorCard(props, key) {
+  const { t } = useTranslation();
   const SLOWEST_ROTOR_SPEED = 4;
   const FASTEST_ROTOR_SPEED = 0.5;
 
@@ -48,10 +50,10 @@ function BioreactorCard(props, key) {
           <div className="thermal_jacket"></div>
           <div className="thermal_jacket_lower_cap"></div>
           <div className="cooling_water_supply_pipe-text">
-            Cooling water supply
+            {t("process.coolingSupply")}
           </div>
           <div className="cooling_water_discharge_pipe-text">
-            Cooling water discharge
+            {t("process.coolingDischarge")}
           </div>
           {/* <!--   REACTOR BODY --> */}
           <div className="reaction_chamber"></div>
@@ -139,7 +141,7 @@ function BioreactorCard(props, key) {
             <div className="sensor_stem"></div>
             <div className="sensor_head"></div>
           </div>
-          <div className="sensor-text">Temperature and pH sensor</div>
+          <div className="sensor-text">{t("process.tempPhSensor")}</div>
           {/* <!--   AGIGATOR --> */}
           <div className="agitator">
             <div className="agitator_stem"></div>
@@ -161,16 +163,18 @@ function BioreactorCard(props, key) {
               }}
             ></div>
           </div>
-          <div className="agitator-text">Agitator</div>
+          <div className="agitator-text">{t("process.agitator")}</div>
           {/* <!--   BASE-ACID SUPPLY PIPE --> */}
           <div className="base_acid_supply_pipe_h"></div>
           <div className="base_acid_supply_pipe_v"></div>
-          <div className="base_acid_supply_pipe-text">Base/Acid supply</div>
+          <div className="base_acid_supply_pipe-text">
+            {t("process.baseAcidSupply")}
+          </div>
           {/* <!--   AERATOR SUPPLY PIPE --> */}
           <div className="aerator_submerged"></div>
           <div className="aerator_supply_pipe_h"></div>
           <div className="aerator_supply_pipe_v"></div>
-          <div className="aerator_supply_pipe-text">Air supply</div>
+          <div className="aerator_supply_pipe-text">{t("process.airSupply")}</div>
           {/* <!--   BUBBLES --> */}
           <div className="bubble_frame">
             <div className="bubble-1 bubble-container anim bubble-animation-x">

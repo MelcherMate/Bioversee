@@ -230,7 +230,16 @@
     "circulation": "Zirkulation",
     "aeration": "Belüftung",
     "diffuser": "Diffusor",
-    "intensity": "Intensität"
+    "intensity": "Intensität",
+    "coolingSupply": "Kühlwasserzulauf",
+    "coolingDischarge": "Kühlwasserablauf",
+    "tempPhSensor": "Temperatur- und pH-Sensor",
+    "baseAcidSupply": "Base-/Säurezufuhr",
+    "airSupply": "Luftzufuhr",
+    "tankPuffer": "PUFFER",
+    "tankActive": "AKTIV",
+    "tankAdditive": "ADDITIV",
+    "tankClean": "REIN"
   },
   "about": {
     "founder": "Gründer",

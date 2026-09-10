@@ -230,7 +230,16 @@
     "circulation": "Keringetés",
     "aeration": "Levegőztetés",
     "diffuser": "Diffúzor",
-    "intensity": "Intenzitás"
+    "intensity": "Intenzitás",
+    "coolingSupply": "Hűtővíz betáp",
+    "coolingDischarge": "Hűtővíz elvezetés",
+    "tempPhSensor": "Hőmérséklet- és pH-szenzor",
+    "baseAcidSupply": "Bázis/sav betáp",
+    "airSupply": "Levegő betáp",
+    "tankPuffer": "PUFFER",
+    "tankActive": "AKTÍV",
+    "tankAdditive": "ADALÉK",
+    "tankClean": "TISZTA"
   },
   "about": {
     "founder": "Alapító",

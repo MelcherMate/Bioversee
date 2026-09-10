@@ -1,7 +1,9 @@
 import { CogOutline } from "react-ionicons";
+import { useTranslation } from "react-i18next";
 import "./WaterPurifier.css";
 
 function WaterPurifierCard(props, key) {
+  const { t } = useTranslation();
   // console.log(props.pump1Val);
   // console.log(props.pump2Val);
   // console.log(props.pump3Val);
@@ -26,7 +28,7 @@ function WaterPurifierCard(props, key) {
       >
         <div id="wrapper">
           <div className="tank" id="pufferTank">
-            <p>PUFFER</p>
+            <p>{t("process.tankPuffer")}</p>
             <div className="sensor wt_lvl">
               <div className="sensor_wt_lvl_base"></div>
               <div className="sensor_wt_lvl_head1"></div>
@@ -53,7 +55,7 @@ function WaterPurifierCard(props, key) {
             <div id="tubePufferToActive2"></div>
           </div>
           <div className="tank" id="activeTank">
-            <p>ACTIVE</p>
+            <p>{t("process.tankActive")}</p>
             <div className="sensor wt_lvl">
               <div className="sensor_wt_lvl_base"></div>
               <div className="sensor_wt_lvl_head1"></div>
@@ -80,7 +82,7 @@ function WaterPurifierCard(props, key) {
             <div id="tubeAdditiveToActive2"></div>
           </div>
           <div className="tank" id="additiveTank">
-            <p>ADDITIVE</p>
+            <p>{t("process.tankAdditive")}</p>
             <div className="sensor wt_lvl">
               <div className="sensor_wt_lvl_base"></div>
               <div className="sensor_wt_lvl_head1"></div>
@@ -106,7 +108,7 @@ function WaterPurifierCard(props, key) {
             <div id="tubeActiveToClean4"></div>
           </div>
           <div className="tank" id="cleanTank">
-            <p>CLEAN</p>
+            <p>{t("process.tankClean")}</p>
             <div className="sensor wt_lvl">
               <div className="sensor_wt_lvl_base"></div>
               <div className="sensor_wt_lvl_head1"></div>
