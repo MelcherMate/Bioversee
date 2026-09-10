@@ -126,4 +126,59 @@ export async function getMyDevicesByType(): Promise<
   return byType;
 }
 
+export async function listAccessibleDevices(): Promise<
+  Array<Device & { role: string; isOwner: boolean }>
+> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!user) throw new Error("Not authenticated");
+
+  await ensureMyDevices();
+
+  const { data: memberships, error: memberError } = await supabase
+    .from("device_members")
+    .select("device_id, role")
+    .eq("user_id", user.id);
+
+  if (memberError) throw memberError;
+
+  const ids = [...new Set((memberships ?? []).map((row) => row.device_id))];
+  if (ids.length === 0) return [];
+
+  const roleByDevice = new Map(
+    (memberships ?? []).map((row) => [row.device_id, row.role])
+  );
+
+  const { data, error } = await supabase
+    .from("devices")
+    .select("id, owner_id, type, name, created_at, updated_at")
+    .in("id", ids)
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+
+  const typeOrder = new Map(DEVICE_TYPES.map((type, index) => [type, index]));
+
+  return ((data ?? []) as Device[])
+    .map((device) => ({
+      ...device,
+      role: roleByDevice.get(device.id) ?? "viewer",
+      isOwner: device.owner_id === user.id,
+    }))
+    .sort((a, b) => {
+      if (a.isOwner !== b.isOwner) return a.isOwner ? -1 : 1;
+      const typeDiff =
+        (typeOrder.get(a.type) ?? 99) - (typeOrder.get(b.type) ?? 99);
+      if (typeDiff !== 0) return typeDiff;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+export function isLegacyDeviceType(type: DeviceType): boolean {
+  return type === "bioreactor" || type === "water_purifier";
+}
+
 export { DEVICE_TYPES };

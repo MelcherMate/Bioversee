@@ -11,6 +11,7 @@ import "./App.css";
 import DevDataPanel from "./components/DevDataPanel";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
+import { AppStatusProvider } from "./lib/appStatus";
 import { syncAccountVaultFromSession, enforceSessionMaxAge } from "./lib/accountSessions";
 import { supabase } from "./lib/supabase";
 import { type AppUser, toAppUser } from "./lib/user";
@@ -124,13 +125,15 @@ const App = () => {
   }
 
   return (
-    <BrowserRouter>
-      <AppShell
-        user={user}
-        devPanelOpen={devPanelOpen}
-        setDevPanelOpen={setDevPanelOpen}
-      />
-    </BrowserRouter>
+    <AppStatusProvider>
+      <BrowserRouter>
+        <AppShell
+          user={user}
+          devPanelOpen={devPanelOpen}
+          setDevPanelOpen={setDevPanelOpen}
+        />
+      </BrowserRouter>
+    </AppStatusProvider>
   );
 };
 
