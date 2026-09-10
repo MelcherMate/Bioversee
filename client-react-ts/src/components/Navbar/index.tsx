@@ -14,6 +14,7 @@ import {
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   avatarForAccount,
+  deleteCurrentAccount,
   isAccountSignedIn,
   listStoredAccounts,
   signOutAllAccounts,
@@ -35,6 +36,7 @@ import {
 } from "../../lib/devices";
 import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
+import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
 import AddDevicePanel from "../AddDevicePanel";
@@ -61,6 +63,7 @@ const Navbar = ({ user }: NavbarProps) => {
   const { connectivity, issue } = useAppStatus();
 
   const [showAccount, setShowAccount] = useState(false);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
   const [shareDevice, setShareDevice] = useState<AccessibleDevice | null>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -109,6 +112,16 @@ const Navbar = ({ user }: NavbarProps) => {
   }, [user.id, refreshDevices]);
 
   useEffect(() => {
+    const onDevicesChanged = () => {
+      void refreshDevices();
+    };
+    window.addEventListener(DEVICES_CHANGED_EVENT, onDevicesChanged);
+    return () => {
+      window.removeEventListener(DEVICES_CHANGED_EVENT, onDevicesChanged);
+    };
+  }, [refreshDevices]);
+
+  useEffect(() => {
     let cancelled = false;
     const pullUnread = () => {
       listMyNotifications(20)
@@ -130,6 +143,7 @@ const Navbar = ({ user }: NavbarProps) => {
   useEffect(() => {
     setShareDevice(null);
     setShowAccount(false);
+    setConfirmDeleteAccount(false);
     setShowAddDevice(false);
     setShowNotifications(false);
     setShowAppSettings(false);
@@ -140,12 +154,24 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const closeOverlays = () => {
     setShowAccount(false);
+    setConfirmDeleteAccount(false);
     setShareDevice(null);
     setShowAddDevice(false);
     setShowNotifications(false);
     setShowAppSettings(false);
     setContextMenu(null);
   };
+
+  useEffect(() => {
+    if (!confirmDeleteAccount) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) {
+        setConfirmDeleteAccount(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [confirmDeleteAccount, busy]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -303,9 +329,37 @@ const Navbar = ({ user }: NavbarProps) => {
     try {
       await signOutAllAccounts();
       setShowAccount(false);
+      setConfirmDeleteAccount(false);
       navigate("/", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("nav.couldNotLogOut"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onRequestDeleteAccount = () => {
+    setError(null);
+    setShowAccount(false);
+    setConfirmDeleteAccount(true);
+  };
+
+  const onConfirmDeleteAccount = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteCurrentAccount();
+      setConfirmDeleteAccount(false);
+      refreshAccounts();
+      if (!listStoredAccounts().some(isAccountSignedIn)) {
+        navigate("/", { replace: true });
+      } else {
+        navigate("/bioreactor", { replace: true });
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : t("nav.couldNotDeleteAccount")
+      );
     } finally {
       setBusy(false);
     }
@@ -568,9 +622,14 @@ const Navbar = ({ user }: NavbarProps) => {
                     <p className="topbar__menu-name">{user.displayName}</p>
                     <p className="topbar__menu-meta">{user.email}</p>
                   </div>
-                  <span className="topbar__account-status topbar__account-status--in">
-                    {t("nav.signedIn")}
-                  </span>
+                  <button
+                    type="button"
+                    className="topbar__account-logout"
+                    disabled={busy}
+                    onClick={() => void onLogout()}
+                  >
+                    {t("nav.logOut")}
+                  </button>
                 </div>
 
                 {otherAccounts.length > 0 && (
@@ -635,28 +694,69 @@ const Navbar = ({ user }: NavbarProps) => {
                   type="button"
                   className="topbar__menu-logout"
                   disabled={busy}
-                  onClick={onLogout}
+                  onClick={() => void onLogoutAll()}
                 >
-                  {otherAccounts.length > 0
-                    ? t("nav.logOutThis")
-                    : t("nav.logOut")}
+                  {t("nav.logOutAll")}
                 </button>
-                {accounts.length > 1 && (
-                  <button
-                    type="button"
-                    className="topbar__menu-text"
-                    disabled={busy}
-                    onClick={onLogoutAll}
-                  >
-                    {t("nav.logOutAll")}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="topbar__menu-danger"
+                  disabled={busy}
+                  onClick={onRequestDeleteAccount}
+                >
+                  {t("nav.deleteAccount")}
+                </button>
                 {error && <p className="topbar__menu-error">{error}</p>}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {confirmDeleteAccount && (
+        <div className="topbar__confirm" role="presentation">
+          <div
+            className="topbar__confirm-backdrop"
+            aria-hidden="true"
+            onClick={() => {
+              if (!busy) setConfirmDeleteAccount(false);
+            }}
+          />
+          <div
+            className="topbar__confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+          >
+            <p className="topbar__confirm-eyebrow">{t("nav.deleteAccount")}</p>
+            <h2 id="delete-account-title" className="topbar__confirm-title">
+              {t("nav.deleteAccountConfirmTitle")}
+            </h2>
+            <p className="topbar__confirm-body">
+              {t("nav.deleteAccountConfirmBody")}
+            </p>
+            {error ? <p className="topbar__menu-error">{error}</p> : null}
+            <div className="topbar__confirm-actions">
+              <button
+                type="button"
+                className="topbar__menu-danger topbar__confirm-btn"
+                disabled={busy}
+                onClick={() => void onConfirmDeleteAccount()}
+              >
+                {busy ? t("nav.deletingAccount") : t("nav.deleteAccountConfirm")}
+              </button>
+              <button
+                type="button"
+                className="topbar__menu-secondary topbar__confirm-btn"
+                disabled={busy}
+                onClick={() => setConfirmDeleteAccount(false)}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

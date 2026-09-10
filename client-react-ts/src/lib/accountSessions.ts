@@ -307,3 +307,32 @@ export async function signOutAllAccounts(): Promise<void> {
   clearStoredAccounts();
   await supabase.auth.signOut({ scope: "local" });
 }
+
+/**
+ * Permanently delete the signed-in auth user + cascaded app data,
+ * remove them from the local vault, then switch to another saved
+ * session if one remains.
+ */
+export async function deleteCurrentAccount(): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user.id;
+  if (!userId) throw new Error("Not authenticated");
+
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) throw error;
+
+  removeStoredAccount(userId);
+  await supabase.auth.signOut({ scope: "local" });
+
+  const remaining = listStoredAccounts().filter(isAccountSignedIn);
+  if (remaining.length === 0) return;
+
+  const next = remaining[0];
+  const { error: switchError } = await supabase.auth.setSession({
+    access_token: next.access_token,
+    refresh_token: next.refresh_token,
+  });
+  if (switchError) {
+    markAccountLoggedOut(next.userId);
+  }
+}

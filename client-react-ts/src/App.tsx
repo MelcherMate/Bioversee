@@ -12,6 +12,7 @@ import "./App.css";
 import DevDataPanel from "./components/DevDataPanel";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
+import OnboardingModal from "./components/OnboardingModal";
 import { AppStatusProvider } from "./lib/appStatus";
 import { syncAccountVaultFromSession, enforceSessionMaxAge } from "./lib/accountSessions";
 import { supabase } from "./lib/supabase";
@@ -148,7 +149,9 @@ type AppShellProps = {
 function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
   const { pathname } = useLocation();
   const addingAccount = pathname === "/add-account";
+  const onInvite = pathname.startsWith("/invite/");
   const showChrome = Boolean(user) && !addingAccount;
+  const showOnboarding = Boolean(user) && showChrome && !onInvite;
 
   return (
     <div
@@ -184,6 +187,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
         </Routes>
       </div>
       {showChrome && <Footer />}
+      {user && showOnboarding && <OnboardingModal user={user} />}
       {user && showChrome && (
         <DevDataPanel
           open={devPanelOpen}

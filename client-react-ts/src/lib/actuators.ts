@@ -94,12 +94,32 @@ export async function insertSensorReading(
   name: string,
   value: number,
   userId?: string,
+  createdAt?: string,
 ) {
   const { error } = await supabase.from("sensors").insert({
     device_id: deviceId,
     name,
     value,
     user_id: userId ?? null,
+    ...(createdAt
+      ? { created_at: createdAt, updated_at: createdAt }
+      : {}),
   });
+  if (error) throw error;
+}
+
+/** Insert many sensor rows in one request (for onboarding sample history). */
+export async function insertSensorReadingsBulk(
+  rows: Array<{
+    device_id: string;
+    name: string;
+    value: number;
+    user_id: string | null;
+    created_at: string;
+    updated_at: string;
+  }>
+) {
+  if (rows.length === 0) return;
+  const { error } = await supabase.from("sensors").insert(rows);
   if (error) throw error;
 }

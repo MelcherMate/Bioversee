@@ -347,6 +347,29 @@ button.topbar__account-row:hover:not(:disabled) {
   color: var(--bv-text-tertiary);
 }
 
+.topbar__account-logout {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--bv-cta);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.topbar__account-logout:hover:not(:disabled) {
+  background: var(--bv-cta-hover);
+}
+
+.topbar__account-logout:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .topbar__menu-name {
   margin: 0 0 2px;
   font-size: 14px;
@@ -393,9 +416,89 @@ button.topbar__account-row:hover:not(:disabled) {
   background: var(--bv-cta-hover);
 }
 
+.topbar__menu-danger {
+  width: 100%;
+  margin-top: 8px;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--bv-danger) 14%, var(--bv-card));
+  color: var(--bv-danger);
+  transition: background 0.2s var(--bv-ease), transform 0.15s var(--bv-ease);
+}
+
+.topbar__menu-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bv-danger) 22%, var(--bv-card));
+}
+
 .topbar__menu-logout:active:not(:disabled),
-.topbar__menu-secondary:active:not(:disabled) {
+.topbar__menu-secondary:active:not(:disabled),
+.topbar__menu-danger:active:not(:disabled) {
   transform: scale(0.99);
+}
+
+.topbar__confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.topbar__confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 16, 22, 0.42);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.topbar__confirm-dialog {
+  position: relative;
+  width: min(400px, 100%);
+  padding: 22px 20px 18px;
+  border-radius: var(--bv-radius-md);
+  background: var(--bv-card);
+  box-shadow: var(--bv-shadow-card);
+  animation: menu-in 0.2s var(--bv-ease);
+}
+
+.topbar__confirm-eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.topbar__confirm-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+}
+
+.topbar__confirm-body {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--bv-text-secondary);
+}
+
+.topbar__confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topbar__confirm-btn {
+  margin-top: 0;
 }
 
 .topbar__menu-text {
@@ -422,6 +525,7 @@ button.topbar__account-row:hover:not(:disabled) {
 
 .topbar__menu-secondary:disabled,
 .topbar__menu-logout:disabled,
+.topbar__menu-danger:disabled,
 .topbar__menu-text:disabled,
 .topbar__account-row:disabled {
   opacity: 0.55;

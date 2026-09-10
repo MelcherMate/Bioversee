@@ -6,6 +6,8 @@ export type UserPreferencesJson = {
   theme?: AppearanceSettings["theme"];
   accent?: string;
   language?: AppearanceSettings["language"];
+  /** First-run device setup intro was finished or dismissed. */
+  onboardingCompleted?: boolean;
 };
 
 export async function fetchUserPreferences(

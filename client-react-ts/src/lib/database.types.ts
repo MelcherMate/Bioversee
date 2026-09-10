@@ -356,6 +356,10 @@ export type Database = {
         };
         Returns: string;
       };
+      delete_my_account: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
       create_pending_device_invite_as: {
         Args: {
           p_device_id: string;
