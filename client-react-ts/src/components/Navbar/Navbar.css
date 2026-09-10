@@ -138,6 +138,13 @@
   scrollbar-width: none;
 }
 
+.topbar__settings-anchor {
+  position: relative;
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+}
+
 .topbar__devices::-webkit-scrollbar {
   display: none;
 }

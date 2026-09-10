@@ -196,6 +196,31 @@ export async function createMyDevice(input: {
   return data;
 }
 
+export async function deleteMyDevice(deviceId: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_my_device", {
+    p_device_id: deviceId,
+  });
+  if (error) throw error;
+}
+
+export async function renameMyDevice(
+  deviceId: string,
+  name: string
+): Promise<void> {
+  const { error } = await supabase.rpc("rename_my_device", {
+    p_device_id: deviceId,
+    p_name: name,
+  });
+  if (error) throw error;
+}
+
+export async function leaveDevice(deviceId: string): Promise<void> {
+  const { error } = await supabase.rpc("leave_device", {
+    p_device_id: deviceId,
+  });
+  if (error) throw error;
+}
+
 export function isLegacyDeviceType(type: DeviceType): boolean {
   return type === "bioreactor" || type === "water_purifier";
 }

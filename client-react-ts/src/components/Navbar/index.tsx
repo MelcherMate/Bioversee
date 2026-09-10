@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import {
   AddOutline,
   NotificationsOutline,
@@ -18,6 +24,8 @@ import {
 import { connectivityLabel, useAppStatus } from "../../lib/appStatus";
 import { DEVICE_TYPE_META } from "../../lib/deviceIcons";
 import {
+  deleteMyDevice,
+  leaveDevice,
   listAccessibleDevices,
   type Device,
   type DeviceType,
@@ -27,11 +35,13 @@ import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
 import AddDevicePanel from "../AddDevicePanel";
+import DeviceContextMenu, {
+  type AccessibleDevice,
+} from "../DeviceContextMenu";
+import DeviceSettingsPanel from "../DeviceSettingsPanel";
 import NotificationsPanel from "../NotificationsPanel";
 import SharePanel from "../SharePanel";
 import "./Navbar.css";
-
-type AccessibleDevice = Device & { role: string; isOwner: boolean };
 
 type NavbarProps = {
   user: AppUser;
@@ -51,6 +61,13 @@ const Navbar = ({ user }: NavbarProps) => {
   const [showShare, setShowShare] = useState(false);
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [settingsDevice, setSettingsDevice] =
+    useState<AccessibleDevice | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    device: AccessibleDevice;
+    x: number;
+    y: number;
+  } | null>(null);
   const [accounts, setAccounts] = useState<StoredAccount[]>([]);
   const [devices, setDevices] = useState<AccessibleDevice[]>([]);
   const [unread, setUnread] = useState(0);
@@ -59,6 +76,7 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const accountRef = useRef<HTMLDivElement | null>(null);
   const addRef = useRef<HTMLDivElement | null>(null);
+  const devicesRef = useRef<HTMLDivElement | null>(null);
 
   const preferredDeviceId = searchParams.get("device");
   const routeType = deviceTypeFromPath(location.pathname);
@@ -106,7 +124,17 @@ const Navbar = ({ user }: NavbarProps) => {
     setShowAccount(false);
     setShowAddDevice(false);
     setShowNotifications(false);
+    setContextMenu(null);
+    setSettingsDevice(null);
   }, [location.pathname, location.search]);
+
+  const closeOverlays = () => {
+    setShowAccount(false);
+    setShowShare(false);
+    setShowAddDevice(false);
+    setShowNotifications(false);
+    setContextMenu(null);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -141,21 +169,58 @@ const Navbar = ({ user }: NavbarProps) => {
     ? `${connectivityLabel(connectivity)}: ${issue}`
     : connectivityLabel(connectivity);
 
-  const closeOverlays = () => {
-    setShowAccount(false);
-    setShowShare(false);
-    setShowAddDevice(false);
-    setShowNotifications(false);
-  };
-
   const onSelectDevice = (device: AccessibleDevice) => {
     closeOverlays();
+    setSettingsDevice(null);
     navigate(deviceHref(device));
   };
 
   const onDeviceCreated = async (deviceId: string, type: DeviceType) => {
     await refreshDevices();
     navigate(`${pathForDeviceType(type)}?device=${deviceId}`);
+  };
+
+  const onDeviceContextMenu = (
+    event: ReactMouseEvent,
+    device: AccessibleDevice
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeOverlays();
+    setSettingsDevice(null);
+    setContextMenu({ device, x: event.clientX, y: event.clientY });
+  };
+
+  const onDeleteDevice = async (device: AccessibleDevice) => {
+    const ok = window.confirm(
+      `Delete “${device.name}”? This removes its data for everyone.`
+    );
+    if (!ok) return;
+    try {
+      await deleteMyDevice(device.id);
+      setSettingsDevice(null);
+      await refreshDevices();
+      if (preferredDeviceId === device.id || activeDevice?.id === device.id) {
+        navigate("/bioreactor", { replace: true });
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Could not delete");
+    }
+  };
+
+  const onLeaveDevice = async (device: AccessibleDevice) => {
+    const ok = window.confirm(`Leave “${device.name}? You can be re-invited later.`);
+    if (!ok) return;
+    try {
+      await leaveDevice(device.id);
+      setSettingsDevice(null);
+      await refreshDevices();
+      if (preferredDeviceId === device.id) {
+        navigate("/bioreactor", { replace: true });
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Could not leave");
+    }
   };
 
   const onSwitch = async (account: StoredAccount) => {
@@ -268,7 +333,7 @@ const Navbar = ({ user }: NavbarProps) => {
             />
           </div>
 
-          <div className="topbar__devices" role="toolbar" aria-label="Devices">
+          <div className="topbar__devices" ref={devicesRef} role="toolbar" aria-label="Devices">
             {devices.map((device) => {
               const meta = DEVICE_TYPE_META[device.type];
               const Icon = meta.Icon;
@@ -284,6 +349,7 @@ const Navbar = ({ user }: NavbarProps) => {
                   aria-label={device.name}
                   aria-pressed={active}
                   onClick={() => onSelectDevice(device)}
+                  onContextMenu={(event) => onDeviceContextMenu(event, device)}
                 >
                   <Icon
                     color={active ? "#0f766e" : "#1d1d1f"}
@@ -298,7 +364,37 @@ const Navbar = ({ user }: NavbarProps) => {
               );
             })}
           </div>
+
+          <div className="topbar__settings-anchor">
+            <DeviceSettingsPanel
+              device={settingsDevice}
+              open={Boolean(settingsDevice)}
+              onClose={() => setSettingsDevice(null)}
+              onRenamed={() => {
+                void refreshDevices();
+              }}
+              onRequestDelete={(device) => {
+                void onDeleteDevice(device);
+              }}
+            />
+          </div>
         </div>
+
+        {contextMenu && (
+          <DeviceContextMenu
+            device={contextMenu.device}
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            onSettings={(device) => setSettingsDevice(device)}
+            onDelete={(device) => {
+              void onDeleteDevice(device);
+            }}
+            onLeave={(device) => {
+              void onLeaveDevice(device);
+            }}
+          />
+        )}
 
         <div className="topbar__right">
           <div className="topbar__share-wrap">

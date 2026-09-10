@@ -314,6 +314,18 @@ export type Database = {
         Args: { p_link_id: string };
         Returns: undefined;
       };
+      delete_my_device: {
+        Args: { p_device_id: string };
+        Returns: undefined;
+      };
+      rename_my_device: {
+        Args: { p_device_id: string; p_name: string };
+        Returns: undefined;
+      };
+      leave_device: {
+        Args: { p_device_id: string };
+        Returns: undefined;
+      };
       create_my_device: {
         Args: {
           p_type: DeviceType;
