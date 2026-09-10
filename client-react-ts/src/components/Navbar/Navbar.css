@@ -155,7 +155,7 @@
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  width: 240px;
+  width: 280px;
   padding: 14px;
   border-radius: var(--bv-radius-md);
   background: var(--bv-card);
@@ -165,7 +165,7 @@
 }
 
 .topbar__menu-label {
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -173,39 +173,142 @@
   color: var(--bv-text-tertiary);
 }
 
+.topbar__menu-label--spaced {
+  margin-top: 14px;
+}
+
+.topbar__account-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topbar__account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px;
+  margin: 0 0 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: inherit;
+}
+
+button.topbar__account-row:hover:not(:disabled) {
+  background: var(--bv-fill);
+}
+
+.topbar__account-row--active {
+  cursor: default;
+  background: var(--bv-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
+}
+
+.topbar__account-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.topbar__account-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.topbar__account-check {
+  color: var(--bv-accent-hover);
+  font-weight: 700;
+  font-size: 14px;
+}
+
 .topbar__menu-name {
   margin: 0 0 2px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .topbar__menu-meta {
-  margin: 0 0 12px;
-  font-size: 12px;
+  margin: 0;
+  font-size: 11px;
   color: var(--bv-text-secondary);
   word-break: break-all;
 }
 
+.topbar__menu-secondary,
 .topbar__menu-logout {
   width: 100%;
   border: none;
   border-radius: 10px;
   padding: 10px 12px;
-  background: var(--bv-cta);
-  color: #fff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s var(--bv-ease), transform 0.15s var(--bv-ease);
 }
 
-.topbar__menu-logout:hover {
+.topbar__menu-secondary {
+  margin-top: 8px;
+  background: var(--bv-fill);
+  color: var(--bv-text);
+}
+
+.topbar__menu-secondary:hover:not(:disabled) {
+  background: #ebebed;
+}
+
+.topbar__menu-logout {
+  margin-top: 8px;
+  background: var(--bv-cta);
+  color: #fff;
+}
+
+.topbar__menu-logout:hover:not(:disabled) {
   background: var(--bv-cta-hover);
 }
 
-.topbar__menu-logout:active {
+.topbar__menu-logout:active:not(:disabled),
+.topbar__menu-secondary:active:not(:disabled) {
   transform: scale(0.99);
+}
+
+.topbar__menu-text {
+  width: 100%;
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: var(--bv-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
+.topbar__menu-text:hover:not(:disabled) {
+  color: var(--bv-danger);
+}
+
+.topbar__menu-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--bv-danger);
+}
+
+.topbar__menu-secondary:disabled,
+.topbar__menu-logout:disabled,
+.topbar__menu-text:disabled,
+.topbar__account-row:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @keyframes menu-in {

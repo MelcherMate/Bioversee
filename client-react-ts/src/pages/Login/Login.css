@@ -235,6 +235,18 @@
   font-size: 12px;
 }
 
+.auth-note--link {
+  display: block;
+  margin-top: 4px;
+  text-decoration: none;
+  color: var(--bv-accent-hover);
+  font-weight: 600;
+}
+
+.auth-note--link:hover {
+  text-decoration: underline;
+}
+
 @keyframes auth-shell-in {
   from {
     opacity: 0;

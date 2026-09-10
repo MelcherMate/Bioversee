@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Google from "../../img/google.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import SegmentedControl from "../../components/SegmentedControl";
+import { upsertStoredSession } from "../../lib/accountSessions";
 import { supabase } from "../../lib/supabase";
 import "./Login.css";
 
@@ -12,9 +13,14 @@ function safeNextPath(raw: string | null): string | null {
   return raw;
 }
 
-const Login = () => {
+type LoginProps = {
+  mode?: "default" | "add-account";
+};
+
+const Login = ({ mode: loginMode = "default" }: LoginProps) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const addingAccount = loginMode === "add-account";
   const nextPath = safeNextPath(searchParams.get("next"));
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -24,15 +30,29 @@ const Login = () => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (!addingAccount) return;
+    // Snapshot the current session so it stays available after the new sign-in.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) upsertStoredSession(data.session);
+    });
+  }, [addingAccount]);
+
+  useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session && nextPath) {
-        navigate(nextPath, { replace: true });
+      if (event === "SIGNED_IN" && session) {
+        if (addingAccount) {
+          navigate("/bioreactor", { replace: true });
+          return;
+        }
+        if (nextPath) {
+          navigate(nextPath, { replace: true });
+        }
       }
     });
     return () => subscription.unsubscribe();
-  }, [navigate, nextPath]);
+  }, [navigate, nextPath, addingAccount]);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -41,15 +61,20 @@ const Login = () => {
     setMessage(null);
 
     try {
+      if (addingAccount) {
+        const { data: current } = await supabase.auth.getSession();
+        if (current.session) upsertStoredSession(current.session);
+      }
+
       if (mode === "signin") {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (signInError) throw signInError;
-        if (nextPath) {
-          navigate(nextPath, { replace: true });
-        }
+        navigate(addingAccount ? "/bioreactor" : nextPath ?? "/bioreactor", {
+          replace: true,
+        });
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
@@ -67,9 +92,15 @@ const Login = () => {
 
   const signInWithGoogle = async () => {
     setError(null);
-    const redirectTo = nextPath
-      ? `${window.location.origin}${nextPath}`
-      : window.location.origin;
+    if (addingAccount) {
+      const { data: current } = await supabase.auth.getSession();
+      if (current.session) upsertStoredSession(current.session);
+    }
+    const redirectTo = addingAccount
+      ? `${window.location.origin}/bioreactor`
+      : nextPath
+        ? `${window.location.origin}${nextPath}`
+        : window.location.origin;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -90,10 +121,13 @@ const Login = () => {
             </div>
             <div className="auth-card__headline">
               <p className="auth-card__eyebrow">Bioversee</p>
-              <h1 className="auth-card__title">Welcome</h1>
+              <h1 className="auth-card__title">
+                {addingAccount ? "Add account" : "Welcome"}
+              </h1>
               <p className="auth-card__subtitle">
-                Automation for everyone — control industrial equipment from the
-                cloud.
+                {addingAccount
+                  ? "Sign in with another account. Your current account stays signed in on this device."
+                  : "Automation for everyone — control industrial equipment from the cloud."}
               </p>
             </div>
           </div>
@@ -142,7 +176,9 @@ const Login = () => {
               {busy
                 ? "Please wait…"
                 : mode === "signin"
-                  ? "Sign in"
+                  ? addingAccount
+                    ? "Add account"
+                    : "Sign in"
                   : "Create account"}
             </button>
           </form>
@@ -160,10 +196,18 @@ const Login = () => {
             Continue with Google
           </button>
 
+          {addingAccount && (
+            <Link className="auth-note auth-note--link" to="/bioreactor">
+              Cancel and stay on current account
+            </Link>
+          )}
+
           {error && <p className="auth-error">{error}</p>}
           {message && <p className="auth-message">{message}</p>}
 
-          <p className="auth-note">Demo site for Bioversee prototypes</p>
+          {!addingAccount && (
+            <p className="auth-note">Demo site for Bioversee prototypes</p>
+          )}
         </div>
       </div>
     </div>
