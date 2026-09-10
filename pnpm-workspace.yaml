@@ -1,0 +1,12 @@
+packages:
+  - backend
+  - client-react-ts
+
+allowBuilds:
+  esbuild: true
+  core-js: true
+
+autoInstallPeers: true
+strictPeerDependencies: false
+packageImportMethod: copy
+confirmModulesPurge: false

@@ -3,11 +3,10 @@ const passport = require("passport");
 const dotenv = require("dotenv");
 const path = require("path");
 
-// # DotEnv configuration
-// Letting it know where to look for the .env file
+// # DotEnv configuration (Vercel injects env vars — skip local files there)
 if (process.env.NODE_ENV === "development") {
   dotenv.config({ path: path.resolve(__dirname, "../.env.dev") });
-} else {
+} else if (!process.env.VERCEL) {
   dotenv.config({ path: path.resolve(__dirname, "../.env.prod") });
 }
 

@@ -17,10 +17,9 @@ import sensorRoutes from "./routes/sensor.routes";
 import userRoutes from "./routes/user.routes";
 
 // # DotEnv configuration
-// letting it know where to look for the .env file
 if (process.env.NODE_ENV === "development") {
   dotenv.config({ path: path.resolve(__dirname + "/.env.dev") });
-} else {
+} else if (!process.env.VERCEL) {
   dotenv.config({ path: path.resolve(__dirname + "/.env.prod") });
 }
 
@@ -31,7 +30,7 @@ const app = express();
 app.use(
   cookieSession({
     name: "session",
-    keys: ["bioversee"],
+    keys: [process.env.SESSION_SECRET || "bioversee"],
     maxAge: 24 * 60 * 60 * 100,
   })
 );
@@ -42,12 +41,12 @@ app.use(passport.session());
 
 // # Middleware
 app.use(cookieParser());
-// parse body params and attach them to req.body
 app.use(express.urlencoded({ extended: true }));
-// To parse the incoming requests with JSON payloads
 app.use(express.json());
 app.use(compress());
-// secure apps by setting various HTTP headers
+
+const publicUrl = process.env.PUBLIC_URL || "";
+const cspOrigins = ["'self'", publicUrl].filter(Boolean);
 
 if (process.env.NODE_ENV === "development") {
   app.use(helmet());
@@ -56,20 +55,8 @@ if (process.env.NODE_ENV === "development") {
     helmet.contentSecurityPolicy({
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://bioversee.com/",
-          "https://www.bioversee.com/",
-          "https://bioreactor-0qwh.onrender.com/",
-        ],
-        connectSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://bioversee.com/",
-          "https://www.bioversee.com/",
-          "https://bioreactor-0qwh.onrender.com/",
-        ],
+        scriptSrc: ["'self'", "'unsafe-inline'", ...cspOrigins],
+        connectSrc: ["'self'", "'unsafe-inline'", ...cspOrigins],
         imgSrc: ["*", "data:"],
       },
     })
@@ -77,15 +64,13 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // # CORS middleware
-var corsFrontendSources = process.env.PUBLIC_URL;
-var corsOptions = {
-  origin: corsFrontendSources,
+const corsOptions = {
+  origin: process.env.PUBLIC_URL,
   optionsSuccessStatus: 200,
   credentials: true,
 };
 
 app.use(cors(corsOptions));
-// app.use(cors());
 
 // # Routes
 app.use(
@@ -97,24 +82,13 @@ app.use(
   authRoute
 );
 
-// # Serving
-if (process.env.NODE_ENV === "development") {
-} else {
-  // serving the frontend dev, and prod folders as static resources
-  app.use(
-    "/",
-    express.static(path.join(__dirname, "../client-react-ts/src/dist/"))
-  );
-  /* final catch-all route to index.html defined last; trailing / is important (!!!) */
-  app.get("/*", (req, res, next) => {
-    res.sendFile(path.join(__dirname, "../client-react-ts/src/dist/"));
+// Serve the Vite build only for local/production Node hosting (not on Vercel CDN).
+if (process.env.NODE_ENV !== "development" && !process.env.VERCEL) {
+  const clientDist = path.join(__dirname, "../client-react-ts/dist");
+  app.use("/", express.static(clientDist));
+  app.get("/*", (req, res) => {
+    res.sendFile(path.join(clientDist, "index.html"));
   });
-  app.use("*", function (req, res, next) {
-    // serve files upon refresh window
-  });
-
-  app.use("*", function (req, res, next) {});
 }
 
-app.use("*", function (req, res, next) {});
 export default app;

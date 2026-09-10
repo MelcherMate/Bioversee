@@ -1,18 +1,24 @@
-.gitignore
-venv
+# Dependencies
 node_modules
 package-lock.json
-package.json
+yarn.lock
+.pnpm-store
 
-## .env
-# Frontend
-.env.development
-.env.production
-# Backend
-.env.dev
-.env.prod
+# Build output
+**/dist
+*.local
 
-## Logs
+# Environment (keep examples)
+.env
+.env.*
+!.env.example
+!**/.env.example
+!**/.env.*.example
+
+# Secrets / local notes
+db.txt
+
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -21,11 +27,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-*.local
-
-## Editor directories and files
+# Editor
 .vscode/*
 !.vscode/extensions.json
+!.vscode/launch.json
 .idea
 .DS_Store
 *.suo
@@ -33,3 +38,6 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Vercel
+.vercel

@@ -92,6 +92,8 @@
       "**/index_bundle.js": true,
       "**/index_bundle.js.map": true,
       "**/package-lock.json": true,
+      "**/pnpm-lock.yaml": true,
+      "**/pnpm-lock.yaml": true,
       "**/temp": true,
       "**/wiki": true
     },

@@ -1,20 +1,17 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-
   "version": "0.2.0",
   "configurations": [
     {
       "name": "Bioversee Backend App",
-      "program": "${workspaceFolder}/backend/app.js", // Assuming your main entry point is app.js
+      "program": "${workspaceFolder}/backend/app.js",
       "request": "launch",
       "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "env": {
-        "NODE_ENV": "development" // Set environment variable for dev mode
+        "NODE_ENV": "development"
       },
       "restart": true,
-      "runtimeExecutable": "${workspaceFolder}/backend/node_modules/nodemon/bin/nodemon.js" // Assuming nodemon is installed globally
+      "runtimeExecutable": "${workspaceFolder}/backend/node_modules/nodemon/bin/nodemon.js"
     }
   ]
 }

@@ -3,11 +3,10 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const passport = require("passport");
 const path = require("path");
 
-// # DotEnv configuration
-// letting it know where to look for the .env file
+// # DotEnv configuration (Vercel injects env vars — skip local files there)
 if (process.env.NODE_ENV === "development") {
   dotenv.config({ path: path.resolve(__dirname + "/.env.dev") });
-} else {
+} else if (!process.env.VERCEL) {
   dotenv.config({ path: path.resolve(__dirname + "/.env.prod") });
 }
 

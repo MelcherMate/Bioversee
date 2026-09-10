@@ -26,7 +26,28 @@ For the local machine control language I choose Python because of the gpiozero l
 
 - Designed on Apple Macbook Air M1 (2020)
 - Tested with Raspberry PI 5 8GB
+- Package manager: **pnpm**
+- Hosting target: **Vercel** (MongoDB Atlas unchanged)
 
-## Prtototype 1:
+## Local development
+
+```bash
+pnpm install
+cp backend/.env.example backend/.env.dev
+cp client-react-ts/.env.example client-react-ts/.env.development
+# fill in MONGODB_URI and OAuth secrets
+pnpm dev
+```
+
+- Frontend: Vite on port `5173`
+- Backend: Express on the port in `backend/.env.dev` (default `4321`)
+
+## Deploy on Vercel
+
+1. Import this repo in Vercel (framework preset: Other; `vercel.json` is already configured).
+2. Set env vars: `MONGODB_URI`, `PUBLIC_URL`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CLIENT_CALLBACK_URI`, plus Vite build vars `VITE_PUBLIC_URL`, `VITE_SERVER_URL`, `VITE_AUTH_URL`.
+3. For same-origin API on Vercel, set `VITE_SERVER_URL` and `VITE_AUTH_URL` to empty (or your Vercel URL). Point Google OAuth callback at `https://<your-app>.vercel.app/auth/google/callback`.
+
+## Prototype 1:
 
 The goal, what the first prototype had to achieve was that it needed to demonstrate how the software works. It was never intended to be used for the fermentation process. I was focusing on using simple actuators and sensors and simple circuits. Prototype 1 needed to be as small as possible, I wanted to make it fit on a shoebox for better transport possibilities. This prototype as it is can be a product as well. It can be used for teaching how bioreactors work. With the web application students can try it on site if there is internet connection.
