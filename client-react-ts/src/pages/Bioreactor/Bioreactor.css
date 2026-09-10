@@ -63,6 +63,11 @@ aside > * {
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
+.chartBox {
+  padding: 16px 14px 12px;
+  min-width: 260px;
+}
+
 #reactorBox,
 #waterpurifierBox {
   position: relative;

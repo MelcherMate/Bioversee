@@ -1,9 +1,87 @@
-#title {
-  margin: 0 0 8px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.bv-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.bv-chart + .bv-chart {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bv-line);
+}
+
+.bv-chart__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.bv-chart__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--bv-text);
+}
+
+.bv-chart__value {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--bv-accent-hover);
+}
+
+.bv-chart__plot {
+  width: 100%;
+  height: 168px;
+}
+
+.bv-chart__empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 12px;
   color: var(--bv-text-tertiary);
+}
+
+.bv-chart__tooltip {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bv-glass);
+  border: 1px solid var(--bv-glass-border);
+  box-shadow: var(--bv-shadow-float);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  min-width: 96px;
+}
+
+.bv-chart__tooltip-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bv-text-secondary);
+  margin-bottom: 2px;
+}
+
+.bv-chart__tooltip-value {
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--bv-text);
+}
+
+.bv-chart__tooltip-time {
+  margin-top: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bv-text-tertiary);
+}
+
+.bv-chart .recharts-cartesian-axis-tick-value {
+  font-variant-numeric: tabular-nums;
 }

@@ -1,9 +1,10 @@
 import { isEmpty } from "lodash";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
+  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -16,15 +17,17 @@ interface ChartProps {
   label: string;
 }
 
+type ChartPoint = {
+  time: string;
+  value: number;
+  fullTime: string;
+};
+
 const Chart: React.FC<ChartProps> = (props) => {
+  const gradientId = useId().replace(/:/g, "");
   const [data, setData] = useState<
     { name: string; value: number; created_at: string }[]
   >([]);
-  const [formattedData, setFormattedData] = useState<any[]>([]);
-  const [minValue, setMinValue] = useState<number>(0);
-  const [maxValue, setMaxValue] = useState<number>(35);
-  const chartRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState<number>(0);
 
   const fetchData = () => {
     getSensorReadings(props.name)
@@ -38,83 +41,172 @@ const Chart: React.FC<ChartProps> = (props) => {
     return () => clearInterval(interval);
   }, [props.name]);
 
-  useEffect(() => {
-    if (!isEmpty(data)) {
-      const lastSixData = data.slice(-6);
-      const chartData = lastSixData.map((item) => ({
-        time: reduceTimestampLength(item.created_at),
-        [props.name]: round2(Number(item.value)),
-      }));
+  const formattedData = useMemo<ChartPoint[]>(() => {
+    if (isEmpty(data)) return [];
 
-      const values = data.map((item) => round2(Number(item.value)));
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      const margin = (max - min) * 0.2 || 1;
+    const lastSixData = data.slice(-6);
+    const times = lastSixData.map((item) =>
+      formatClock(item.created_at, false),
+    );
+    const needsSeconds = new Set(times).size < times.length;
 
-      setMinValue(Math.floor(min - margin));
-      setMaxValue(Math.ceil(max + margin));
-      setFormattedData(chartData);
+    return lastSixData.map((item) => ({
+      time: formatClock(item.created_at, needsSeconds),
+      fullTime: formatClock(item.created_at, true),
+      value: round2(Number(item.value)),
+    }));
+  }, [data]);
+
+  const { minValue, maxValue, latest } = useMemo(() => {
+    if (formattedData.length === 0) {
+      return { minValue: 0, maxValue: 1, latest: null as number | null };
     }
-  }, [data, props.name]);
 
-  const reduceTimestampLength = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    return `${hours}:${minutes < 10 ? "0" + minutes : minutes}`;
-  };
+    const values = formattedData.map((item) => item.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min;
+    const pad = span === 0 ? Math.max(Math.abs(max) * 0.05, 0.5) : span * 0.18;
 
-  useEffect(() => {
-    const updateWidth = () => {
-      if (chartRef.current) {
-        setWidth(chartRef.current.offsetWidth);
-      }
+    return {
+      minValue: round2(min - pad),
+      maxValue: round2(max + pad),
+      latest: values[values.length - 1] ?? null,
     };
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => {
-      window.removeEventListener("resize", updateWidth);
-    };
-  }, []);
-
-  const tickFormatter = (value: number) => round2(value).toFixed(2);
+  }, [formattedData]);
 
   return (
-    <div ref={chartRef} style={{ width: "100%" }}>
-      <h3 id="title">{props.label}</h3>
-      {width > 0 && (
-        <LineChart
-          width={width}
-          height={200}
-          data={formattedData}
-          margin={{
-            top: 0,
-            right: 10,
-            left: -15,
-            bottom: 5,
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="time" />
-          <YAxis domain={[minValue, maxValue]} tickFormatter={tickFormatter} />
-          <Tooltip
-            formatter={(value: number | string) => [
-              Number(value).toFixed(2),
-              props.label,
-            ]}
-          />
-          <Line
-            type="monotone"
-            dataKey={props.name}
-            stroke="#8884d8"
-            activeDot={{ r: 8 }}
-            isAnimationActive={true}
-          />
-        </LineChart>
-      )}
+    <div className="bv-chart">
+      <div className="bv-chart__meta">
+        <h3 className="bv-chart__label">{props.label}</h3>
+        {latest !== null && (
+          <span className="bv-chart__value">{latest.toFixed(2)}</span>
+        )}
+      </div>
+
+      <div className="bv-chart__plot">
+        {formattedData.length === 0 ? (
+          <div className="bv-chart__empty">Waiting for readings…</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={formattedData}
+              margin={{ top: 8, right: 6, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="var(--bv-accent)"
+                    stopOpacity={0.28}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--bv-accent)"
+                    stopOpacity={0.02}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                stroke="var(--bv-line)"
+                strokeDasharray="0"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="time"
+                axisLine={false}
+                tickLine={false}
+                tickMargin={8}
+                minTickGap={28}
+                tick={{
+                  fill: "var(--bv-text-tertiary)",
+                  fontSize: 11,
+                  fontWeight: 500,
+                }}
+              />
+              <YAxis
+                domain={[minValue, maxValue]}
+                width={44}
+                axisLine={false}
+                tickLine={false}
+                tickMargin={6}
+                tickCount={5}
+                tickFormatter={(value: number) => round2(value).toFixed(2)}
+                tick={{
+                  fill: "var(--bv-text-tertiary)",
+                  fontSize: 11,
+                  fontWeight: 500,
+                }}
+              />
+              <Tooltip
+                cursor={{
+                  stroke: "var(--bv-accent-bright)",
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
+                }}
+                content={<ChartTooltip labelName={props.label} />}
+              />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="var(--bv-accent)"
+                strokeWidth={2.25}
+                fill={`url(#${gradientId})`}
+                activeDot={{
+                  r: 5,
+                  strokeWidth: 2,
+                  stroke: "#fff",
+                  fill: "var(--bv-accent-hover)",
+                }}
+                dot={{
+                  r: 3,
+                  strokeWidth: 1.5,
+                  stroke: "var(--bv-accent)",
+                  fill: "#fff",
+                }}
+                isAnimationActive
+                animationDuration={450}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
     </div>
   );
 };
+
+function ChartTooltip({
+  active,
+  payload,
+  labelName,
+}: {
+  active?: boolean;
+  payload?: Array<{ value?: number | string; payload?: ChartPoint }>;
+  labelName: string;
+}) {
+  if (!active || !payload?.length) return null;
+
+  const point = payload[0];
+  const value = Number(point.value);
+  const time = point.payload?.fullTime ?? "";
+
+  return (
+    <div className="bv-chart__tooltip">
+      <div className="bv-chart__tooltip-label">{labelName}</div>
+      <div className="bv-chart__tooltip-value">{value.toFixed(2)}</div>
+      {time && <div className="bv-chart__tooltip-time">{time}</div>}
+    </div>
+  );
+}
+
+function formatClock(timestamp: string, withSeconds: boolean) {
+  const date = new Date(timestamp);
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  if (!withSeconds) return `${hours}:${minutes}`;
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
 
 function round2(value: number) {
   return Math.round(value * 100) / 100;
