@@ -1,0 +1,8 @@
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+
+# Local build leftovers
+DerivedData/
+build/
+.swiftpm/configuration/

@@ -1,0 +1,482 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D0A70F4AE3A3BC8C4C716DF /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75483D571C891A65DD1D1880 /* LoginView.swift */; };
+		1E862420DB2B56F9B70DA25F /* DeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */; };
+		3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5903150B9DE6593F72927D /* DeviceListView.swift */; };
+		32D03374E6C876A3756E2E28 /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E655FAA6672908F3000615 /* SupabaseManager.swift */; };
+		3AD36B603ABB8CA07D05590F /* BioverseeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9577FD736A876CB295C82F00 /* BioverseeApp.swift */; };
+		66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB6EB4B11C80B349588ED65 /* DeviceService.swift */; };
+		7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DFB522D85CADF4B5967022F /* RootView.swift */; };
+		82F7A3E99C50F9A6E962DC83 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */; };
+		8930E027B576DB0A94BA2C63 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */; };
+		91F8A82F652325B7CBC4A36E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B624F146A102967FB426216A /* Assets.xcassets */; };
+		9C3272D85F9D2A24B70FD9B8 /* ControlCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88451A6C4395C7ED10B3F75E /* ControlCatalog.swift */; };
+		B43D8D213AA612E2805356AC /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827A1C2F14DBB487FDB045FE /* AppSession.swift */; };
+		D90E2D9966C5ABAED624C362 /* ActuatorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */; };
+		DB09D6A97055312CC6249EED /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 5E9CF1C039440C968368785F /* Supabase */; };
+		E821D129828F217BF5CE7D68 /* DeviceControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDBB6ADB289BB02637E711A /* DeviceControlsView.swift */; };
+		EB34CD0AA1AA8E5C3C79E719 /* NotificationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCC2F449231692241170C0D /* NotificationModels.swift */; };
+		FFB8C6768BFB5138B5EE07E7 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1CD5F9670AA699281F8276 /* AppConfig.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0B99312979798A458ACE8E94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1E5903150B9DE6593F72927D /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
+		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		37E655FAA6672908F3000615 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
+		626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
+		75483D571C891A65DD1D1880 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		7DFB522D85CADF4B5967022F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		827A1C2F14DBB487FDB045FE /* AppSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSession.swift; sourceTree = "<group>"; };
+		88451A6C4395C7ED10B3F75E /* ControlCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCatalog.swift; sourceTree = "<group>"; };
+		9577FD736A876CB295C82F00 /* BioverseeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BioverseeApp.swift; sourceTree = "<group>"; };
+		9EDBB6ADB289BB02637E711A /* DeviceControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceControlsView.swift; sourceTree = "<group>"; };
+		B624F146A102967FB426216A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BBCC2F449231692241170C0D /* NotificationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationModels.swift; sourceTree = "<group>"; };
+		E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		EA1CD5F9670AA699281F8276 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		EAB6EB4B11C80B349588ED65 /* DeviceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceService.swift; sourceTree = "<group>"; };
+		F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActuatorService.swift; sourceTree = "<group>"; };
+		F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E62B28E3C01394A8F678822B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DB09D6A97055312CC6249EED /* Supabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0BF8371DD48E551B69B35C41 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				88451A6C4395C7ED10B3F75E /* ControlCatalog.swift */,
+				626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */,
+				BBCC2F449231692241170C0D /* NotificationModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		227DFF6175FB9D2615AF7D2B = {
+			isa = PBXGroup;
+			children = (
+				746A002441870BCD791AD1CA /* Bioversee */,
+				728441A5BE70B82B3C0B1D06 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		36BECAF934A5D0DEE9120CDA /* Controls */ = {
+			isa = PBXGroup;
+			children = (
+				9EDBB6ADB289BB02637E711A /* DeviceControlsView.swift */,
+			);
+			path = Controls;
+			sourceTree = "<group>";
+		};
+		72375C0FF3B3BDE01F79BA9F /* App */ = {
+			isa = PBXGroup;
+			children = (
+				EA1CD5F9670AA699281F8276 /* AppConfig.swift */,
+				827A1C2F14DBB487FDB045FE /* AppSession.swift */,
+				9577FD736A876CB295C82F00 /* BioverseeApp.swift */,
+				7DFB522D85CADF4B5967022F /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		728441A5BE70B82B3C0B1D06 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				229160E588736F15739055D3 /* Bioversee.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		746A002441870BCD791AD1CA /* Bioversee */ = {
+			isa = PBXGroup;
+			children = (
+				72375C0FF3B3BDE01F79BA9F /* App */,
+				B6BA8A3B8FFC5A80BF071BBB /* Features */,
+				0BF8371DD48E551B69B35C41 /* Models */,
+				C014A2EA72CB95094342CCFC /* Resources */,
+				82179D43768CABBE13CF97DB /* Services */,
+			);
+			path = Bioversee;
+			sourceTree = "<group>";
+		};
+		804E5FE28203284448E371BF /* Devices */ = {
+			isa = PBXGroup;
+			children = (
+				1E5903150B9DE6593F72927D /* DeviceListView.swift */,
+			);
+			path = Devices;
+			sourceTree = "<group>";
+		};
+		82179D43768CABBE13CF97DB /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */,
+				EAB6EB4B11C80B349588ED65 /* DeviceService.swift */,
+				F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */,
+				37E655FAA6672908F3000615 /* SupabaseManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		B6BA8A3B8FFC5A80BF071BBB /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				ECF5CBE397D4A618ACC3FA8D /* Auth */,
+				36BECAF934A5D0DEE9120CDA /* Controls */,
+				804E5FE28203284448E371BF /* Devices */,
+				FEF8220558334C97283FF481 /* Notifications */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		C014A2EA72CB95094342CCFC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B624F146A102967FB426216A /* Assets.xcassets */,
+				0B99312979798A458ACE8E94 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		ECF5CBE397D4A618ACC3FA8D /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				75483D571C891A65DD1D1880 /* LoginView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		FEF8220558334C97283FF481 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7ADD8C5B051AF1B56F27FFAF /* Bioversee */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D2B403A64797F6B8E8EEA896 /* Build configuration list for PBXNativeTarget "Bioversee" */;
+			buildPhases = (
+				C79E70DADC1C930832C08C72 /* Sources */,
+				0F1A12D4EC07276C7F25F8C1 /* Resources */,
+				E62B28E3C01394A8F678822B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Bioversee;
+			packageProductDependencies = (
+				5E9CF1C039440C968368785F /* Supabase */,
+			);
+			productName = Bioversee;
+			productReference = 229160E588736F15739055D3 /* Bioversee.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		476F7D76EC8D0449342FCD7B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					7ADD8C5B051AF1B56F27FFAF = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = D090F05A782796984017380D /* Build configuration list for PBXProject "Bioversee" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 227DFF6175FB9D2615AF7D2B;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7D700AF784C1F1162BFBF4CF /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 728441A5BE70B82B3C0B1D06 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7ADD8C5B051AF1B56F27FFAF /* Bioversee */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0F1A12D4EC07276C7F25F8C1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				91F8A82F652325B7CBC4A36E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C79E70DADC1C930832C08C72 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D90E2D9966C5ABAED624C362 /* ActuatorService.swift in Sources */,
+				FFB8C6768BFB5138B5EE07E7 /* AppConfig.swift in Sources */,
+				B43D8D213AA612E2805356AC /* AppSession.swift in Sources */,
+				3AD36B603ABB8CA07D05590F /* BioverseeApp.swift in Sources */,
+				9C3272D85F9D2A24B70FD9B8 /* ControlCatalog.swift in Sources */,
+				E821D129828F217BF5CE7D68 /* DeviceControlsView.swift in Sources */,
+				3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */,
+				1E862420DB2B56F9B70DA25F /* DeviceModels.swift in Sources */,
+				66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */,
+				0D0A70F4AE3A3BC8C4C716DF /* LoginView.swift in Sources */,
+				EB34CD0AA1AA8E5C3C79E719 /* NotificationModels.swift in Sources */,
+				8930E027B576DB0A94BA2C63 /* NotificationService.swift in Sources */,
+				82F7A3E99C50F9A6E962DC83 /* NotificationsView.swift in Sources */,
+				7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */,
+				32D03374E6C876A3756E2E28 /* SupabaseManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		20EF1F9F55B7D4BF9C1C06CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		2DA8B3C5DA82047A5A690798 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BE24E0C44CBBA7B5146981D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bioversee.app;
+				PRODUCT_NAME = Bioversee;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F8EDCEC32E0819633D8B08C9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bioversee.app;
+				PRODUCT_NAME = Bioversee;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D090F05A782796984017380D /* Build configuration list for PBXProject "Bioversee" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2DA8B3C5DA82047A5A690798 /* Debug */,
+				20EF1F9F55B7D4BF9C1C06CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D2B403A64797F6B8E8EEA896 /* Build configuration list for PBXNativeTarget "Bioversee" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F8EDCEC32E0819633D8B08C9 /* Debug */,
+				BE24E0C44CBBA7B5146981D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7D700AF784C1F1162BFBF4CF /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5E9CF1C039440C968368785F /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7D700AF784C1F1162BFBF4CF /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 476F7D76EC8D0449342FCD7B /* Project object */;
+}
