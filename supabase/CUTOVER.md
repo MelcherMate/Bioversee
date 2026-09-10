@@ -36,8 +36,13 @@ Redeploy or refresh the Vite app. On first load each signed-in user gets four pr
 
 Run [`share_links.sql`](./share_links.sql) once. Fresh installs get this from `schema.sql`.
 
+## Notifications + accept-to-join (if share already applied)
+
+Run [`notifications.sql`](./notifications.sql) once. Invites become pending until the recipient accepts from the bell.
+
 ## Notes
 
-- Share UI: navbar Share → invite link / email / roster (`device_share_links`, `device_members`).
+- Share UI: navbar Share → invite link / email / roster.
+- Recipients get a notification and must **Accept** before the device appears.
 - Pi API keys: table ready (`device_credentials`); mint UI + Edge Function still follow-up.
 - Pi ingest should use the **service role** or a future Edge Function that validates a device credential and inserts with `device_id`.

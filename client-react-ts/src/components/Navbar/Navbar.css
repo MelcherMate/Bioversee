@@ -232,11 +232,17 @@
 }
 
 .topbar__share-wrap,
+.topbar__notif-wrap,
 .topbar__account {
   position: relative;
 }
 
+.topbar__notif-wrap {
+  overflow: visible;
+}
+
 .topbar__icon-btn {
+  position: relative;
   display: grid;
   place-items: center;
   width: 36px;
@@ -246,7 +252,27 @@
   background: var(--bv-fill);
   text-decoration: none;
   cursor: pointer;
+  overflow: visible;
   transition: background 0.2s var(--bv-ease), box-shadow 0.2s var(--bv-ease);
+}
+
+.topbar__badge-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  z-index: 2;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #fff;
+  pointer-events: none;
 }
 
 .topbar__icon-btn:hover,

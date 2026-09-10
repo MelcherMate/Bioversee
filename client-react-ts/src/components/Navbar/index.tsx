@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDownOutline, ShareSocialOutline } from "react-ionicons";
+import {
+  ChevronDownOutline,
+  NotificationsOutline,
+  ShareSocialOutline,
+} from "react-ionicons";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   avatarForAccount,
@@ -11,16 +15,14 @@ import {
   upsertStoredSession,
   type StoredAccount,
 } from "../../lib/accountSessions";
-import {
-  connectivityLabel,
-  useAppStatus,
-} from "../../lib/appStatus";
+import { connectivityLabel, useAppStatus } from "../../lib/appStatus";
 import {
   isLegacyDeviceType,
   listAccessibleDevices,
   type Device,
   type DeviceType,
 } from "../../lib/devices";
+import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import {
   deviceTypeFromPath,
   openSharedDeviceUrl,
@@ -28,6 +30,7 @@ import {
 } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
+import NotificationsPanel from "../NotificationsPanel";
 import SharePanel from "../SharePanel";
 import "./Navbar.css";
 
@@ -53,9 +56,11 @@ const Navbar = ({ user }: NavbarProps) => {
   const [showAccount, setShowAccount] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showDevices, setShowDevices] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [accounts, setAccounts] = useState<StoredAccount[]>([]);
   const [devices, setDevices] = useState<AccessibleDevice[]>([]);
   const [devicesLoading, setDevicesLoading] = useState(true);
+  const [unread, setUnread] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,9 +96,29 @@ const Navbar = ({ user }: NavbarProps) => {
   }, [user.id]);
 
   useEffect(() => {
+    let cancelled = false;
+    const pullUnread = () => {
+      listMyNotifications(20)
+        .then((list) => {
+          if (!cancelled) setUnread(unreadCount(list));
+        })
+        .catch(() => {
+          /* table may not exist until SQL applied */
+        });
+    };
+    pullUnread();
+    const interval = window.setInterval(pullUnread, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [user.id]);
+
+  useEffect(() => {
     setShowShare(false);
     setShowAccount(false);
     setShowDevices(false);
+    setShowNotifications(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -244,6 +269,7 @@ const Navbar = ({ user }: NavbarProps) => {
               onClick={() => {
                 setShowAccount(false);
                 setShowShare(false);
+                setShowNotifications(false);
                 setShowDevices((open) => !open);
               }}
             >
@@ -355,6 +381,7 @@ const Navbar = ({ user }: NavbarProps) => {
               onClick={() => {
                 setShowAccount(false);
                 setShowDevices(false);
+                setShowNotifications(false);
                 setShowShare((open) => !open);
               }}
             >
@@ -372,6 +399,42 @@ const Navbar = ({ user }: NavbarProps) => {
             />
           </div>
 
+          <div className="topbar__notif-wrap">
+            <button
+              type="button"
+              className={`topbar__icon-btn ${showNotifications ? "is-active" : ""}`}
+              aria-label={
+                unread > 0
+                  ? `Notifications, ${unread} unread`
+                  : "Notifications"
+              }
+              aria-expanded={showNotifications}
+              onClick={() => {
+                setShowAccount(false);
+                setShowDevices(false);
+                setShowShare(false);
+                setShowNotifications((open) => !open);
+              }}
+            >
+              <NotificationsOutline
+                color="#1d1d1f"
+                title="Notifications"
+                height="20px"
+                width="20px"
+              />
+              {unread > 0 ? (
+                <span className="topbar__badge-dot" aria-hidden="true">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              ) : null}
+            </button>
+            <NotificationsPanel
+              open={showNotifications}
+              onClose={() => setShowNotifications(false)}
+              onUnreadChange={setUnread}
+            />
+          </div>
+
           <div className="topbar__account" ref={accountRef}>
             <button
               type="button"
@@ -380,6 +443,7 @@ const Navbar = ({ user }: NavbarProps) => {
               onClick={() => {
                 setShowShare(false);
                 setShowDevices(false);
+                setShowNotifications(false);
                 setShowAccount((open) => !open);
               }}
             >

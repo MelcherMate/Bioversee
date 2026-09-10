@@ -15,6 +15,8 @@ export type DeviceRosterMember = {
 };
 
 export type RedeemResult = {
+  status?: "pending" | "already_member";
+  invite_id?: string;
   device_id: string;
   type: DeviceType;
   name: string;

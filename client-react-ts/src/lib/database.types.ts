@@ -314,6 +314,41 @@ export type Database = {
         Args: { p_link_id: string };
         Returns: undefined;
       };
+      create_pending_device_invite_as: {
+        Args: {
+          p_device_id: string;
+          p_invitee_id: string;
+          p_inviter_id: string;
+          p_role?: DeviceMemberRole;
+          p_share_link_id?: string | null;
+        };
+        Returns: string;
+      };
+      accept_device_invite: {
+        Args: { p_invite_id: string };
+        Returns: Json;
+      };
+      decline_device_invite: {
+        Args: { p_invite_id: string };
+        Returns: undefined;
+      };
+      list_my_notifications: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string;
+          kind: string;
+          title: string;
+          body: string | null;
+          data: Json;
+          read_at: string | null;
+          created_at: string;
+          invite_status: string | null;
+        }[];
+      };
+      mark_notification_read: {
+        Args: { p_notification_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       device_type: DeviceType;

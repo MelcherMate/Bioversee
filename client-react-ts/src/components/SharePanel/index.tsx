@@ -153,7 +153,9 @@ function SharePanel({ user, open, onClose }: SharePanelProps) {
       const url = inviteUrlForToken(token);
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setMessage("Invite link copied. Anyone with a Bioversee account can join.");
+      setMessage(
+        "Invite link copied. Recipients must accept from their notifications bell."
+      );
       await refreshAccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create link");
@@ -171,7 +173,9 @@ function SharePanel({ user, open, onClose }: SharePanelProps) {
     try {
       await inviteByEmail(deviceId, email.trim(), role);
       setEmail("");
-      setMessage(`Invited ${email.trim()} as ${role}.`);
+      setMessage(
+        `Invite sent to ${email.trim()}. They must accept it from Notifications.`
+      );
       await refreshAccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invite failed");
@@ -307,7 +311,8 @@ function SharePanel({ user, open, onClose }: SharePanelProps) {
               </button>
             </div>
             <p className="share-panel__hint">
-              They must already have a Bioversee account.
+              They need a Bioversee account and must accept from the bell icon
+              before the device appears for them.
             </p>
           </form>
 

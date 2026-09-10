@@ -33,16 +33,31 @@ function Invite({ user }: InviteProps) {
         if (cancelled) return;
         setResult(redeemed);
         setStatus("done");
-        const path = openSharedDeviceUrl({
-          id: redeemed.device_id,
-          type: redeemed.type,
-        });
-        window.setTimeout(() => navigate(path, { replace: true }), 900);
+        if (redeemed.status === "already_member") {
+          window.setTimeout(
+            () =>
+              navigate(
+                openSharedDeviceUrl({
+                  id: redeemed.device_id,
+                  type: redeemed.type,
+                }),
+                { replace: true }
+              ),
+            700
+          );
+        } else {
+          window.setTimeout(
+            () => navigate("/bioreactor", { replace: true }),
+            1200
+          );
+        }
       })
       .catch((err) => {
         if (cancelled) return;
         setStatus("error");
-        setError(err instanceof Error ? err.message : "Could not accept invite");
+        setError(
+          err instanceof Error ? err.message : "Could not process invite"
+        );
       });
 
     return () => {
@@ -55,9 +70,10 @@ function Invite({ user }: InviteProps) {
       <div className="invite-page">
         <div className="invite-card">
           <p className="invite-card__eyebrow">Invite</p>
-          <h1 className="invite-card__title">Sign in to join this device</h1>
+          <h1 className="invite-card__title">Sign in to continue</h1>
           <p className="invite-card__body">
-            You need a Bioversee account before this invite link can add you.
+            You need a Bioversee account before you can review this device
+            invite.
           </p>
           <Link className="invite-card__cta" to={`/?next=/invite/${token ?? ""}`}>
             Sign in
@@ -73,16 +89,28 @@ function Invite({ user }: InviteProps) {
         <p className="invite-card__eyebrow">Invite</p>
         {status === "working" && (
           <>
-            <h1 className="invite-card__title">Joining device…</h1>
-            <p className="invite-card__body">Accepting your invite link.</p>
+            <h1 className="invite-card__title">Opening invite…</h1>
+            <p className="invite-card__body">
+              Preparing a notification for you to accept.
+            </p>
           </>
         )}
-        {status === "done" && result && (
+        {status === "done" && result?.status === "pending" && (
           <>
-            <h1 className="invite-card__title">You’re in</h1>
+            <h1 className="invite-card__title">Invite received</h1>
             <p className="invite-card__body">
-              Joined <strong>{result.name}</strong> as {result.role}. Opening it
-              now…
+              <strong>{result.name}</strong> was shared with you as{" "}
+              {result.role}. Open the bell icon to accept before it appears in
+              your devices.
+            </p>
+          </>
+        )}
+        {status === "done" && result?.status === "already_member" && (
+          <>
+            <h1 className="invite-card__title">Already shared</h1>
+            <p className="invite-card__body">
+              You already have access to <strong>{result.name}</strong>. Opening
+              it now…
             </p>
           </>
         )}
