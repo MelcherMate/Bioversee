@@ -1,5 +1,7 @@
 import {
   useCallback,
+  useEffect,
+  useRef,
   useState,
   type ChangeEvent,
   type PointerEvent as ReactPointerEvent,
@@ -42,13 +44,54 @@ export function WaterLevelPanel({
   drainDisabled = false,
 }: WaterLevelPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const displayPercent = fillUnitsToPercent(fillUnits);
-  // Continuous ratio so fill/drain moves the thumb smoothly instead of 1% jumps.
+  // Local visual level updated every frame so the thumb never freezes/jumps
+  // while React state catches up from fill/drain animation.
+  const [visualUnits, setVisualUnits] = useState(fillUnits);
+  const targetRef = useRef(fillUnits);
+  const visualRef = useRef(fillUnits);
+  const draggingRef = useRef(false);
+
+  targetRef.current = fillUnits;
+  draggingRef.current = isDragging;
+
+  useEffect(() => {
+    let frame = 0;
+    let lastTime = 0;
+
+    const tick = (now: number) => {
+      if (!lastTime) lastTime = now;
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      const target = targetRef.current;
+      let next = visualRef.current;
+
+      if (draggingRef.current) {
+        next = target;
+      } else {
+        // Critically damped-ish follow: smooth while fill/drain updates arrive.
+        const follow = 1 - Math.exp(-14 * dt);
+        next = next + (target - next) * follow;
+        if (Math.abs(target - next) < 0.05) next = target;
+      }
+
+      if (next !== visualRef.current) {
+        visualRef.current = next;
+        setVisualUnits(next);
+      }
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const displayPercent = fillUnitsToPercent(visualUnits);
   const progress = Math.min(
     100,
-    Math.max(0, (fillUnits / VESSEL_MAX_FILL_UNITS) * 100),
+    Math.max(0, (visualUnits / VESSEL_MAX_FILL_UNITS) * 100),
   );
-  const animateTrack = !isDragging && (isFillHeld || isDrainHeld);
 
   const bindHoldButton = (onHoldChange?: (held: boolean) => void) => ({
     type: "button" as const,
@@ -74,7 +117,10 @@ export function WaterLevelPanel({
 
   const handleSliderChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextPercent = Number(event.target.value);
-    onChange(percentToFillUnits(nextPercent));
+    const nextUnits = percentToFillUnits(nextPercent);
+    visualRef.current = nextUnits;
+    setVisualUnits(nextUnits);
+    onChange(nextUnits);
   };
 
   const endDrag = useCallback(() => setIsDragging(false), []);
@@ -99,11 +145,7 @@ export function WaterLevelPanel({
           ) : null}
         </div>
 
-        <div
-          className={`pv-hslider${animateTrack ? " is-live" : ""}${
-            isDragging ? " is-dragging" : ""
-          }`}
-        >
+        <div className={`pv-hslider${isDragging ? " is-dragging" : ""}`}>
           <div className="pv-hslider__rail" aria-hidden="true">
             <div
               className="pv-hslider__fill"
