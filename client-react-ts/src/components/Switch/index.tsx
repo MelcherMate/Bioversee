@@ -13,9 +13,12 @@ type SwitchProps = {
   val: boolean;
   setVal: (value: boolean) => void;
   user: AppUser;
+  disabled?: boolean;
 };
 
 function Switch(props: SwitchProps) {
+  const disabled = Boolean(props.disabled);
+
   useEffect(() => {
     if (!props.deviceId) return;
     getLatestSwitchState(props.deviceId, props.name)
@@ -24,6 +27,7 @@ function Switch(props: SwitchProps) {
   }, [props.deviceId, props.name, props.user.id]);
 
   const sendSwitchStateToDatabase = (newValue: boolean) => {
+    if (disabled) return;
     insertSwitchState(
       props.deviceId,
       props.name,
@@ -34,7 +38,9 @@ function Switch(props: SwitchProps) {
 
   return (
     <label
-      className={`bv-switch${props.val ? " bv-switch--on" : ""}`}
+      className={`bv-switch${props.val ? " bv-switch--on" : ""}${
+        disabled ? " bv-switch--disabled" : ""
+      }`}
       htmlFor={`${props.deviceId}-${props.name}`}
     >
       <div className="bv-switch__copy">
@@ -46,7 +52,9 @@ function Switch(props: SwitchProps) {
         className="bv-switch__input"
         checked={props.val}
         id={`${props.deviceId}-${props.name}`}
+        disabled={disabled}
         onChange={(event) => {
+          if (disabled) return;
           const newValue = event.target.checked;
           props.setVal(newValue);
           sendSwitchStateToDatabase(newValue);

@@ -106,6 +106,10 @@
   cursor: not-allowed;
 }
 
+.bv-segment--disabled.bv-segment--accent .bv-segment__btn.is-active {
+  color: var(--bv-text-tertiary);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bv-segment__thumb {
     transition: none;

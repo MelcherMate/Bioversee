@@ -3,9 +3,7 @@
 }
 
 .bv-switch--disabled {
-  opacity: 0.45;
   cursor: not-allowed;
-  pointer-events: none;
 }
 
 .mbr-panel__intensity {
@@ -15,8 +13,8 @@
   transition: opacity 0.2s var(--bv-ease);
 }
 
-.mbr-panel__intensity.is-disabled {
-  opacity: 0.45;
+.mbr-panel__intensity.is-disabled .mbr-panel__intensity-value {
+  color: var(--bv-text-tertiary);
 }
 
 .mbr-panel__intensity-meta {

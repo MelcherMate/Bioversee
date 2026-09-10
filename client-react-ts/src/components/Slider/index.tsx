@@ -22,10 +22,12 @@ type SliderProps = {
   user: AppUser;
   min?: number;
   max?: number;
+  disabled?: boolean;
 };
 
 function Slider(props: SliderProps) {
   const [isSliding, setIsSliding] = useState(false);
+  const disabled = Boolean(props.disabled);
   const min = props.min ?? 0;
   const max = props.max ?? 100;
   const value = Number.isFinite(props.val) ? props.val : min;
@@ -40,12 +42,17 @@ function Slider(props: SliderProps) {
   }, [props.deviceId, props.name, props.user.id, isSliding]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const newValue = parseInt(event.target.value, 10);
     props.setVal(newValue);
     setIsSliding(true);
   };
 
   const commitValue = (raw: string) => {
+    if (disabled) {
+      setIsSliding(false);
+      return;
+    }
     const newValue = parseInt(raw, 10);
     setIsSliding(false);
     insertSliderState(
@@ -61,7 +68,7 @@ function Slider(props: SliderProps) {
   };
 
   return (
-    <div className="bv-slider">
+    <div className={`bv-slider${disabled ? " bv-slider--disabled" : ""}`}>
       <div className="bv-slider__meta">
         <span className="bv-slider__label">{props.label}</span>
         <AnimatedNumber
@@ -77,6 +84,7 @@ function Slider(props: SliderProps) {
         min={min}
         max={max}
         value={value}
+        disabled={disabled}
         onChange={handleChange}
         onMouseUp={handleMouseUp}
         onTouchEnd={(event) => commitValue(event.currentTarget.value)}

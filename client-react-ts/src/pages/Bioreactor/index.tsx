@@ -5,7 +5,11 @@ import Chart from "../../components/Chart/index";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
-import { getDeviceForPage, type Device } from "../../lib/devices";
+import {
+  canOperateDevice,
+  getDeviceForPage,
+  type DeviceWithAccess,
+} from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./Bioreactor.css";
@@ -24,7 +28,7 @@ function Bioreactor({ user }: BioreactorProps) {
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
-  const [device, setDevice] = useState<Device | null>(null);
+  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
   const [ready, setReady] = useState(false);
   const [cards, setCards] = useState<Card[]>([
     {
@@ -85,6 +89,8 @@ function Bioreactor({ user }: BioreactorProps) {
     return <EmptyDeviceState processLabel="Bioreactor" />;
   }
 
+  const readOnly = !canOperateDevice(device.role);
+
   return (
     <div className="container">
       <aside id="actuatorSide">
@@ -98,6 +104,7 @@ function Bioreactor({ user }: BioreactorProps) {
               val={warmWVal}
               label="Warm water"
               user={user}
+              disabled={readOnly}
             />
             <Switch
               deviceId={device.id}
@@ -106,6 +113,7 @@ function Bioreactor({ user }: BioreactorProps) {
               val={coldWVal}
               label="Cold water"
               user={user}
+              disabled={readOnly}
             />
             <Switch
               deviceId={device.id}
@@ -114,6 +122,7 @@ function Bioreactor({ user }: BioreactorProps) {
               val={acidVal}
               label="Acid"
               user={user}
+              disabled={readOnly}
             />
             <Switch
               deviceId={device.id}
@@ -122,6 +131,7 @@ function Bioreactor({ user }: BioreactorProps) {
               val={baseVal}
               label="Base"
               user={user}
+              disabled={readOnly}
             />
           </section>
           <section className="controlPanel__section">
@@ -133,6 +143,7 @@ function Bioreactor({ user }: BioreactorProps) {
               val={rotorVal}
               label="Rotor"
               user={user}
+              disabled={readOnly}
             />
             <Slider
               deviceId={device.id}
@@ -141,6 +152,7 @@ function Bioreactor({ user }: BioreactorProps) {
               val={aeratorVal}
               label="Aerator"
               user={user}
+              disabled={readOnly}
             />
           </section>
         </div>

@@ -16,12 +16,25 @@ export type Device = {
   updated_at: string;
 };
 
-export type AccessibleDevice = Device & {
+export type DeviceWithAccess = Device & {
   role: string;
   isOwner: boolean;
+};
+
+export type AccessibleDevice = DeviceWithAccess & {
   ownerDisplayName: string | null;
   ownerAvatarUrl: string | null;
 };
+
+/** Owner / admin / operator may write actuators. Viewers are read-only. */
+export function canOperateDevice(role: string): boolean {
+  return role === "owner" || role === "admin" || role === "operator";
+}
+
+/** Owner / admin may manage sharing and rename. */
+export function canAdminDevice(role: string): boolean {
+  return role === "owner" || role === "admin";
+}
 
 const DEVICE_TYPES: DeviceType[] = [
   "bioreactor",
@@ -64,6 +77,33 @@ export async function getMyDevice(type: DeviceType): Promise<Device | null> {
   return (data as Device | null) ?? null;
 }
 
+async function withMembership(
+  device: Device
+): Promise<DeviceWithAccess | null> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: membership, error } = await supabase
+    .from("device_members")
+    .select("role")
+    .eq("device_id", device.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!membership) return null;
+
+  return {
+    ...device,
+    role: membership.role,
+    isOwner: device.owner_id === user.id,
+  };
+}
+
 /**
  * Resolve the device for a process page.
  * Prefer `preferredId` when accessible; otherwise the first owned device of that type.
@@ -71,7 +111,7 @@ export async function getMyDevice(type: DeviceType): Promise<Device | null> {
 export async function getDeviceForPage(
   type: DeviceType,
   preferredId?: string | null
-): Promise<Device | null> {
+): Promise<DeviceWithAccess | null> {
   if (preferredId) {
     const { data, error } = await supabase
       .from("devices")
@@ -81,10 +121,12 @@ export async function getDeviceForPage(
       .maybeSingle();
 
     if (error) throw error;
-    if (data) return data as Device;
+    if (data) return withMembership(data as Device);
   }
 
-  return getMyDevice(type);
+  const owned = await getMyDevice(type);
+  if (!owned) return null;
+  return withMembership(owned);
 }
 
 /** Owned devices keyed by type (first of each). Missing types are omitted. */

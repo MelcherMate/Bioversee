@@ -15,7 +15,11 @@ import {
   insertSliderState,
   insertSwitchState,
 } from "../../lib/actuators";
-import { getDeviceForPage, type Device } from "../../lib/devices";
+import {
+  canOperateDevice,
+  getDeviceForPage,
+  type DeviceWithAccess,
+} from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
 import "../Bioreactor/Bioreactor.css";
@@ -46,7 +50,7 @@ function snapAerationLevel(value: number): MbrAerationLevel {
 function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
-  const [device, setDevice] = useState<Device | null>(null);
+  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
   const [ready, setReady] = useState(false);
   const [isFlowOn, setIsFlowOn] = useState(false);
   const [isAerationOn, setIsAerationOn] = useState(false);
@@ -95,13 +99,13 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   }, [device]);
 
   const onFlowChange = (on: boolean) => {
-    if (!device) return;
+    if (!device || !canOperateDevice(device.role)) return;
     setIsFlowOn(on);
     insertSwitchState(device.id, FLOW_KEY, on, user.id).catch(console.error);
   };
 
   const onAerationChange = (on: boolean) => {
-    if (!device) return;
+    if (!device || !canOperateDevice(device.role)) return;
     setIsAerationOn(on);
     insertSwitchState(device.id, AERATION_KEY, on, user.id).catch(
       console.error,
@@ -109,7 +113,7 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   };
 
   const onAerationLevelChange = (level: MbrAerationLevel) => {
-    if (!device) return;
+    if (!device || !canOperateDevice(device.role)) return;
     setAerationLevel(level);
     insertSliderState(device.id, LEVEL_KEY, level, user.id).catch(
       console.error,
@@ -128,6 +132,8 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
     return <EmptyDeviceState processLabel="Membrane MBR" />;
   }
 
+  const readOnly = !canOperateDevice(device.role);
+
   return (
     <div className="container">
       <aside id="actuatorSide">
@@ -138,7 +144,7 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
           onAerationChange={onAerationChange}
           aerationLevel={aerationLevel}
           onAerationLevelChange={onAerationLevelChange}
-          disabled={flow.isAnimating && !isFlowOn}
+          disabled={readOnly || (flow.isAnimating && !isFlowOn)}
         />
       </aside>
       <main className="process-scene" id="membraneBioreactorBox">

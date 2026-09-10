@@ -5,7 +5,11 @@ import Chart from "../../components/Chart";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
-import { getDeviceForPage, type Device } from "../../lib/devices";
+import {
+  canOperateDevice,
+  getDeviceForPage,
+  type DeviceWithAccess,
+} from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./WaterPurifier.css";
@@ -24,7 +28,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
-  const [device, setDevice] = useState<Device | null>(null);
+  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
   const [ready, setReady] = useState(false);
   const [cards, setCards] = useState<Card[]>([
     {
@@ -83,6 +87,8 @@ function WaterPurifier({ user }: WaterpurifierProps) {
     return <EmptyDeviceState processLabel="Water Purifier" />;
   }
 
+  const readOnly = !canOperateDevice(device.role);
+
   return (
     <div className="container">
       <aside id="actuatorSide">
@@ -96,6 +102,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
               val={pump1Val}
               label="Puffer → Active"
               user={user}
+              disabled={readOnly}
             />
             <Switch
               deviceId={device.id}
@@ -104,6 +111,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
               val={pump2Val}
               label="Additive → Active"
               user={user}
+              disabled={readOnly}
             />
             <Switch
               deviceId={device.id}
@@ -112,6 +120,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
               val={pump3Val}
               label="Active → Clean"
               user={user}
+              disabled={readOnly}
             />
           </section>
           <section className="controlPanel__section">
@@ -123,6 +132,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
               val={rotorVal}
               label="Agitator"
               user={user}
+              disabled={readOnly}
             />
           </section>
         </div>

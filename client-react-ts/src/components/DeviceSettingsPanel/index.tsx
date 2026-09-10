@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { TrashOutline } from "react-ionicons";
 import {
+  canAdminDevice,
   renameMyDevice,
   type AccessibleDevice,
 } from "../../lib/devices";
@@ -61,7 +62,7 @@ function DeviceSettingsPanel({
 
   const meta = DEVICE_TYPE_META[device.type];
   const Icon = meta.Icon;
-  const canRename = device.isOwner || device.role === "admin";
+  const canRename = canAdminDevice(device.role);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();

@@ -432,6 +432,7 @@ const Navbar = ({ user }: NavbarProps) => {
               user={user}
               open={showShare}
               onClose={() => setShowShare(false)}
+              onDevicesChanged={refreshDevices}
             />
           </div>
 

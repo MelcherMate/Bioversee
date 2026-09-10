@@ -93,6 +93,21 @@ export async function listShareableDevices(): Promise<Device[]> {
   return (data ?? []) as Device[];
 }
 
+export function roleLabel(role: string): string {
+  switch (role) {
+    case "owner":
+      return "Owner";
+    case "admin":
+      return "Admin";
+    case "operator":
+      return "Operator";
+    case "viewer":
+      return "Viewer";
+    default:
+      return role;
+  }
+}
+
 export async function createShareLink(
   deviceId: string,
   role: ShareRole,

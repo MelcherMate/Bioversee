@@ -29,6 +29,8 @@ type WaterLevelPanelProps = {
   isDrainHeld?: boolean;
   onDrainHoldChange?: (held: boolean) => void;
   drainDisabled?: boolean;
+  /** Viewer / read-only — gray controls, no interaction. */
+  disabled?: boolean;
 };
 
 export function WaterLevelPanel({
@@ -45,6 +47,7 @@ export function WaterLevelPanel({
   isDrainHeld = false,
   onDrainHoldChange,
   drainDisabled = false,
+  disabled = false,
 }: WaterLevelPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   // Local visual level updated every frame so the thumb never freezes/jumps
@@ -99,6 +102,7 @@ export function WaterLevelPanel({
   const bindHoldButton = (onHoldChange?: (held: boolean) => void) => ({
     type: "button" as const,
     onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (disabled) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
       onHoldChange?.(true);
@@ -119,6 +123,7 @@ export function WaterLevelPanel({
   });
 
   const handleSliderChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const nextPercent = Number(event.target.value);
     const nextUnits = percentToFillUnits(nextPercent);
     visualRef.current = nextUnits;
@@ -128,14 +133,17 @@ export function WaterLevelPanel({
 
   const endDrag = useCallback(() => {
     setIsDragging(false);
-    onCommit?.(visualRef.current);
-  }, [onCommit]);
+    if (!disabled) onCommit?.(visualRef.current);
+  }, [disabled, onCommit]);
 
   const atFull = fillUnits >= VESSEL_MAX_FILL_UNITS;
   const atEmpty = fillUnits <= 0;
+  const controlsLocked = disabled;
 
   return (
-    <div className="controlPanel pv-panel">
+    <div
+      className={`controlPanel pv-panel${controlsLocked ? " pv-panel--disabled" : ""}`}
+    >
       <h4 className="boxTitle">{title}</h4>
 
       <div className="bv-slider pv-panel__slider">
@@ -169,8 +177,11 @@ export function WaterLevelPanel({
             max={100}
             step="any"
             value={progress}
+            disabled={controlsLocked}
             onChange={handleSliderChange}
-            onPointerDown={() => setIsDragging(true)}
+            onPointerDown={() => {
+              if (!controlsLocked) setIsDragging(true);
+            }}
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
             onBlur={endDrag}
@@ -182,7 +193,7 @@ export function WaterLevelPanel({
       <div className="pv-panel__actions">
         <button
           {...bindHoldButton(onFillHoldChange)}
-          disabled={atFull || fillDisabled}
+          disabled={controlsLocked || atFull || fillDisabled}
           aria-label={`${fillLabel} tank`}
           aria-pressed={isFillHeld}
           className={`pv-panel__btn pv-panel__btn--fill${isFillHeld ? " is-active" : ""}`}
@@ -191,7 +202,7 @@ export function WaterLevelPanel({
         </button>
         <button
           {...bindHoldButton(onDrainHoldChange)}
-          disabled={atEmpty || drainDisabled}
+          disabled={controlsLocked || atEmpty || drainDisabled}
           aria-label={`${drainLabel} tank`}
           aria-pressed={isDrainHeld}
           className={`pv-panel__btn pv-panel__btn--drain${isDrainHeld ? " is-active" : ""}`}

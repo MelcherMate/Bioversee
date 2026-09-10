@@ -13,7 +13,11 @@ import {
   insertSensorReading,
   insertSliderState,
 } from "../../lib/actuators";
-import { getDeviceForPage, type Device } from "../../lib/devices";
+import {
+  canOperateDevice,
+  getDeviceForPage,
+  type DeviceWithAccess,
+} from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
 import "../Bioreactor/Bioreactor.css";
@@ -28,7 +32,7 @@ type PressureVesselProps = {
 function PressureVessel({ user }: PressureVesselProps) {
   const [searchParams] = useSearchParams();
   const preferredDeviceId = searchParams.get("device");
-  const [device, setDevice] = useState<Device | null>(null);
+  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
   const [ready, setReady] = useState(false);
   const [fillUnits, setFillUnits] = useState(
     Math.round(VESSEL_MAX_FILL_UNITS / 2),
@@ -65,7 +69,7 @@ function PressureVessel({ user }: PressureVesselProps) {
   }, [user.id, preferredDeviceId]);
 
   const persistLevel = (units: number) => {
-    if (!device) return;
+    if (!device || !canOperateDevice(device.role)) return;
     const percent = fillUnitsToPercent(units);
     insertSliderState(
       device.id,
@@ -115,19 +119,23 @@ function PressureVessel({ user }: PressureVesselProps) {
   ]);
 
   const onLevelChange = (units: number) => {
+    if (!device || !canOperateDevice(device.role)) return;
     setFillUnits(units);
   };
 
   const onLevelCommit = (units: number) => {
+    if (!device || !canOperateDevice(device.role)) return;
     persistLevel(units);
   };
 
   const onFillHoldChange = (held: boolean) => {
+    if (!device || !canOperateDevice(device.role)) return;
     setIsFillHeld(held);
     if (!held) persistLevel(fillUnitsRef.current);
   };
 
   const onDrainHoldChange = (held: boolean) => {
+    if (!device || !canOperateDevice(device.role)) return;
     setIsDrainHeld(held);
     if (!held) persistLevel(fillUnitsRef.current);
   };
@@ -144,6 +152,8 @@ function PressureVessel({ user }: PressureVesselProps) {
     return <EmptyDeviceState processLabel="Pressure Vessel" />;
   }
 
+  const readOnly = !canOperateDevice(device.role);
+
   return (
     <div className="container">
       <aside id="actuatorSide">
@@ -153,10 +163,11 @@ function PressureVessel({ user }: PressureVesselProps) {
           onCommit={onLevelCommit}
           isFillHeld={isFillHeld}
           onFillHoldChange={onFillHoldChange}
-          fillDisabled={inletFill.isAnimating && !isFillHeld}
+          fillDisabled={readOnly || (inletFill.isAnimating && !isFillHeld)}
           isDrainHeld={isDrainHeld}
           onDrainHoldChange={onDrainHoldChange}
-          drainDisabled={drainAnim.isAnimating && !isDrainHeld}
+          drainDisabled={readOnly || (drainAnim.isAnimating && !isDrainHeld)}
+          disabled={readOnly}
         />
       </aside>
       <main className="process-scene" id="pressureVesselBox">

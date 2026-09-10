@@ -161,3 +161,23 @@
 .pv-panel__btn--drain.is-active {
   box-shadow: 0 0 0 3px var(--bv-accent-muted);
 }
+
+.pv-panel--disabled .bv-slider__value {
+  color: var(--bv-text-tertiary);
+}
+
+.pv-panel--disabled .pv-hslider__fill,
+.pv-panel--disabled .pv-hslider__thumb {
+  background: #c7c7cc;
+  box-shadow: none;
+}
+
+.pv-panel--disabled .pv-hslider__input {
+  cursor: not-allowed;
+}
+
+.pv-panel--disabled .pv-panel__btn--fill {
+  border-color: var(--bv-line);
+  background: var(--bv-fill);
+  color: var(--bv-text-tertiary);
+}
