@@ -1,12 +1,10 @@
 import SwiftUI
 
 struct NotificationsView: View {
-    var onUnreadChange: (Int) -> Void = { _ in }
+    @EnvironmentObject private var session: AppSession
+    @EnvironmentObject private var inbox: InboxStore
 
-    @State private var items: [AppNotification] = []
-    @State private var loading = true
-    @State private var errorMessage: String?
-    @State private var busyId: UUID?
+    @State private var busyId: String?
 
     var body: some View {
         ZStack {
@@ -19,8 +17,8 @@ struct NotificationsView: View {
                         .tracking(-0.6)
                         .foregroundStyle(BVTheme.text)
                     Spacer()
-                    if unread > 0 {
-                        Text("\(unread) new")
+                    if inbox.unread > 0 {
+                        Text("\(inbox.unread) new")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(BVTheme.accent)
                             .padding(.horizontal, 10)
@@ -33,23 +31,29 @@ struct NotificationsView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 8)
 
+                if session.accounts.count > 1 {
+                    Text("All signed-in accounts")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(BVTheme.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 8)
+                }
+
                 Group {
-                    if loading && items.isEmpty {
-                        ProgressView()
-                            .tint(BVTheme.accent)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if items.isEmpty {
+                    if inbox.items.isEmpty {
                         BVEmptyState(
                             title: "No notifications",
                             systemImage: "bell.slash",
-                            message: "Device invites and updates will show up here."
+                            message: "Invites and updates for every signed-in account show up here."
                         )
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 10) {
-                                ForEach(items) { item in
+                                ForEach(inbox.items) { item in
                                     NotificationCard(
                                         item: item,
+                                        showAccount: session.accounts.count > 1,
                                         busy: busyId == item.id,
                                         onAccept: { Task { await accept(item) } },
                                         onDecline: { Task { await decline(item) } },
@@ -60,14 +64,13 @@ struct NotificationsView: View {
                             .padding(.horizontal, 16)
                             .padding(.bottom, 110)
                         }
-                        .refreshable { await refresh() }
+                        .refreshable { await inbox.refresh(announceNew: false) }
                     }
                 }
             }
         }
-        .task { await refresh() }
         .overlay(alignment: .top) {
-            if let errorMessage {
+            if let errorMessage = inbox.errorMessage {
                 Text(errorMessage)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(BVTheme.danger)
@@ -79,51 +82,48 @@ struct NotificationsView: View {
         }
     }
 
-    private var unread: Int {
-        NotificationService.unreadCount(items)
+    private func account(for item: InboxItem) -> VaultAccount? {
+        session.accounts.first { $0.id == item.accountId }
     }
 
-    private func refresh() async {
-        loading = items.isEmpty
-        errorMessage = nil
-        do {
-            items = try await NotificationService.list()
-            onUnreadChange(unread)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        loading = false
-    }
-
-    private func accept(_ item: AppNotification) async {
-        guard let inviteId = item.inviteId else { return }
+    private func accept(_ item: InboxItem) async {
+        guard let inviteId = item.notification.inviteId,
+              let account = account(for: item)
+        else { return }
         busyId = item.id
         defer { busyId = nil }
         do {
-            _ = try await NotificationService.acceptInvite(inviteId: inviteId)
-            await refresh()
+            try await NotificationService.acceptInvite(inviteId: inviteId, asAccount: account)
+            await inbox.refresh(announceNew: false)
         } catch {
-            errorMessage = error.localizedDescription
+            inbox.errorMessage = error.localizedDescription
         }
     }
 
-    private func decline(_ item: AppNotification) async {
-        guard let inviteId = item.inviteId else { return }
+    private func decline(_ item: InboxItem) async {
+        guard let inviteId = item.notification.inviteId,
+              let account = account(for: item)
+        else { return }
         busyId = item.id
         defer { busyId = nil }
         do {
-            try await NotificationService.declineInvite(inviteId: inviteId)
-            await refresh()
+            try await NotificationService.declineInvite(inviteId: inviteId, asAccount: account)
+            await inbox.refresh(announceNew: false)
         } catch {
-            errorMessage = error.localizedDescription
+            inbox.errorMessage = error.localizedDescription
         }
     }
 
-    private func markRead(_ item: AppNotification) async {
-        guard item.readAt == nil else { return }
+    private func markRead(_ item: InboxItem) async {
+        guard item.notification.readAt == nil,
+              let account = account(for: item)
+        else { return }
         do {
-            try await NotificationService.markRead(notificationId: item.id)
-            await refresh()
+            try await NotificationService.markRead(
+                notificationId: item.notification.id,
+                asAccount: account
+            )
+            await inbox.refresh(announceNew: false)
         } catch {
             // Non-blocking
         }
@@ -131,16 +131,44 @@ struct NotificationsView: View {
 }
 
 private struct NotificationCard: View {
-    let item: AppNotification
+    let item: InboxItem
+    let showAccount: Bool
     let busy: Bool
     let onAccept: () -> Void
     let onDecline: () -> Void
     let onOpen: () -> Void
 
+    private var note: AppNotification { item.notification }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if showAccount {
+                HStack(spacing: 8) {
+                    if let url = item.accountAvatarURL {
+                        AsyncImage(url: url) { phase in
+                            if case .success(let image) = phase {
+                                image.resizable().scaledToFill()
+                            } else {
+                                Circle().fill(BVTheme.fill)
+                            }
+                        }
+                        .frame(width: 18, height: 18)
+                        .clipShape(Circle())
+                    }
+                    Text(item.accountName)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(BVTheme.accent)
+                    if let email = item.accountEmail {
+                        Text(email)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(BVTheme.textTertiary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+
             HStack(alignment: .top) {
-                Text(item.title)
+                Text(note.title)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(BVTheme.text)
                 Spacer()
@@ -152,17 +180,17 @@ private struct NotificationCard: View {
                 }
             }
 
-            if let body = item.body, !body.isEmpty {
+            if let body = note.body, !body.isEmpty {
                 Text(body)
                     .font(.system(size: 13))
                     .foregroundStyle(BVTheme.textSecondary)
             }
 
-            Text(item.createdAt)
+            Text(note.createdAt)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(BVTheme.textTertiary)
 
-            if item.kind == "device_invite", item.inviteStatus == "pending" {
+            if note.kind == "device_invite", note.inviteStatus == "pending" {
                 HStack(spacing: 8) {
                     Button(action: onAccept) {
                         Text("Accept")

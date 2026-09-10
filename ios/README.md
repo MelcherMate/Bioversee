@@ -17,14 +17,33 @@ Deploy the web app so `/ios-auth` exists (bridge page). Flow:
 2. If the custom scheme is allowlisted, the auth sheet returns straight into the app  
 3. Otherwise Safari finishes on `https://bioversee.com/ios-auth`, which immediately deep-links to `com.bioversee.app://login-callback…`
 
-## Stay signed in
+## Multi-account (Gmail-style)
 
-iOS stores the session in the **Keychain** and refreshes tokens automatically. There is **no 7-day logout** like the web multi-account vault.
+Account → **Add account** keeps every session in the Keychain. You can switch the active account for devices/controls; **Inbox** merges notifications from all signed-in accounts.
+
+There is **no 7-day logout** on iOS — sessions stay until you log out that account.
+
+## Push notifications
+
+1. Run `supabase/push_tokens.sql` in the Supabase SQL Editor.
+2. In Apple Developer → Keys → create an **APNs** key (`.p8`). Note Key ID + Team ID.
+3. Xcode → Signing & Capabilities → enable **Push Notifications** (entitlements already in the project). Use a physical device (simulator has no APNs).
+4. Deploy the edge function and set secrets:
+
+```bash
+supabase functions deploy push-notify --no-verify-jwt
+supabase secrets set APNS_KEY_ID=... APNS_TEAM_ID=... APNS_BUNDLE_ID=com.bioversee.app APNS_PRODUCTION=false APNS_P8="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+```
+
+5. Supabase Dashboard → Database → Webhooks → create webhook on `public.notifications` **INSERT** → HTTPS → your `push-notify` function URL.
+
+Until the webhook is live, the app still polls every 15s and shows local banners for new unread items across all accounts.
 
 ## Open / run
 
 ```bash
 cd ios
+xcodegen generate   # if you changed project.yml
 open Bioversee.xcodeproj
 ```
 

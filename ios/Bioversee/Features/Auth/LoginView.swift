@@ -42,16 +42,27 @@ struct LoginView: View {
                                 .font(.system(size: 11, weight: .bold))
                                 .tracking(1.4)
                                 .foregroundStyle(BVTheme.textSecondary)
-                            Text("Welcome")
+                            Text(session.isAddingAccount ? "Add account" : "Welcome")
                                 .font(.system(size: 24, weight: .semibold))
                                 .tracking(-0.5)
                                 .foregroundStyle(BVTheme.text)
-                            Text("Sign in to monitor and control your Bioversee devices.")
+                            Text(
+                                session.isAddingAccount
+                                    ? "Sign in with another Bioversee account. Inbox stays shared across all of them."
+                                    : "Sign in to monitor and control your Bioversee devices."
+                            )
                                 .font(.system(size: 14))
                                 .foregroundStyle(BVTheme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 0)
+                        if session.isAddingAccount {
+                            Button("Cancel") {
+                                Task { await session.cancelAddAccount() }
+                            }
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(BVTheme.accent)
+                        }
                     }
                     .padding(22)
                     .frame(maxWidth: .infinity, alignment: .leading)

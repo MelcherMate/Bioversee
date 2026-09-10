@@ -6,13 +6,16 @@ import UIKit
 @MainActor
 final class AppSession: ObservableObject {
     @Published private(set) var session: Session?
+    @Published private(set) var accounts: [VaultAccount] = []
     @Published private(set) var isBootstrapping = true
+    @Published var isAddingAccount = false
     @Published var errorMessage: String?
     @Published var oauthPendingMessage: String?
 
     private var authTask: Task<Void, Never>?
 
     init() {
+        accounts = AccountVault.load()
         authTask = Task {
             await bootstrap()
             await listenForAuthChanges()
@@ -23,56 +26,70 @@ final class AppSession: ObservableObject {
         authTask?.cancel()
     }
 
-    var isSignedIn: Bool { session != nil }
+    var isSignedIn: Bool { session != nil || (!accounts.isEmpty && !isAddingAccount) }
 
-    var userEmail: String? {
-        session?.user.email
-    }
+    var userEmail: String? { session?.user.email ?? accounts.first?.email }
 
-    var userId: UUID? {
-        session?.user.id
-    }
+    var userId: UUID? { session?.user.id ?? accounts.first?.id }
 
     var displayName: String {
-        let meta = session?.user.userMetadata ?? [:]
-        if let full = meta["full_name"]?.stringValue, !full.isEmpty { return full }
-        if let name = meta["name"]?.stringValue, !name.isEmpty { return name }
-        if let email = userEmail, let local = email.split(separator: "@").first {
-            return String(local)
+        if let session {
+            let meta = session.user.userMetadata
+            if let full = meta["full_name"]?.stringValue, !full.isEmpty { return full }
+            if let name = meta["name"]?.stringValue, !name.isEmpty { return name }
         }
-        return "Account"
+        return accounts.first(where: { $0.id == session?.user.id })?.displayName
+            ?? accounts.first?.displayName
+            ?? "Account"
     }
 
     var avatarURL: URL? {
-        let meta = session?.user.userMetadata ?? [:]
-        if let raw = meta["avatar_url"]?.stringValue ?? meta["picture"]?.stringValue {
-            return URL(string: raw)
+        if let session {
+            let meta = session.user.userMetadata
+            if let raw = meta["avatar_url"]?.stringValue ?? meta["picture"]?.stringValue {
+                return URL(string: raw)
+            }
         }
-        return nil
+        return accounts.first(where: { $0.id == session?.user.id })?.avatarURLValue
+            ?? accounts.first?.avatarURLValue
     }
 
     func bootstrap() async {
-        do {
-            // Keychain-backed session with refresh — no 7-day web vault cut-off on iOS.
-            let current = try await SupabaseManager.client.auth.session
-            if current.isExpired {
-                session = try await SupabaseManager.client.auth.refreshSession()
-            } else {
-                session = current
+        accounts = AccountVault.load()
+        if let existing = try? await SupabaseManager.client.auth.session {
+            await applySession(existing, persistVault: true)
+        } else if let first = accounts.first {
+            do {
+                try await SupabaseManager.client.auth.setSession(
+                    accessToken: first.accessToken,
+                    refreshToken: first.refreshToken
+                )
+                let restored = try await SupabaseManager.client.auth.session
+                await applySession(restored, persistVault: true)
+            } catch {
+                accounts = AccountVault.remove(first.id)
+                session = nil
             }
-        } catch {
+        } else {
             session = nil
         }
         isBootstrapping = false
     }
 
     func listenForAuthChanges() async {
-        for await (_, nextSession) in SupabaseManager.client.auth.authStateChanges {
-            session = nextSession
-            isBootstrapping = false
-            if nextSession != nil {
+        for await (event, nextSession) in SupabaseManager.client.auth.authStateChanges {
+            if let nextSession {
+                await applySession(nextSession, persistVault: true)
+                isAddingAccount = false
                 oauthPendingMessage = nil
+                await PushNotificationManager.shared.uploadTokenToAllAccounts()
+            } else if event == .signedOut {
+                // Keep vault; only clear active session unless vault empty.
+                if accounts.isEmpty {
+                    session = nil
+                }
             }
+            isBootstrapping = false
         }
     }
 
@@ -81,22 +98,25 @@ final class AppSession: ObservableObject {
         do {
             let current = try await SupabaseManager.client.auth.session
             if current.isExpired {
-                session = try await SupabaseManager.client.auth.refreshSession()
+                let refreshed = try await SupabaseManager.client.auth.refreshSession()
+                await applySession(refreshed, persistVault: true)
             } else {
-                session = current
+                await applySession(current, persistVault: true)
             }
         } catch {
-            // Keep existing session on transient errors — never force weekly logout.
+            // Keep existing session on transient errors.
         }
     }
 
     func signIn(email: String, password: String) async {
         errorMessage = nil
         do {
-            session = try await SupabaseManager.client.auth.signIn(
+            let next = try await SupabaseManager.client.auth.signIn(
                 email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                 password: password
             )
+            await applySession(next, persistVault: true)
+            isAddingAccount = false
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -116,23 +136,18 @@ final class AppSession: ObservableObject {
         }
     }
 
-    /**
-     Google → HTTPS bridge (`/ios-auth`) → deep link into the app.
-
-     Supabase must allow `https://bioversee.com/ios-auth` (Additional Redirect URLs).
-     The bridge page then navigates to `com.bioversee.app://login-callback…`, which
-     ASWebAuthenticationSession captures so control returns to the native app.
-     */
     func signInWithGoogle() async {
         errorMessage = nil
         oauthPendingMessage = nil
         do {
-            session = try await SupabaseManager.client.auth.signInWithOAuth(
+            let next = try await SupabaseManager.client.auth.signInWithOAuth(
                 provider: .google,
                 redirectTo: AppConfig.oauthBridgeURL
             ) { (webAuthSession: ASWebAuthenticationSession) in
                 webAuthSession.prefersEphemeralWebBrowserSession = false
             }
+            await applySession(next, persistVault: true)
+            isAddingAccount = false
         } catch {
             let message = error.localizedDescription
             if message.localizedCaseInsensitiveContains("cancel") { return }
@@ -144,21 +159,101 @@ final class AppSession: ObservableObject {
         guard url.scheme == AppConfig.oauthCallbackScheme else { return }
         errorMessage = nil
         do {
-            session = try await SupabaseManager.client.auth.session(from: url)
+            let next = try await SupabaseManager.client.auth.session(from: url)
+            await applySession(next, persistVault: true)
+            isAddingAccount = false
             oauthPendingMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func signOut() async {
+    func beginAddAccount() {
+        // Snapshot current session into vault, then clear active client session for login UI.
+        if let session {
+            accounts = AccountVault.upsert(from: session)
+        }
+        isAddingAccount = true
+        Task {
+            try? await SupabaseManager.client.auth.signOut(scope: .local)
+            self.session = nil
+        }
+    }
+
+    func cancelAddAccount() async {
+        isAddingAccount = false
+        if session == nil, let first = accounts.first {
+            do {
+                try await SupabaseManager.client.auth.setSession(
+                    accessToken: first.accessToken,
+                    refreshToken: first.refreshToken
+                )
+                let restored = try await SupabaseManager.client.auth.session
+                await applySession(restored, persistVault: true)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func switchToAccount(_ account: VaultAccount) async {
         errorMessage = nil
-        oauthPendingMessage = nil
+        if let session {
+            accounts = AccountVault.upsert(from: session)
+        }
         do {
-            try await SupabaseManager.client.auth.signOut()
-            session = nil
+            try await SupabaseManager.client.auth.setSession(
+                accessToken: account.accessToken,
+                refreshToken: account.refreshToken
+            )
+            let restored = try await SupabaseManager.client.auth.session
+            await applySession(restored, persistVault: true)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Could not switch account — sign in again."
+            accounts = AccountVault.remove(account.id)
+        }
+    }
+
+    func signOutCurrent() async {
+        errorMessage = nil
+        let currentId = session?.user.id
+        try? await SupabaseManager.client.auth.signOut(scope: .local)
+        if let currentId {
+            accounts = AccountVault.remove(currentId)
+        }
+        session = nil
+        if let next = accounts.first {
+            await switchToAccount(next)
+        }
+    }
+
+    func signOutAccount(_ account: VaultAccount) async {
+        if account.id == session?.user.id {
+            await signOutCurrent()
+            return
+        }
+        accounts = AccountVault.remove(account.id)
+    }
+
+    func signOutAll() async {
+        errorMessage = nil
+        try? await SupabaseManager.client.auth.signOut(scope: .local)
+        AccountVault.clear()
+        accounts = []
+        session = nil
+        isAddingAccount = false
+    }
+
+    func reloadAccountsFromVault() {
+        accounts = AccountVault.load()
+    }
+
+    private func applySession(_ session: Session, persistVault: Bool) async {
+        self.session = session
+        if persistVault {
+            accounts = AccountVault.upsert(from: session)
+        } else {
+            accounts = AccountVault.load()
         }
     }
 }

@@ -1,9 +1,27 @@
 import Foundation
 import Supabase
 
+struct InboxItem: Identifiable, Hashable {
+    var id: String { "\(accountId.uuidString)-\(notification.id.uuidString)" }
+    let accountId: UUID
+    let accountEmail: String?
+    let accountName: String
+    let accountAvatarURL: URL?
+    let notification: AppNotification
+
+    var isUnread: Bool { notification.isUnread }
+}
+
 enum NotificationService {
     static func list(limit: Int = 40) async throws -> [AppNotification] {
-        let rows: [NotificationRPCRow] = try await SupabaseManager.client
+        try await list(using: SupabaseManager.client, limit: limit)
+    }
+
+    static func list(
+        using client: SupabaseClient,
+        limit: Int = 40
+    ) async throws -> [AppNotification] {
+        let rows: [NotificationRPCRow] = try await client
             .rpc("list_my_notifications", params: NotificationLimitParams(pLimit: limit))
             .execute()
             .value
@@ -22,30 +40,112 @@ enum NotificationService {
         }
     }
 
-    static func acceptInvite(inviteId: UUID) async throws -> AcceptInviteResult {
-        try await SupabaseManager.client
-            .rpc("accept_device_invite", params: InviteIdParams(pInviteId: inviteId))
-            .execute()
-            .value
-    }
+    /// Fetch inbox rows for every vault account (Gmail-style unified inbox).
+    static func listForAllAccounts(
+        _ accounts: [VaultAccount],
+        activeSession: Session?
+    ) async -> [InboxItem] {
+        var items: [InboxItem] = []
+        let client = SupabaseManager.client
+        let previous = activeSession
 
-    static func declineInvite(inviteId: UUID) async throws {
-        try await SupabaseManager.client
-            .rpc("decline_device_invite", params: InviteIdParams(pInviteId: inviteId))
-            .execute()
-    }
+        for account in accounts {
+            do {
+                try await client.auth.setSession(
+                    accessToken: account.accessToken,
+                    refreshToken: account.refreshToken
+                )
+                if let refreshed = try? await client.auth.session {
+                    AccountVault.updateTokens(for: account.id, session: refreshed)
+                }
+                let notes = try await list(using: client, limit: 40)
+                for note in notes {
+                    items.append(
+                        InboxItem(
+                            accountId: account.id,
+                            accountEmail: account.email,
+                            accountName: account.displayName,
+                            accountAvatarURL: account.avatarURLValue,
+                            notification: note
+                        )
+                    )
+                }
+            } catch {
+                continue
+            }
+        }
 
-    static func markRead(notificationId: UUID) async throws {
-        try await SupabaseManager.client
-            .rpc(
-                "mark_notification_read",
-                params: NotificationIdParams(pNotificationId: notificationId)
+        if let previous {
+            try? await client.auth.setSession(
+                accessToken: previous.accessToken,
+                refreshToken: previous.refreshToken
             )
-            .execute()
+        }
+
+        return items.sorted {
+            $0.notification.createdAt > $1.notification.createdAt
+        }
     }
 
-    static func unreadCount(_ items: [AppNotification]) -> Int {
+    static func acceptInvite(inviteId: UUID, asAccount account: VaultAccount) async throws {
+        try await withAccount(account) {
+            let _: AcceptInviteResult = try await SupabaseManager.client
+                .rpc("accept_device_invite", params: InviteIdParams(pInviteId: inviteId))
+                .execute()
+                .value
+        }
+    }
+
+    static func declineInvite(inviteId: UUID, asAccount account: VaultAccount) async throws {
+        try await withAccount(account) {
+            try await SupabaseManager.client
+                .rpc("decline_device_invite", params: InviteIdParams(pInviteId: inviteId))
+                .execute()
+        }
+    }
+
+    static func markRead(notificationId: UUID, asAccount account: VaultAccount) async throws {
+        try await withAccount(account) {
+            try await SupabaseManager.client
+                .rpc(
+                    "mark_notification_read",
+                    params: NotificationIdParams(pNotificationId: notificationId)
+                )
+                .execute()
+        }
+    }
+
+    static func unreadCount(_ items: [InboxItem]) -> Int {
         items.filter(\.isUnread).count
+    }
+
+    private static func withAccount(
+        _ account: VaultAccount,
+        _ work: () async throws -> Void
+    ) async throws {
+        let client = SupabaseManager.client
+        let previous = try? await client.auth.session
+        try await client.auth.setSession(
+            accessToken: account.accessToken,
+            refreshToken: account.refreshToken
+        )
+        do {
+            try await work()
+        } catch {
+            if let previous {
+                try? await client.auth.setSession(
+                    accessToken: previous.accessToken,
+                    refreshToken: previous.refreshToken
+                )
+            }
+            throw error
+        }
+        if let previous {
+            try? await client.auth.setSession(
+                accessToken: previous.accessToken,
+                refreshToken: previous.refreshToken
+            )
+        }
     }
 }
 
