@@ -43,10 +43,10 @@ const Chart: React.FC<ChartProps> = (props) => {
       const lastSixData = data.slice(-6);
       const chartData = lastSixData.map((item) => ({
         time: reduceTimestampLength(item.created_at),
-        [props.name]: item.value,
+        [props.name]: round2(Number(item.value)),
       }));
 
-      const values = data.map((item) => Number(item.value));
+      const values = data.map((item) => round2(Number(item.value)));
       const min = Math.min(...values);
       const max = Math.max(...values);
       const margin = (max - min) * 0.2 || 1;
@@ -77,7 +77,7 @@ const Chart: React.FC<ChartProps> = (props) => {
     };
   }, []);
 
-  const tickFormatter = (value: number) => Math.round(value).toString();
+  const tickFormatter = (value: number) => round2(value).toFixed(2);
 
   return (
     <div ref={chartRef} style={{ width: "100%" }}>
@@ -97,7 +97,12 @@ const Chart: React.FC<ChartProps> = (props) => {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="time" />
           <YAxis domain={[minValue, maxValue]} tickFormatter={tickFormatter} />
-          <Tooltip />
+          <Tooltip
+            formatter={(value: number | string) => [
+              Number(value).toFixed(2),
+              props.label,
+            ]}
+          />
           <Line
             type="monotone"
             dataKey={props.name}
@@ -110,5 +115,9 @@ const Chart: React.FC<ChartProps> = (props) => {
     </div>
   );
 };
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
+}
 
 export default Chart;
