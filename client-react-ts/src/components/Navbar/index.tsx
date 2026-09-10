@@ -3,6 +3,7 @@ import { ShareSocialOutline } from "react-ionicons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   avatarForAccount,
+  isAccountSignedIn,
   listStoredAccounts,
   signOutAllAccounts,
   signOutCurrentAccount,
@@ -63,16 +64,33 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const otherAccounts = accounts.filter((account) => account.userId !== user.id);
 
-  const onSwitch = async (userId: string) => {
-    if (busy || userId === user.id) return;
+  const onSwitch = async (account: StoredAccount) => {
+    if (busy || account.userId === user.id) return;
+
+    if (!isAccountSignedIn(account)) {
+      setShowAccount(false);
+      navigate(
+        `/add-account?email=${encodeURIComponent(account.email ?? "")}`
+      );
+      return;
+    }
+
     setBusy(true);
     setError(null);
     try {
-      await switchToAccount(userId);
+      await switchToAccount(account.userId);
       setShowAccount(false);
       navigate("/bioreactor", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not switch account");
+      const message = err instanceof Error ? err.message : "";
+      if (message === "REAUTH_REQUIRED") {
+        setShowAccount(false);
+        navigate(
+          `/add-account?email=${encodeURIComponent(account.email ?? "")}`
+        );
+        return;
+      }
+      setError(message || "Could not switch account");
       refreshAccounts();
     } finally {
       setBusy(false);
@@ -208,7 +226,7 @@ const Navbar = ({ user }: NavbarProps) => {
             </button>
             {showAccount && (
               <div className="topbar__menu">
-                <p className="topbar__menu-label">Signed in</p>
+                <p className="topbar__menu-label">Current account</p>
                 <div className="topbar__account-row topbar__account-row--active">
                   <img
                     src={avatarForAccount(user)}
@@ -219,41 +237,55 @@ const Navbar = ({ user }: NavbarProps) => {
                     <p className="topbar__menu-name">{user.displayName}</p>
                     <p className="topbar__menu-meta">{user.email}</p>
                   </div>
-                  <span className="topbar__account-check" aria-hidden>
-                    ✓
+                  <span className="topbar__account-status topbar__account-status--in">
+                    Signed in
                   </span>
                 </div>
 
                 {otherAccounts.length > 0 && (
                   <>
                     <p className="topbar__menu-label topbar__menu-label--spaced">
-                      Switch account
+                      Other accounts
                     </p>
                     <ul className="topbar__account-list">
-                      {otherAccounts.map((account) => (
-                        <li key={account.userId}>
-                          <button
-                            type="button"
-                            className="topbar__account-row"
-                            disabled={busy}
-                            onClick={() => onSwitch(account.userId)}
-                          >
-                            <img
-                              src={avatarForAccount(account)}
-                              alt=""
-                              className="topbar__account-avatar"
-                            />
-                            <div className="topbar__account-copy">
-                              <p className="topbar__menu-name">
-                                {account.displayName}
-                              </p>
-                              <p className="topbar__menu-meta">
-                                {account.email}
-                              </p>
-                            </div>
-                          </button>
-                        </li>
-                      ))}
+                      {otherAccounts.map((account) => {
+                        const signedIn = isAccountSignedIn(account);
+                        return (
+                          <li key={account.userId}>
+                            <button
+                              type="button"
+                              className={`topbar__account-row ${
+                                signedIn ? "" : "topbar__account-row--logged-out"
+                              }`}
+                              disabled={busy}
+                              onClick={() => onSwitch(account)}
+                            >
+                              <img
+                                src={avatarForAccount(account)}
+                                alt=""
+                                className="topbar__account-avatar"
+                              />
+                              <div className="topbar__account-copy">
+                                <p className="topbar__menu-name">
+                                  {account.displayName}
+                                </p>
+                                <p className="topbar__menu-meta">
+                                  {account.email}
+                                </p>
+                              </div>
+                              <span
+                                className={`topbar__account-status ${
+                                  signedIn
+                                    ? "topbar__account-status--in"
+                                    : "topbar__account-status--out"
+                                }`}
+                              >
+                                {signedIn ? "Signed in" : "Logged out"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </>
                 )}

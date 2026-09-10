@@ -230,6 +230,29 @@ button.topbar__account-row:hover:not(:disabled) {
   font-size: 14px;
 }
 
+.topbar__account-row--logged-out .topbar__account-avatar {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.topbar__account-status {
+  flex-shrink: 0;
+  max-width: 72px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.topbar__account-status--in {
+  color: var(--bv-success);
+}
+
+.topbar__account-status--out {
+  color: var(--bv-text-tertiary);
+}
+
 .topbar__menu-name {
   margin: 0 0 2px;
   font-size: 14px;

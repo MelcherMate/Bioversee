@@ -22,18 +22,25 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
   const [searchParams] = useSearchParams();
   const addingAccount = loginMode === "add-account";
   const nextPath = safeNextPath(searchParams.get("next"));
+  const prefillsEmail = searchParams.get("email") ?? "";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefillsEmail);
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (prefillsEmail) setEmail(prefillsEmail);
+  }, [prefillsEmail]);
+
+  useEffect(() => {
     if (!addingAccount) return;
     // Snapshot the current session so it stays available after the new sign-in.
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) upsertStoredSession(data.session);
+      if (data.session) {
+        upsertStoredSession(data.session, { resetSignedInAt: false });
+      }
     });
   }, [addingAccount]);
 
@@ -63,7 +70,9 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
     try {
       if (addingAccount) {
         const { data: current } = await supabase.auth.getSession();
-        if (current.session) upsertStoredSession(current.session);
+        if (current.session) {
+          upsertStoredSession(current.session, { resetSignedInAt: false });
+        }
       }
 
       if (mode === "signin") {
@@ -72,6 +81,10 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           password,
         });
         if (signInError) throw signInError;
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          upsertStoredSession(data.session, { resetSignedInAt: true });
+        }
         navigate(addingAccount ? "/bioreactor" : nextPath ?? "/bioreactor", {
           replace: true,
         });
@@ -94,7 +107,9 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
     setError(null);
     if (addingAccount) {
       const { data: current } = await supabase.auth.getSession();
-      if (current.session) upsertStoredSession(current.session);
+      if (current.session) {
+        upsertStoredSession(current.session, { resetSignedInAt: false });
+      }
     }
     const redirectTo = addingAccount
       ? `${window.location.origin}/bioreactor`

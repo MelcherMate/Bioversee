@@ -11,7 +11,7 @@ import "./App.css";
 import DevDataPanel from "./components/DevDataPanel";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
-import { syncAccountVaultFromSession } from "./lib/accountSessions";
+import { syncAccountVaultFromSession, enforceSessionMaxAge } from "./lib/accountSessions";
 import { supabase } from "./lib/supabase";
 import { type AppUser, toAppUser } from "./lib/user";
 import About from "./pages/About";
@@ -42,24 +42,31 @@ const App = () => {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    (async () => {
+      await enforceSessionMaxAge();
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      syncAccountVaultFromSession(data.session);
+      syncAccountVaultFromSession(data.session, "INITIAL_SESSION");
       setUser(data.session?.user ? toAppUser(data.session.user) : null);
       setLoading(false);
-    });
+    })();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncAccountVaultFromSession(session);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      syncAccountVaultFromSession(session, event);
       setUser(session?.user ? toAppUser(session.user) : null);
       setLoading(false);
     });
 
+    const interval = window.setInterval(() => {
+      void enforceSessionMaxAge();
+    }, 60 * 60 * 1000);
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.clearInterval(interval);
     };
   }, []);
 
