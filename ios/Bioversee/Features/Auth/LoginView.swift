@@ -9,106 +9,128 @@ struct LoginView: View {
     @State private var busy = false
     @State private var infoMessage: String?
 
-    private enum Mode: String, CaseIterable {
-        case signIn = "Sign in"
-        case signUp = "Sign up"
+    private enum Mode: Hashable {
+        case signIn
+        case signUp
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Spacer()
-                        VStack(spacing: 12) {
+        ZStack {
+            BVScreenBackground()
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header
+                    HStack(alignment: .top, spacing: 14) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(BVTheme.accentBorder, lineWidth: 1)
+                                )
                             Image("BioverseeLogo")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 88, height: 88)
-                                .foregroundStyle(Color.accentColor)
-                            Text("Bioversee")
-                                .font(.title2.weight(.semibold))
-                            Text("Same account as the web app.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
+                                .frame(width: 34, height: 34)
+                                .foregroundStyle(BVTheme.accent)
                         }
-                        .padding(.vertical, 8)
-                        Spacer()
-                    }
-                    .listRowBackground(Color.clear)
-                }
+                        .frame(width: 48, height: 48)
 
-                Section {
-                    Button {
-                        Task { await signInWithGoogle() }
-                    } label: {
-                        HStack {
-                            Image(systemName: "g.circle.fill")
-                            if busy {
-                                ProgressView()
-                            } else {
-                                Text("Continue with Google")
-                                    .fontWeight(.semibold)
-                            }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("BIOVERSEE")
+                                .font(.system(size: 11, weight: .bold))
+                                .tracking(1.4)
+                                .foregroundStyle(BVTheme.textSecondary)
+                            Text("Welcome")
+                                .font(.system(size: 24, weight: .semibold))
+                                .tracking(-0.5)
+                                .foregroundStyle(BVTheme.text)
+                            Text("Sign in to monitor and control your Bioversee devices.")
+                                .font(.system(size: 14))
+                                .foregroundStyle(BVTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .frame(maxWidth: .infinity)
+                        Spacer(minLength: 0)
                     }
-                    .disabled(busy)
-                }
+                    .padding(22)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(BVTheme.card)
 
-                Section {
-                    Picker("Mode", selection: $mode) {
-                        ForEach(Mode.allCases, id: \.self) { item in
-                            Text(item.rawValue).tag(item)
+                    Divider().overlay(BVTheme.line)
+
+                    VStack(spacing: 16) {
+                        BVSegmented(
+                            options: [(.signIn, "Sign in"), (.signUp, "Sign up")],
+                            selection: $mode
+                        )
+
+                        VStack(spacing: 14) {
+                            BVField(
+                                label: "Email",
+                                text: $email,
+                                keyboard: .emailAddress,
+                                contentType: .username
+                            )
+                            BVField(
+                                label: "Password",
+                                text: $password,
+                                isSecure: true,
+                                contentType: mode == .signIn ? .password : .newPassword
+                            )
                         }
-                    }
-                    .pickerStyle(.segmented)
 
-                    TextField("Email", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
-                        .textContentType(.username)
-
-                    SecureField("Password", text: $password)
-                        .textContentType(mode == .signIn ? .password : .newPassword)
-                } header: {
-                    Text("Or use email")
-                }
-
-                if let infoMessage {
-                    Section {
-                        Text(infoMessage)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if let error = session.errorMessage {
-                    Section {
-                        Text(error)
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Section {
-                    Button {
-                        Task { await submit() }
-                    } label: {
-                        if busy {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text(mode == .signIn ? "Sign in" : "Create account")
-                                .frame(maxWidth: .infinity)
-                                .fontWeight(.semibold)
+                        BVPrimaryButton(
+                            title: mode == .signIn ? "Sign in" : "Create account",
+                            busy: busy,
+                            enabled: !email.isEmpty && password.count >= 6
+                        ) {
+                            Task { await submit() }
                         }
+
+                        HStack(spacing: 12) {
+                            Rectangle().fill(BVTheme.line).frame(height: 1)
+                            Text("or")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(BVTheme.textTertiary)
+                            Rectangle().fill(BVTheme.line).frame(height: 1)
+                        }
+
+                        BVSecondaryButton(
+                            title: "Continue with Google",
+                            systemImage: "g.circle.fill",
+                            busy: busy
+                        ) {
+                            Task { await signInWithGoogle() }
+                        }
+
+                        if let infoMessage {
+                            Text(infoMessage)
+                                .font(.system(size: 13))
+                                .foregroundStyle(BVTheme.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        if let error = session.errorMessage {
+                            Text(error)
+                                .font(.system(size: 13))
+                                .foregroundStyle(BVTheme.danger)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        Text("Demo site for Bioversee prototypes")
+                            .font(.system(size: 12))
+                            .foregroundStyle(BVTheme.textTertiary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 4)
                     }
-                    .disabled(busy || email.isEmpty || password.count < 6)
+                    .padding(22)
+                    .background(BVTheme.surfaceElevated)
                 }
+                .bvCard()
+                .padding(.horizontal, 20)
+                .padding(.vertical, 24)
             }
-            .navigationTitle("Welcome")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -116,7 +138,6 @@ struct LoginView: View {
         busy = true
         defer { busy = false }
         infoMessage = nil
-
         switch mode {
         case .signIn:
             await session.signIn(email: email, password: password)

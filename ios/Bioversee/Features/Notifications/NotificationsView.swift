@@ -1,59 +1,80 @@
 import SwiftUI
 
 struct NotificationsView: View {
+    var onUnreadChange: (Int) -> Void = { _ in }
+
     @State private var items: [AppNotification] = []
     @State private var loading = true
     @State private var errorMessage: String?
     @State private var busyId: UUID?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if loading && items.isEmpty {
-                    ProgressView("Loading inbox…")
-                } else if items.isEmpty {
-                    ContentUnavailableView(
-                        "No notifications",
-                        systemImage: "bell.slash",
-                        description: Text("Device invites and updates will show up here.")
-                    )
-                } else {
-                    List(items) { item in
-                        NotificationRow(
-                            item: item,
-                            busy: busyId == item.id,
-                            onAccept: {
-                                Task { await accept(item) }
-                            },
-                            onDecline: {
-                                Task { await decline(item) }
-                            },
-                            onOpen: {
-                                Task { await markRead(item) }
-                            }
-                        )
-                    }
-                }
-            }
-            .navigationTitle("Inbox")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+        ZStack {
+            BVTheme.surface.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Inbox")
+                        .font(.system(size: 28, weight: .semibold))
+                        .tracking(-0.6)
+                        .foregroundStyle(BVTheme.text)
+                    Spacer()
                     if unread > 0 {
                         Text("\(unread) new")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(BVTheme.accent)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(BVTheme.accentSoft)
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+                Group {
+                    if loading && items.isEmpty {
+                        ProgressView()
+                            .tint(BVTheme.accent)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if items.isEmpty {
+                        BVEmptyState(
+                            title: "No notifications",
+                            systemImage: "bell.slash",
+                            message: "Device invites and updates will show up here."
+                        )
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 10) {
+                                ForEach(items) { item in
+                                    NotificationCard(
+                                        item: item,
+                                        busy: busyId == item.id,
+                                        onAccept: { Task { await accept(item) } },
+                                        onDecline: { Task { await decline(item) } },
+                                        onOpen: { Task { await markRead(item) } }
+                                    )
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 110)
+                        }
+                        .refreshable { await refresh() }
                     }
                 }
             }
-            .task { await refresh() }
-            .refreshable { await refresh() }
-            .overlay(alignment: .bottom) {
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .padding()
-                }
+        }
+        .task { await refresh() }
+        .overlay(alignment: .top) {
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(BVTheme.danger)
+                    .padding(10)
+                    .background(BVTheme.card)
+                    .clipShape(Capsule())
+                    .padding(.top, 8)
             }
         }
     }
@@ -67,6 +88,7 @@ struct NotificationsView: View {
         errorMessage = nil
         do {
             items = try await NotificationService.list()
+            onUnreadChange(unread)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -108,7 +130,7 @@ struct NotificationsView: View {
     }
 }
 
-private struct NotificationRow: View {
+private struct NotificationCard: View {
     let item: AppNotification
     let busy: Bool
     let onAccept: () -> Void
@@ -116,36 +138,58 @@ private struct NotificationRow: View {
     let onOpen: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
                 Text(item.title)
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(BVTheme.text)
+                Spacer()
                 if item.isUnread {
                     Circle()
-                        .fill(Color.accentColor)
+                        .fill(BVTheme.accent)
                         .frame(width: 8, height: 8)
+                        .padding(.top, 5)
                 }
             }
+
             if let body = item.body, !body.isEmpty {
                 Text(body)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13))
+                    .foregroundStyle(BVTheme.textSecondary)
             }
+
             Text(item.createdAt)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(BVTheme.textTertiary)
 
             if item.kind == "device_invite", item.inviteStatus == "pending" {
-                HStack {
-                    Button("Accept", action: onAccept)
-                        .buttonStyle(.borderedProminent)
-                        .disabled(busy)
-                    Button("Decline", role: .destructive, action: onDecline)
-                        .disabled(busy)
+                HStack(spacing: 8) {
+                    Button(action: onAccept) {
+                        Text("Accept")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(BVTheme.accent)
+                            .clipShape(Capsule())
+                    }
+                    .disabled(busy)
+
+                    Button(action: onDecline) {
+                        Text("Decline")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(BVTheme.danger)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(BVTheme.danger.opacity(0.10))
+                            .clipShape(Capsule())
+                    }
+                    .disabled(busy)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .bvCard()
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
     }

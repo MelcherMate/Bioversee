@@ -12,6 +12,7 @@
 		3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5903150B9DE6593F72927D /* DeviceListView.swift */; };
 		32D03374E6C876A3756E2E28 /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E655FAA6672908F3000615 /* SupabaseManager.swift */; };
 		3AD36B603ABB8CA07D05590F /* BioverseeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9577FD736A876CB295C82F00 /* BioverseeApp.swift */; };
+		59B35324EB5F5C68FA4E0545 /* BVTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4813BBF6872F04558239752 /* BVTheme.swift */; };
 		66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB6EB4B11C80B349588ED65 /* DeviceService.swift */; };
 		7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DFB522D85CADF4B5967022F /* RootView.swift */; };
 		82F7A3E99C50F9A6E962DC83 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */; };
@@ -29,7 +30,7 @@
 /* Begin PBXFileReference section */
 		0B99312979798A458ACE8E94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1E5903150B9DE6593F72927D /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
-		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37E655FAA6672908F3000615 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
 		75483D571C891A65DD1D1880 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -41,6 +42,7 @@
 		B624F146A102967FB426216A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BBCC2F449231692241170C0D /* NotificationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationModels.swift; sourceTree = "<group>"; };
 		E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		E4813BBF6872F04558239752 /* BVTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BVTheme.swift; sourceTree = "<group>"; };
 		EA1CD5F9670AA699281F8276 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		EAB6EB4B11C80B349588ED65 /* DeviceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceService.swift; sourceTree = "<group>"; };
 		F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActuatorService.swift; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 				0BF8371DD48E551B69B35C41 /* Models */,
 				C014A2EA72CB95094342CCFC /* Resources */,
 				82179D43768CABBE13CF97DB /* Services */,
+				8C5091C5DF21B799BDBB4353 /* Theme */,
 			);
 			path = Bioversee;
 			sourceTree = "<group>";
@@ -133,6 +136,14 @@
 				37E655FAA6672908F3000615 /* SupabaseManager.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		8C5091C5DF21B799BDBB4353 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				E4813BBF6872F04558239752 /* BVTheme.swift */,
+			);
+			path = Theme;
 			sourceTree = "<group>";
 		};
 		B6BA8A3B8FFC5A80BF071BBB /* Features */ = {
@@ -204,6 +215,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					7ADD8C5B051AF1B56F27FFAF = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -249,6 +261,7 @@
 				D90E2D9966C5ABAED624C362 /* ActuatorService.swift in Sources */,
 				FFB8C6768BFB5138B5EE07E7 /* AppConfig.swift in Sources */,
 				B43D8D213AA612E2805356AC /* AppSession.swift in Sources */,
+				59B35324EB5F5C68FA4E0545 /* BVTheme.swift in Sources */,
 				3AD36B603ABB8CA07D05590F /* BioverseeApp.swift in Sources */,
 				9C3272D85F9D2A24B70FD9B8 /* ControlCatalog.swift in Sources */,
 				E821D129828F217BF5CE7D68 /* DeviceControlsView.swift in Sources */,
@@ -394,7 +407,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -419,7 +432,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

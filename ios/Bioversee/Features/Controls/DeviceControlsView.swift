@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DeviceControlsView: View {
     @EnvironmentObject private var session: AppSession
+    @Environment(\.dismiss) private var dismiss
 
     let device: AccessibleDevice
 
@@ -16,81 +17,129 @@ struct DeviceControlsView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                LabeledContent("Type", value: device.type.title)
-                LabeledContent("Role", value: device.role)
-                if !device.canOperate {
-                    Text("Viewer access — controls are read-only.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
+        ZStack {
+            BVTheme.surface.ignoresSafeArea()
 
-            Section("Controls") {
-                ForEach(controls) { control in
-                    switch control.kind {
-                    case .switchControl:
-                        Toggle(
-                            control.label,
-                            isOn: Binding(
-                                get: { switchStates[control.name] ?? false },
-                                set: { newValue in
-                                    Task { await setSwitch(control, to: newValue) }
-                                }
-                            )
-                        )
-                        .disabled(!device.canOperate || busyName != nil)
-
-                    case .slider:
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(control.label)
-                                Spacer()
-                                Text("\(Int(sliderStates[control.name] ?? 0))")
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
-                            Slider(
-                                value: Binding(
-                                    get: { sliderStates[control.name] ?? 0 },
-                                    set: { sliderStates[control.name] = $0 }
-                                ),
-                                in: control.min...control.max,
-                                step: 1
-                            ) { editing in
-                                if !editing {
-                                    Task {
-                                        await commitSlider(control)
-                                    }
-                                }
-                            }
-                            .disabled(!device.canOperate || busyName != nil)
-                        }
-                        .padding(.vertical, 4)
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(BVTheme.text)
+                            .frame(width: 36, height: 36)
+                            .background(BVTheme.fill)
+                            .clipShape(Circle())
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(device.name)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(BVTheme.text)
+                        Text("\(device.type.title) · \(device.role)")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(BVTheme.textSecondary)
+                    }
+                    Spacer()
+                    Button {
+                        Task { await loadStates() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(BVTheme.text)
+                            .frame(width: 36, height: 36)
+                            .background(BVTheme.fill)
+                            .clipShape(Circle())
                     }
                 }
-            }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
 
-            if let errorMessage {
-                Section {
-                    Text(errorMessage).foregroundStyle(.red)
+                if loading {
+                    ProgressView()
+                        .tint(BVTheme.accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if !device.canOperate {
+                                Text("Viewer access — controls are read-only.")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(BVTheme.textSecondary)
+                                    .padding(14)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(BVTheme.fill)
+                                    .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+                            }
+
+                            ForEach(controls) { control in
+                                controlCard(control)
+                            }
+
+                            if let errorMessage {
+                                Text(errorMessage)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(BVTheme.danger)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 110)
+                    }
+                    .refreshable { await loadStates() }
                 }
             }
         }
-        .navigationTitle(device.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .overlay {
-            if loading {
-                ProgressView()
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .task { await loadStates() }
+    }
+
+    @ViewBuilder
+    private func controlCard(_ control: DeviceControl) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            switch control.kind {
+            case .switchControl:
+                Toggle(isOn: Binding(
+                    get: { switchStates[control.name] ?? false },
+                    set: { newValue in
+                        Task { await setSwitch(control, to: newValue) }
+                    }
+                )) {
+                    Text(control.label)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(BVTheme.text)
+                }
+                .tint(BVTheme.accent)
+                .disabled(!device.canOperate || busyName != nil)
+
+            case .slider:
+                HStack {
+                    Text(control.label)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(BVTheme.text)
+                    Spacer()
+                    Text("\(Int(sliderStates[control.name] ?? 0))")
+                        .font(.system(size: 15, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(BVTheme.textSecondary)
+                }
+                Slider(
+                    value: Binding(
+                        get: { sliderStates[control.name] ?? 0 },
+                        set: { sliderStates[control.name] = $0 }
+                    ),
+                    in: control.min...control.max,
+                    step: 1
+                ) { editing in
+                    if !editing {
+                        Task { await commitSlider(control) }
+                    }
+                }
+                .tint(BVTheme.accent)
+                .disabled(!device.canOperate || busyName != nil)
             }
         }
-        .task {
-            await loadStates()
-        }
-        .refreshable {
-            await loadStates()
-        }
+        .padding(16)
+        .bvCard()
     }
 
     private func loadStates() async {
