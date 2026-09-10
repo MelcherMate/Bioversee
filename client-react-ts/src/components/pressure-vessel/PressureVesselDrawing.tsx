@@ -111,20 +111,20 @@ export function PressureVesselDrawing({
           left: 0;
           right: 0;
           bottom: 0;
-          top: calc(-1 * var(--bubble-surface-fade));
+          top: 0;
           overflow: hidden;
           z-index: 1;
           pointer-events: none;
           -webkit-mask-image: linear-gradient(
             to top,
             #000 0,
-            #000 calc(100% - var(--bubble-surface-fade)),
+            #000 calc(100% - 28px),
             transparent 100%
           );
           mask-image: linear-gradient(
             to top,
             #000 0,
-            #000 calc(100% - var(--bubble-surface-fade)),
+            #000 calc(100% - 28px),
             transparent 100%
           );
         }
@@ -219,12 +219,12 @@ export function PressureVesselDrawing({
           62% {
             opacity: 0.5;
           }
-          82% {
-            bottom: calc(100% + 12px);
-            opacity: 0.18;
+          88% {
+            bottom: calc(100% - 10px);
+            opacity: 0.2;
           }
           100% {
-            bottom: calc(100% + var(--bubble-surface-fade));
+            bottom: calc(100% - 2px);
             transform: scale(1);
             opacity: 0;
           }
