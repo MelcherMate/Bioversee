@@ -114,11 +114,11 @@ const App = () => {
             />
             <Route
               path="/pressure-vessel"
-              element={user ? <PressureVessel /> : <Login />}
+              element={user ? <PressureVessel user={user} /> : <Login />}
             />
             <Route
               path="/membrane-bioreactor"
-              element={user ? <MembraneBioreactor /> : <Login />}
+              element={user ? <MembraneBioreactor user={user} /> : <Login />}
             />
             <Route
               path="/waterpurifier"

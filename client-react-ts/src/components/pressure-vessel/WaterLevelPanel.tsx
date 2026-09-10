@@ -17,6 +17,8 @@ import "./WaterLevelPanel.css";
 type WaterLevelPanelProps = {
   fillUnits: number;
   onChange: (value: number) => void;
+  /** Fired when the user finishes a manual slider drag. */
+  onCommit?: (value: number) => void;
   title?: string;
   fillLabel?: string;
   drainLabel?: string;
@@ -32,6 +34,7 @@ type WaterLevelPanelProps = {
 export function WaterLevelPanel({
   fillUnits,
   onChange,
+  onCommit,
   title = "Water level",
   fillLabel = "Fill",
   drainLabel = "Drain",
@@ -123,7 +126,10 @@ export function WaterLevelPanel({
     onChange(nextUnits);
   };
 
-  const endDrag = useCallback(() => setIsDragging(false), []);
+  const endDrag = useCallback(() => {
+    setIsDragging(false);
+    onCommit?.(visualRef.current);
+  }, [onCommit]);
 
   const atFull = fillUnits >= VESSEL_MAX_FILL_UNITS;
   const atEmpty = fillUnits <= 0;

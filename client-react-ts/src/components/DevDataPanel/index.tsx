@@ -8,27 +8,95 @@ import type { AppUser } from "../../lib/user";
 import { ToastStack, useToasts } from "../Toast";
 import "./DevDataPanel.css";
 
-const SENSOR_PRESETS = [
-  { name: "temperature", label: "Temperature", sample: 28.4 },
-  { name: "ph", label: "pH", sample: 6.8 },
-  { name: "pufferwtlvl", label: "Puffer water level", sample: 62 },
+type NamedPreset = { name: string; label: string; sample?: number };
+type PresetGroup = { device: string; items: NamedPreset[] };
+
+const SENSOR_GROUPS: PresetGroup[] = [
+  {
+    device: "Bioreactor",
+    items: [
+      { name: "temperature", label: "Temperature", sample: 28.4 },
+      { name: "ph", label: "pH", sample: 6.8 },
+    ],
+  },
+  {
+    device: "Pressure Vessel",
+    items: [
+      { name: "vesselLevel", label: "Water level %", sample: 52 },
+    ],
+  },
+  {
+    device: "Membrane MBR",
+    items: [
+      { name: "mbrTankLevel", label: "Tank level %", sample: 95 },
+    ],
+  },
+  {
+    device: "Water Purifier",
+    items: [
+      { name: "pufferwtlvl", label: "Puffer water level", sample: 62 },
+    ],
+  },
 ];
 
-const SLIDER_PRESETS = [
-  { name: "rotor", label: "Rotor", sample: 45 },
-  { name: "aerator", label: "Aerator", sample: 55 },
-  { name: "agitator", label: "Agitator", sample: 40 },
+const SLIDER_GROUPS: PresetGroup[] = [
+  {
+    device: "Bioreactor",
+    items: [
+      { name: "rotor", label: "Rotor", sample: 45 },
+      { name: "aerator", label: "Aerator", sample: 55 },
+    ],
+  },
+  {
+    device: "Pressure Vessel",
+    items: [
+      { name: "vesselLevel", label: "Water level", sample: 50 },
+    ],
+  },
+  {
+    device: "Membrane MBR",
+    items: [
+      { name: "mbrAerationLevel", label: "Aeration intensity", sample: 50 },
+    ],
+  },
+  {
+    device: "Water Purifier",
+    items: [
+      { name: "agitator", label: "Agitator", sample: 40 },
+    ],
+  },
 ];
 
-const SWITCH_PRESETS = [
-  { name: "switchWarmWaterPump", label: "Warm water pump" },
-  { name: "switchColdWaterPump", label: "Cold water pump" },
-  { name: "switchAcidPump", label: "Acid pump" },
-  { name: "switchBasePump", label: "Base pump" },
-  { name: "switchPump1", label: "Puffer → Active" },
-  { name: "switchPump2", label: "Additive → Active" },
-  { name: "switchPump3", label: "Active → Clean" },
+const SWITCH_GROUPS: PresetGroup[] = [
+  {
+    device: "Bioreactor",
+    items: [
+      { name: "switchWarmWaterPump", label: "Warm water pump" },
+      { name: "switchColdWaterPump", label: "Cold water pump" },
+      { name: "switchAcidPump", label: "Acid pump" },
+      { name: "switchBasePump", label: "Base pump" },
+    ],
+  },
+  {
+    device: "Membrane MBR",
+    items: [
+      { name: "mbrFlow", label: "Circulation flow" },
+      { name: "mbrAeration", label: "Diffuser aeration" },
+    ],
+  },
+  {
+    device: "Water Purifier",
+    items: [
+      { name: "switchPump1", label: "Puffer → Active" },
+      { name: "switchPump2", label: "Additive → Active" },
+      { name: "switchPump3", label: "Active → Clean" },
+    ],
+  },
 ];
+
+const ALL_SENSORS = SENSOR_GROUPS.flatMap((g) => g.items);
+const ALL_SLIDERS = SLIDER_GROUPS.flatMap((g) => g.items);
+const ALL_SWITCHES = SWITCH_GROUPS.flatMap((g) => g.items);
 
 type DevDataPanelProps = {
   open: boolean;
@@ -37,15 +105,15 @@ type DevDataPanelProps = {
 };
 
 function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
-  const [sensorName, setSensorName] = useState(SENSOR_PRESETS[0].name);
+  const [sensorName, setSensorName] = useState(ALL_SENSORS[0].name);
   const [sensorValue, setSensorValue] = useState(
-    String(SENSOR_PRESETS[0].sample)
+    String(ALL_SENSORS[0].sample ?? 0),
   );
-  const [sliderName, setSliderName] = useState(SLIDER_PRESETS[0].name);
+  const [sliderName, setSliderName] = useState(ALL_SLIDERS[0].name);
   const [sliderValue, setSliderValue] = useState(
-    String(SLIDER_PRESETS[0].sample)
+    String(ALL_SLIDERS[0].sample ?? 0),
   );
-  const [switchName, setSwitchName] = useState(SWITCH_PRESETS[0].name);
+  const [switchName, setSwitchName] = useState(ALL_SWITCHES[0].name);
   const [switchValue, setSwitchValue] = useState(true);
   const [busy, setBusy] = useState(false);
   const { toasts, push, replace, dismiss } = useToasts();
@@ -63,7 +131,7 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
     action: () => Promise<void>,
     pendingTitle: string,
     okTitle: string,
-    okDetail?: string
+    okDetail?: string,
   ) => {
     setBusy(true);
     const toastId = push("info", pendingTitle, "Writing to Supabase…");
@@ -75,7 +143,7 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
         toastId,
         "error",
         "Upload failed",
-        err instanceof Error ? err.message : "Failed to write data"
+        err instanceof Error ? err.message : "Failed to write data",
       );
     } finally {
       setBusy(false);
@@ -89,7 +157,7 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
       () => insertSensorReading(sensorName, value),
       "Sending sensor…",
       "Sensor uploaded",
-      `${sensorName} = ${value}`
+      `${sensorName} = ${value}`,
     );
   };
 
@@ -100,7 +168,7 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
       () => insertSliderState(sliderName, value, user.id),
       "Sending slider…",
       "Slider uploaded",
-      `${sliderName} = ${value}%`
+      `${sliderName} = ${value}%`,
     );
   };
 
@@ -110,32 +178,55 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
       () => insertSwitchState(switchName, switchValue, user.id),
       "Sending switch…",
       "Switch uploaded",
-      `${switchName} = ${switchValue ? "ON" : "OFF"}`
+      `${switchName} = ${switchValue ? "ON" : "OFF"}`,
     );
   };
 
   const seedDemoBundle = () =>
     run(
       async () => {
+        // Bioreactor
         await insertSensorReading("temperature", 27 + Math.random() * 4);
         await insertSensorReading("ph", 6.5 + Math.random() * 0.8);
-        await insertSensorReading("pufferwtlvl", 50 + Math.random() * 30);
         await insertSliderState(
           "rotor",
           40 + Math.round(Math.random() * 40),
-          user.id
+          user.id,
         );
         await insertSliderState(
           "aerator",
           35 + Math.round(Math.random() * 45),
-          user.id
+          user.id,
         );
         await insertSwitchState("switchWarmWaterPump", true, user.id);
         await insertSwitchState("switchColdWaterPump", false, user.id);
+
+        // Pressure vessel
+        const vesselPct = 35 + Math.round(Math.random() * 45);
+        await insertSensorReading("vesselLevel", vesselPct);
+        await insertSliderState("vesselLevel", vesselPct, user.id);
+
+        // Membrane MBR
+        const aerationLevels = [25, 50, 75, 100] as const;
+        const aeration =
+          aerationLevels[Math.floor(Math.random() * aerationLevels.length)];
+        await insertSensorReading("mbrTankLevel", 92 + Math.random() * 6);
+        await insertSliderState("mbrAerationLevel", aeration, user.id);
+        await insertSwitchState("mbrFlow", Math.random() > 0.4, user.id);
+        await insertSwitchState("mbrAeration", Math.random() > 0.35, user.id);
+
+        // Water purifier
+        await insertSensorReading("pufferwtlvl", 50 + Math.random() * 30);
+        await insertSliderState(
+          "agitator",
+          30 + Math.round(Math.random() * 50),
+          user.id,
+        );
+        await insertSwitchState("switchPump1", Math.random() > 0.5, user.id);
       },
       "Seeding demo bundle…",
       "Demo bundle uploaded",
-      "Sensors, sliders, and switches written"
+      "All four devices seeded",
     );
 
   return (
@@ -161,7 +252,8 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
         </header>
 
         <p className="dev-panel__hint">
-          Shortcut <kbd>L</kbd> + <kbd>B</kbd> · Esc to dismiss
+          Shortcut <kbd>L</kbd> + <kbd>B</kbd> · Esc to dismiss · Covers
+          bioreactor, pressure vessel, MBR, and water purifier
         </p>
 
         <button
@@ -182,14 +274,20 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
               onChange={(e) => {
                 const next = e.target.value;
                 setSensorName(next);
-                const preset = SENSOR_PRESETS.find((p) => p.name === next);
-                if (preset) setSensorValue(String(preset.sample));
+                const preset = ALL_SENSORS.find((p) => p.name === next);
+                if (preset?.sample != null) {
+                  setSensorValue(String(preset.sample));
+                }
               }}
             >
-              {SENSOR_PRESETS.map((preset) => (
-                <option key={preset.name} value={preset.name}>
-                  {preset.label}
-                </option>
+              {SENSOR_GROUPS.map((group) => (
+                <optgroup key={group.device} label={group.device}>
+                  {group.items.map((preset) => (
+                    <option key={preset.name} value={preset.name}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
@@ -217,14 +315,20 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
               onChange={(e) => {
                 const next = e.target.value;
                 setSliderName(next);
-                const preset = SLIDER_PRESETS.find((p) => p.name === next);
-                if (preset) setSliderValue(String(preset.sample));
+                const preset = ALL_SLIDERS.find((p) => p.name === next);
+                if (preset?.sample != null) {
+                  setSliderValue(String(preset.sample));
+                }
               }}
             >
-              {SLIDER_PRESETS.map((preset) => (
-                <option key={preset.name} value={preset.name}>
-                  {preset.label}
-                </option>
+              {SLIDER_GROUPS.map((group) => (
+                <optgroup key={group.device} label={group.device}>
+                  {group.items.map((preset) => (
+                    <option key={preset.name} value={preset.name}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
@@ -252,10 +356,14 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
               value={switchName}
               onChange={(e) => setSwitchName(e.target.value)}
             >
-              {SWITCH_PRESETS.map((preset) => (
-                <option key={preset.name} value={preset.name}>
-                  {preset.label}
-                </option>
+              {SWITCH_GROUPS.map((group) => (
+                <optgroup key={group.device} label={group.device}>
+                  {group.items.map((preset) => (
+                    <option key={preset.name} value={preset.name}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
