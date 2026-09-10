@@ -9,6 +9,9 @@ struct BioverseeApp: App {
             RootView()
                 .environmentObject(session)
                 .tint(Color(red: 0.05, green: 0.58, blue: 0.53))
+                .onOpenURL { url in
+                    Task { await session.handleIncomingURL(url) }
+                }
         }
     }
 }

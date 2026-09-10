@@ -38,4 +38,14 @@ Your Mac already sees **IPHONE 17 Pro** when it’s plugged in.
 
 Uses the same Supabase backend as `client-react-ts` (see `Bioversee/App/AppConfig.swift`).
 
-**Auth:** email / password only on iOS. Google sign-in stays on the web.
+**Auth:** email/password **and Google** (ASWebAuthenticationSession).
+
+### Google redirect (one-time Supabase setup)
+
+In [Supabase Auth URL config](https://supabase.com/dashboard/project/_/auth/url-configuration), add this to **Additional Redirect URLs**:
+
+```text
+com.bioversee.app://login-callback
+```
+
+Google provider must already be enabled (same as the web app).

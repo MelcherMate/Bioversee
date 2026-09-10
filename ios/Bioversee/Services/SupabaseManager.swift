@@ -7,6 +7,7 @@ enum SupabaseManager {
         supabaseKey: AppConfig.supabaseAnonKey,
         options: .init(
             auth: .init(
+                redirectToURL: AppConfig.oauthRedirectURL,
                 emitLocalSessionAsInitialSession: true
             )
         )

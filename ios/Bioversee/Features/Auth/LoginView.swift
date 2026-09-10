@@ -28,7 +28,7 @@ struct LoginView: View {
                                 .foregroundStyle(Color.accentColor)
                             Text("Bioversee")
                                 .font(.title2.weight(.semibold))
-                            Text("Sign in with email — same account as the web app.")
+                            Text("Same account as the web app.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -37,6 +37,24 @@ struct LoginView: View {
                         Spacer()
                     }
                     .listRowBackground(Color.clear)
+                }
+
+                Section {
+                    Button {
+                        Task { await signInWithGoogle() }
+                    } label: {
+                        HStack {
+                            Image(systemName: "g.circle.fill")
+                            if busy {
+                                ProgressView()
+                            } else {
+                                Text("Continue with Google")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .disabled(busy)
                 }
 
                 Section {
@@ -55,8 +73,8 @@ struct LoginView: View {
 
                     SecureField("Password", text: $password)
                         .textContentType(mode == .signIn ? .password : .newPassword)
-                } footer: {
-                    Text("Google sign-in is only available on the web. Use email and password here.")
+                } header: {
+                    Text("Or use email")
                 }
 
                 if let infoMessage {
@@ -105,5 +123,12 @@ struct LoginView: View {
         case .signUp:
             infoMessage = await session.signUp(email: email, password: password)
         }
+    }
+
+    private func signInWithGoogle() async {
+        busy = true
+        defer { busy = false }
+        infoMessage = nil
+        await session.signInWithGoogle()
     }
 }

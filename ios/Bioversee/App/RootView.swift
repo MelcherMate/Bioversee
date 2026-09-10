@@ -67,7 +67,7 @@ struct AccountView: View {
                         Task { await session.signOut() }
                     }
                 } footer: {
-                    Text("Controls and notifications share the same cloud account as the web app. Charts stay on the web. Sign-in on iOS is email/password only.")
+                    Text("Controls and notifications share the same cloud account as the web app. Charts stay on the web.")
                 }
             }
             .navigationTitle("Account")

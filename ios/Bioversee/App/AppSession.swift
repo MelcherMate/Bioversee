@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import Supabase
 
@@ -69,6 +70,34 @@ final class AppSession: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             return nil
+        }
+    }
+
+    func signInWithGoogle() async {
+        errorMessage = nil
+        do {
+            session = try await SupabaseManager.client.auth.signInWithOAuth(
+                provider: .google,
+                redirectTo: AppConfig.oauthRedirectURL
+            ) { (webAuthSession: ASWebAuthenticationSession) in
+                webAuthSession.prefersEphemeralWebBrowserSession = false
+            }
+        } catch {
+            let message = error.localizedDescription
+            // User cancelled the browser sheet — don't treat as a hard error.
+            if message.localizedCaseInsensitiveContains("cancel") { return }
+            errorMessage = message
+        }
+    }
+
+    /// Handles deep-link / Universal Link callbacks if the OS delivers the
+    /// OAuth redirect outside ASWebAuthenticationSession.
+    func handleIncomingURL(_ url: URL) async {
+        guard url.scheme == AppConfig.oauthCallbackScheme else { return }
+        do {
+            session = try await SupabaseManager.client.auth.session(from: url)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
