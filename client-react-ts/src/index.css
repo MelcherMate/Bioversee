@@ -33,6 +33,8 @@
   --bv-danger: #b42318;
   --bv-success: #027a48;
   --bv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Rolling number (odometer) motion */
+  --bv-num-duration: 420ms;
 }
 
 * {

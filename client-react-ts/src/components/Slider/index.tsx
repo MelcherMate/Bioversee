@@ -10,6 +10,7 @@ import {
   insertSliderState,
 } from "../../lib/actuators";
 import type { AppUser } from "../../lib/user";
+import AnimatedNumber from "../AnimatedNumber";
 import "./Slider.css";
 
 type SliderProps = {
@@ -59,7 +60,12 @@ function Slider(props: SliderProps) {
     <div className="bv-slider">
       <div className="bv-slider__meta">
         <span className="bv-slider__label">{props.label}</span>
-        <span className="bv-slider__value">{value}%</span>
+        <AnimatedNumber
+          className="bv-slider__value"
+          value={value}
+          decimals={0}
+          suffix="%"
+        />
       </div>
       <input
         type="range"

@@ -34,6 +34,7 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: var(--bv-accent-hover);
+  --bv-num-duration: 480ms;
 }
 
 .bv-chart__plot {
@@ -68,6 +69,7 @@
 }
 
 .bv-chart__tooltip-value {
+  display: inline-flex;
   font-size: 16px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;

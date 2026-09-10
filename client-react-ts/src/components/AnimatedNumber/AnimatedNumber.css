@@ -1,0 +1,72 @@
+/* Rolling / odometer numbers — part of the Bioversee design language */
+
+.bv-num {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  font-weight: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+.bv-num__visual {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.bv-num__static {
+  display: inline-block;
+  line-height: 1;
+}
+
+.bv-num__suffix {
+  margin-left: 0.05em;
+}
+
+.bv-num__digit {
+  position: relative;
+  display: inline-block;
+  width: 0.62em;
+  height: 1em;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 22%,
+    #000 78%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 22%,
+    #000 78%,
+    transparent 100%
+  );
+}
+
+.bv-num__reel {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+  transition: transform var(--bv-num-duration, 420ms) var(--bv-ease);
+}
+
+.bv-num__glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1em;
+  width: 100%;
+  flex: 0 0 1em;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bv-num__reel {
+    transition: none;
+  }
+}

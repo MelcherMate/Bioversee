@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { getSensorReadings } from "../../lib/actuators";
+import AnimatedNumber from "../AnimatedNumber";
 import "./Chart.css";
 
 interface ChartProps {
@@ -80,7 +81,11 @@ const Chart: React.FC<ChartProps> = (props) => {
       <div className="bv-chart__meta">
         <h3 className="bv-chart__label">{props.label}</h3>
         {latest !== null && (
-          <span className="bv-chart__value">{latest.toFixed(2)}</span>
+          <AnimatedNumber
+            className="bv-chart__value"
+            value={latest}
+            decimals={2}
+          />
         )}
       </div>
 
@@ -193,7 +198,11 @@ function ChartTooltip({
   return (
     <div className="bv-chart__tooltip">
       <div className="bv-chart__tooltip-label">{labelName}</div>
-      <div className="bv-chart__tooltip-value">{value.toFixed(2)}</div>
+      <AnimatedNumber
+        className="bv-chart__tooltip-value"
+        value={value}
+        decimals={2}
+      />
       {time && <div className="bv-chart__tooltip-time">{time}</div>}
     </div>
   );
