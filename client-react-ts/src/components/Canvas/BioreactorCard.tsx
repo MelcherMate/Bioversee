@@ -38,10 +38,8 @@ const VESSEL = {
 const JACKET_THICK = 18;
 /** Jacket starts on the straight wall (below top dome). */
 const JACKET_TOP = 52;
-/** Diagonal cut depth on both tops. */
-const JACKET_DIAG = 26;
-/** Inlet / outlet height — meets the outer (lower) corner of the diagonal. */
-const JACKET_PORT_Y = JACKET_TOP + JACKET_DIAG;
+/** Horizontal run height of inlet/outlet L-pipes (above jacket top). */
+const JACKET_PIPE_Y = JACKET_TOP - 36;
 
 function jacketRadii() {
   const inner = {
@@ -65,39 +63,33 @@ function jacketRadii() {
   return { inner, outer };
 }
 
-/** Filled U jacket with diagonal tops, following the vessel bottom. */
+/** Filled U jacket with flat tops, following the vessel bottom. */
 function buildJacketShellPath(): string {
   const { inner, outer } = jacketRadii();
   const top = JACKET_TOP;
-  const diag = JACKET_DIAG;
-
   const oLeft = outer.left;
   const oRight = outer.right;
   const iLeft = inner.left;
   const iRight = inner.right;
 
-  // Diagonal slopes down away from the vessel (inner high, outer low).
   return [
-    `M ${oLeft} ${top + diag}`,
+    `M ${oLeft} ${top}`,
     `L ${oLeft} ${outer.cy}`,
     `A ${outer.r} ${outer.r} 0 0 0 ${outer.leftCx} ${outer.bottom}`,
     `L ${outer.rightCx} ${outer.bottom}`,
     `A ${outer.r} ${outer.r} 0 0 0 ${oRight} ${outer.cy}`,
-    `L ${oRight} ${top + diag}`,
-    // Right diagonal: outer low → inner high
+    `L ${oRight} ${top}`,
     `L ${iRight} ${top}`,
     `L ${iRight} ${inner.cy}`,
     `A ${inner.r} ${inner.r} 0 0 1 ${inner.rightCx} ${inner.bottom}`,
     `L ${inner.leftCx} ${inner.bottom}`,
     `A ${inner.r} ${inner.r} 0 0 1 ${iLeft} ${inner.cy}`,
     `L ${iLeft} ${top}`,
-    // Left diagonal: inner high → outer low
-    `L ${oLeft} ${top + diag}`,
     "Z",
   ].join(" ");
 }
 
-/** Flow centerline through the jacket channel. */
+/** Flow: inlet L → down jacket → around bottom → up → outlet L. */
 function buildJacketFlowPath(): string {
   const { inner, outer } = jacketRadii();
   const midLeft = (inner.left + outer.left) / 2;
@@ -106,17 +98,18 @@ function buildJacketFlowPath(): string {
   const midBottom = (inner.bottom + outer.bottom) / 2;
   const leftCx = inner.leftCx;
   const rightCx = inner.rightCx;
-  const yPort = JACKET_PORT_Y;
+  const pipeY = JACKET_PIPE_Y;
+  const top = JACKET_TOP;
 
   return [
-    `M -100 ${yPort}`,
-    `L ${midLeft} ${yPort}`,
+    `M -110 ${pipeY}`,
+    `L ${midLeft} ${pipeY}`,
     `L ${midLeft} ${inner.cy}`,
     `A ${midR} ${midR} 0 0 0 ${leftCx} ${midBottom}`,
     `L ${rightCx} ${midBottom}`,
     `A ${midR} ${midR} 0 0 0 ${midRight} ${inner.cy}`,
-    `L ${midRight} ${yPort}`,
-    `L 542 ${yPort}`,
+    `L ${midRight} ${pipeY}`,
+    `L 552 ${pipeY}`,
   ].join(" ");
 }
 
@@ -137,11 +130,15 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
 
   const shellPath = buildJacketShellPath();
   const flowPath = buildJacketFlowPath();
-  const yPort = JACKET_PORT_Y;
   const { outer } = jacketRadii();
-  // Horizontal stubs meet the outer jacket face (left inlet, right outlet).
-  const supplyPath = `M -110 ${yPort} L ${outer.left} ${yPort}`;
-  const dischargePath = `M ${outer.right} ${yPort} L 552 ${yPort}`;
+  const midLeft = (outer.left + VESSEL.left) / 2;
+  const midRight = (outer.right + VESSEL.right) / 2;
+  const pipeY = JACKET_PIPE_Y;
+  const top = JACKET_TOP;
+
+  // L-turns like base/acid: horizontal then vertical into the jacket top.
+  const supplyPath = `M -110 ${pipeY} L ${midLeft} ${pipeY} L ${midLeft} ${top}`;
+  const dischargePath = `M ${midRight} ${top} L ${midRight} ${pipeY} L 552 ${pipeY}`;
 
   const paintPipe = (d: string) => (
     <>
@@ -151,6 +148,7 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         stroke={PIPE_METAL.stroke}
         strokeWidth={PIPE_OD + 3}
         strokeLinecap="butt"
+        strokeLinejoin="round"
       />
       <path
         d={d}
@@ -158,6 +156,7 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         stroke={PIPE_FILL}
         strokeWidth={PIPE_OD}
         strokeLinecap="butt"
+        strokeLinejoin="round"
       />
     </>
   );
@@ -198,11 +197,10 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
           </linearGradient>
         </defs>
 
-        {/* Inlet (left) + outlet (right) — behind jacket at the joint */}
+        {/* Inlet (left) + outlet (right) L-pipes — behind jacket at the joint */}
         <g filter={`url(#${prefix}-metal)`}>{paintPipe(supplyPath)}</g>
         <g filter={`url(#${prefix}-metal)`}>{paintPipe(dischargePath)}</g>
 
-        {/* Jacket shell covers the pipe ends at the connection */}
         <g filter={`url(#${prefix}-metal)`}>
           <path
             d={shellPath}
