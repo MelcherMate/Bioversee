@@ -73,25 +73,6 @@ function BioreactorCard(props: BioreactorCardProps) {
 
         <div className="reaction_chamber"></div>
 
-        <div className="br-water-clip">
-          <VesselWaterBody
-            fillUnits={displayFillUnits}
-            fillVelocity={waveVelocity}
-          />
-        </div>
-
-        <div className="sensor sensor1">
-          <div className="sensor_base"></div>
-          <div className="sensor_stem"></div>
-          <div className="sensor_head"></div>
-        </div>
-        <div className="sensor sensor2">
-          <div className="sensor_base"></div>
-          <div className="sensor_stem"></div>
-          <div className="sensor_head"></div>
-        </div>
-        <div className="sensor-text">{t("process.tempPhSensor")}</div>
-
         <div className="agitator">
           <div className="agitator_stem"></div>
           <div
@@ -113,6 +94,25 @@ function BioreactorCard(props: BioreactorCardProps) {
           ></div>
         </div>
         <div className="agitator-text">{t("process.agitator")}</div>
+
+        <div className="br-water-clip">
+          <VesselWaterBody
+            fillUnits={displayFillUnits}
+            fillVelocity={waveVelocity}
+          />
+        </div>
+
+        <div className="sensor sensor1">
+          <div className="sensor_base"></div>
+          <div className="sensor_stem"></div>
+          <div className="sensor_head"></div>
+        </div>
+        <div className="sensor sensor2">
+          <div className="sensor_base"></div>
+          <div className="sensor_stem"></div>
+          <div className="sensor_head"></div>
+        </div>
+        <div className="sensor-text">{t("process.tempPhSensor")}</div>
 
         <div className="base_acid_supply_pipe_h"></div>
         <div className="base_acid_supply_pipe_v"></div>

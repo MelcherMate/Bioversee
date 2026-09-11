@@ -35,6 +35,27 @@
   border-right: 20px solid grey;
   height: 300px;
   width: 340px;
+  z-index: 0;
+}
+
+/* Patch the straight-to-curve join so page white cannot show through */
+.thermal_jacket::before,
+.thermal_jacket::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  width: 20px;
+  height: 6px;
+  background: grey;
+  pointer-events: none;
+}
+
+.thermal_jacket::before {
+  left: -20px;
+}
+
+.thermal_jacket::after {
+  right: -20px;
 }
 
 .thermal_jacket_lower_cap {
@@ -44,8 +65,10 @@
   height: 150px; /* as the half of the width */
   border-bottom-left-radius: 150px;
   border-bottom-right-radius: 150px;
-  border: 20px solid gray;
+  border: 20px solid grey;
   border-top: 0;
+  margin-top: -2px;
+  z-index: 0;
 }
 
 .cooling_water_supply_pipe-text {
@@ -83,7 +106,7 @@
   position: absolute;
   top: 60px;
   left: 40px;
-  z-index: 1;
+  z-index: 2;
   width: 260px;
   height: 350px;
   overflow: hidden;
@@ -156,7 +179,8 @@
   left: 95px;
   width: 150px;
   height: 500px;
-  z-index: 2;
+  /* Behind the water so blades look submerged as the level rises */
+  z-index: 1;
 }
 
 .agitator_stem {
@@ -275,9 +299,11 @@
   top: 370px;
   left: 70px;
   height: 12px;
-  width: 200px;
+  /* Short enough to clear the curved inner walls at this height */
+  width: 150px;
   border-radius: 16px;
   background: silver;
+  z-index: 1;
 }
 
 .aerator_supply_pipe_v {
