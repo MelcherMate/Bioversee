@@ -4,49 +4,89 @@
   margin-top: 200px;
   margin-left: 175px;
   width: 442px;
-  height: 450px;
+  height: 521px;
 }
 
-/* THERMAL JACKET — spiral coil around lower 60% */
+/* THERMAL JACKET — original U-shell, fitted to widened vessel */
 .thermal-jacket {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  width: 442px;
+  height: 521px;
   pointer-events: none;
-}
-
-.thermal-jacket__svg {
-  position: absolute;
-  left: -120px;
-  top: -140px;
-  width: 682px;
-  height: 620px;
-  overflow: visible;
-}
-
-.thermal-jacket__svg--back {
   z-index: 0;
 }
 
-.thermal-jacket__svg--front {
-  z-index: 2;
+.thermal_jacket_shell {
+  display: block;
+  position: relative;
+  border-left: 20px solid grey;
+  border-right: 20px solid grey;
+  height: 300px;
+  width: 442px;
+  box-sizing: border-box;
+  z-index: 0;
 }
 
-.thermal-jacket__flow {
-  stroke-dasharray: 8 14;
-  animation: thermal-jacket-flow 1.1s linear infinite;
+/* Patch the straight-to-curve join so page white cannot show through */
+.thermal_jacket_shell::before,
+.thermal_jacket_shell::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  width: 20px;
+  height: 6px;
+  background: grey;
+  pointer-events: none;
 }
 
-.thermal-jacket--warm .thermal-jacket__flow {
-  filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.45));
+.thermal_jacket_shell::before {
+  left: -20px;
 }
 
-.thermal-jacket--cold .thermal-jacket__flow {
-  filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.45));
+.thermal_jacket_shell::after {
+  right: -20px;
+}
+
+.thermal_jacket_lower_cap {
+  display: block;
+  position: relative;
+  width: 442px;
+  height: 221px;
+  box-sizing: border-box;
+  border-bottom-left-radius: 221px;
+  border-bottom-right-radius: 221px;
+  border: 20px solid grey;
+  border-top: 0;
+  margin-top: -2px;
+  z-index: 0;
+}
+
+.thermal-jacket__flow-svg {
+  position: absolute;
+  left: -120px;
+  top: -20px;
+  width: 682px;
+  height: 560px;
+  overflow: visible;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.thermal-jacket__water {
+  opacity: 0.92;
+}
+
+/* Moving highlight on solid water — not a dotted water stream */
+.thermal-jacket__flow-pulse {
+  stroke-dasharray: 28 72;
+  animation: thermal-jacket-flow 1.35s linear infinite;
 }
 
 @keyframes thermal-jacket-flow {
   from {
-    stroke-dashoffset: 44;
+    stroke-dashoffset: 100;
   }
   to {
     stroke-dashoffset: 0;
@@ -54,14 +94,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thermal-jacket__flow {
+  .thermal-jacket__flow-pulse {
     animation: none;
+    opacity: 0.35;
     stroke-dasharray: none;
-    opacity: 0.85;
   }
 }
 
-/* REACTOR BODY */
+/* REACTOR BODY — sits inside the jacket U */
 .reaction_chamber {
   display: block;
   position: absolute;
@@ -69,6 +109,7 @@
   left: 20px;
   width: 402px;
   height: 550px;
+  box-sizing: border-box;
   border: 20px solid #9a9a9a;
   border-radius: 169px;
   z-index: 1;
@@ -79,7 +120,7 @@
   position: absolute;
   top: -100px;
   left: 40px;
-  z-index: 3;
+  z-index: 2;
   width: 362px;
   height: 510px;
   overflow: hidden;
@@ -143,8 +184,7 @@
   left: 124px;
   width: 195px;
   height: 500px;
-  /* Behind the water so blades look submerged as the level rises */
-  z-index: 2;
+  z-index: 1;
 }
 
 .agitator_stem {
@@ -211,12 +251,12 @@
   }
 }
 
-/* BASE-ACID SUPPLY — pressure-vessel pipe language; behind water when submerged */
+/* BASE-ACID SUPPLY */
 .base-acid-supply {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
 }
 
 .base-acid-pipe-run {
@@ -251,7 +291,7 @@
   width: 195px;
   border-radius: 16px;
   background: silver;
-  z-index: 2;
+  z-index: 1;
 }
 
 .aerator_supply_pipe_v {
@@ -262,7 +302,7 @@
   background: silver;
   top: -50px;
   left: 94px;
-  z-index: 2;
+  z-index: 1;
 }
 
 .aerator_supply_pipe_h {
@@ -273,5 +313,5 @@
   top: -50px;
   left: -100px;
   background: silver;
-  z-index: 2;
+  z-index: 1;
 }

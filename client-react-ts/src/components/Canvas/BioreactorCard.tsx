@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
@@ -21,126 +21,16 @@ type BioreactorCardProps = {
 const CARD_WIDTH = 800;
 const CARD_HEIGHT = 750;
 
-/** Chamber outer box in wrapper coordinates (matches .reaction_chamber). */
-const CHAMBER = {
-  left: 20,
-  top: -120,
-  width: 402,
-  height: 550,
-  radius: 169,
-} as const;
+/** Warm = reddish; cold = solid blue. */
+const FLOW_WARM = "#e11d48";
+const FLOW_COLD = "#0284c7";
 
-const CHAMBER_CX = CHAMBER.left + CHAMBER.width / 2;
-const CHAMBER_BOTTOM = CHAMBER.top + CHAMBER.height;
-const COIL_STANDOFF = 18;
-const COIL_TURNS = 5.5;
-const COIL_SAMPLES_PER_TURN = 36;
-
-const JACKET_WARM = "#f59e0b";
-const JACKET_COLD = "#38bdf8";
-
-function radiusAtY(y: number): number {
-  const baseRx = CHAMBER.width / 2 + COIL_STANDOFF;
-  const domeStart = CHAMBER_BOTTOM - CHAMBER.radius;
-  if (y <= domeStart) return baseRx;
-  const dy = y - domeStart;
-  if (dy >= CHAMBER.radius) return COIL_STANDOFF * 0.55;
-  return Math.sqrt(Math.max(0, CHAMBER.radius ** 2 - dy ** 2)) + COIL_STANDOFF;
-}
-
-type SpiralPoint = { x: number; y: number; front: boolean };
-
-function buildSpiralPoints(): SpiralPoint[] {
-  const coilTop = CHAMBER.top + CHAMBER.height * 0.4;
-  const coilBottom = CHAMBER_BOTTOM - 6;
-  const samples = Math.round(COIL_TURNS * COIL_SAMPLES_PER_TURN);
-  const points: SpiralPoint[] = [];
-
-  for (let i = 0; i <= samples; i++) {
-    const t = i / samples;
-    // Start on the left (π) so supply connects cleanly; descend while winding.
-    const angle = Math.PI + t * COIL_TURNS * Math.PI * 2;
-    const y = coilTop + t * (coilBottom - coilTop);
-    const rx = radiusAtY(y);
-    const x = CHAMBER_CX + rx * Math.cos(angle);
-    // sin > 0 → near face (front); sin < 0 → far face (back)
-    const front = Math.sin(angle) >= 0;
-    points.push({ x, y, front });
-  }
-
-  return points;
-}
-
-function pointsToPath(points: SpiralPoint[]): string {
-  if (points.length === 0) return "";
-  return points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
-    .join(" ");
-}
-
-/** Split into contiguous front/back runs for layered drawing. */
-function splitFrontBack(points: SpiralPoint[]): { front: string[]; back: string[] } {
-  const front: string[] = [];
-  const back: string[] = [];
-  if (points.length === 0) return { front, back };
-
-  let run: SpiralPoint[] = [points[0]];
-  let isFront = points[0].front;
-
-  const flush = () => {
-    if (run.length < 2) {
-      run = [];
-      return;
-    }
-    const d = pointsToPath(run);
-    if (isFront) front.push(d);
-    else back.push(d);
-    run = [];
-  };
-
-  for (let i = 1; i < points.length; i++) {
-    const p = points[i];
-    if (p.front === isFront) {
-      run.push(p);
-    } else {
-      // include bridge point so runs meet at the silhouette edge
-      run.push(p);
-      flush();
-      isFront = p.front;
-      run = [points[i - 1], p];
-    }
-  }
-  flush();
-  return { front, back };
-}
-
-function pipeStrokePair(
-  d: string,
-  opts?: { opacity?: number; className?: string },
-) {
-  const opacity = opts?.opacity ?? 1;
-  const className = opts?.className;
-  return (
-    <g className={className} opacity={opacity}>
-      <path
-        d={d}
-        fill="none"
-        stroke={PIPE_METAL.stroke}
-        strokeWidth={PIPE_OD + 2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d={d}
-        fill="none"
-        stroke={PIPE_FILL}
-        strokeWidth={PIPE_OD - 1}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </g>
-  );
-}
+/**
+ * Centerline: left supply → down jacket wall → around bottom U → up right → discharge.
+ * Coordinates are wrapper-local (jacket outer box 0..442, top at 0).
+ */
+const JACKET_FLOW_PATH =
+  "M -100 40 L 10 40 L 10 300 A 211 211 0 0 0 432 300 L 432 250 L 542 250";
 
 type ThermalJacketProps = {
   mode: JacketMode;
@@ -148,22 +38,8 @@ type ThermalJacketProps = {
 
 function ThermalJacket({ mode }: ThermalJacketProps) {
   const prefix = useId().replace(/:/g, "");
-  const points = useMemo(() => buildSpiralPoints(), []);
-  const fullPath = useMemo(() => pointsToPath(points), [points]);
-  const { front, back } = useMemo(() => splitFrontBack(points), [points]);
-
-  const coilTop = points[0];
-  const coilEnd = points[points.length - 1];
-  if (!coilTop || !coilEnd) return null;
-
-  // Supply: left stub into coil start; discharge: outward from coil end.
-  const supplyPath = `M ${coilTop.x - 110} ${coilTop.y} L ${coilTop.x} ${coilTop.y}`;
-  const dischargeOut =
-    coilEnd.x >= CHAMBER_CX ? coilEnd.x + 110 : coilEnd.x - 110;
-  const dischargePath = `M ${coilEnd.x} ${coilEnd.y} L ${dischargeOut} ${coilEnd.y}`;
-
   const flowing = mode !== "idle";
-  const flowColor = mode === "warm" ? JACKET_WARM : JACKET_COLD;
+  const flowColor = mode === "warm" ? FLOW_WARM : FLOW_COLD;
   const modeClass =
     mode === "warm"
       ? "thermal-jacket--warm"
@@ -171,64 +47,19 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         ? "thermal-jacket--cold"
         : "thermal-jacket--idle";
 
-  const svgView = { left: -120, top: -140, width: 682, height: 620 };
-
-  const shadowFilter = (
-    <defs>
-      <filter
-        id={`${prefix}-shadow`}
-        x="-20%"
-        y="-20%"
-        width="140%"
-        height="140%"
-      >
-        <feDropShadow
-          dx="1"
-          dy="2"
-          stdDeviation="1.2"
-          floodColor="#000"
-          floodOpacity="0.18"
-        />
-      </filter>
-    </defs>
-  );
-
-  const flowStroke = (d: string) =>
-    flowing ? (
-      <path
-        className="thermal-jacket__flow"
-        d={d}
-        fill="none"
-        stroke={flowColor}
-        strokeWidth={PIPE_OD - 5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    ) : null;
-
   return (
-    <div className={`thermal-jacket ${modeClass}`} aria-hidden>
-      <svg
-        className="thermal-jacket__svg thermal-jacket__svg--back"
-        viewBox={`${svgView.left} ${svgView.top} ${svgView.width} ${svgView.height}`}
-        aria-hidden
-      >
-        {shadowFilter}
-        <g filter={`url(#${prefix}-shadow)`}>
-          {back.map((d, i) => (
-            <g key={`back-${i}`}>{pipeStrokePair(d, { opacity: 0.55 })}</g>
-          ))}
-        </g>
-      </svg>
+    <div className={`thermal-jacket ${modeClass}`}>
+      <div className="thermal_jacket_shell" />
+      <div className="thermal_jacket_lower_cap" />
 
       <svg
-        className="thermal-jacket__svg thermal-jacket__svg--front"
-        viewBox={`${svgView.left} ${svgView.top} ${svgView.width} ${svgView.height}`}
+        className="thermal-jacket__flow-svg"
+        viewBox="-120 -20 682 560"
         aria-hidden
       >
         <defs>
           <filter
-            id={`${prefix}-shadow-front`}
+            id={`${prefix}-pipe`}
             x="-20%"
             y="-20%"
             width="140%"
@@ -243,22 +74,68 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
             />
           </filter>
         </defs>
-        <g filter={`url(#${prefix}-shadow-front)`}>
-          {pipeStrokePair(supplyPath)}
-          {front.map((d, i) => (
-            <g key={`front-${i}`}>{pipeStrokePair(d)}</g>
-          ))}
-          {pipeStrokePair(dischargePath)}
+
+        {/* Metal supply + discharge stubs */}
+        <g filter={`url(#${prefix}-pipe)`}>
+          <path
+            d="M -100 40 L 10 40"
+            fill="none"
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={PIPE_OD + 3}
+            strokeLinecap="butt"
+          />
+          <path
+            d="M -100 40 L 10 40"
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={PIPE_OD}
+            strokeLinecap="butt"
+          />
+          <path
+            d="M 432 250 L 542 250"
+            fill="none"
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={PIPE_OD + 3}
+            strokeLinecap="butt"
+          />
+          <path
+            d="M 432 250 L 542 250"
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={PIPE_OD}
+            strokeLinecap="butt"
+          />
         </g>
-        {flowStroke(supplyPath)}
-        {flowStroke(fullPath)}
-        {flowStroke(dischargePath)}
+
+        {flowing ? (
+          <g className="thermal-jacket__flow-group">
+            {/* Solid water body in the jacket channel + stubs */}
+            <path
+              className="thermal-jacket__water"
+              d={JACKET_FLOW_PATH}
+              fill="none"
+              stroke={flowColor}
+              strokeWidth={12}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {/* Brighter moving highlight on top of the solid stream */}
+            <path
+              className="thermal-jacket__flow-pulse"
+              d={JACKET_FLOW_PATH}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth={5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        ) : null}
       </svg>
     </div>
   );
 }
 
-/** L-run matching pressure-vessel pipe stroke language (no flow fill). */
 function BaseAcidSupplyPipe() {
   const prefix = useId().replace(/:/g, "");
   const centerline = "M 16 16 L 264 16 L 264 273";
@@ -360,12 +237,10 @@ function BioreactorCard(props: BioreactorCardProps) {
       <div className="wrapper">
         <ThermalJacket mode={jacketMode} />
 
-        <div className="reaction_chamber"></div>
-
-        {/* Front coil layer is inside ThermalJacket; raise chamber above back only via CSS */}
+        <div className="reaction_chamber" />
 
         <div className="agitator">
-          <div className="agitator_stem"></div>
+          <div className="agitator_stem" />
           <div
             className="agitator_blade0"
             style={{
@@ -373,8 +248,8 @@ function BioreactorCard(props: BioreactorCardProps) {
               animation: `rotateProp0 ${rotorSpeed}s infinite`,
               animationTimingFunction: "linear",
             }}
-          ></div>
-          <div className="agitator_stem2"></div>
+          />
+          <div className="agitator_stem2" />
           <div
             className="agitator_blade90"
             style={{
@@ -382,7 +257,7 @@ function BioreactorCard(props: BioreactorCardProps) {
               animation: `rotateProp90 ${rotorSpeed}s infinite`,
               animationTimingFunction: "linear",
             }}
-          ></div>
+          />
         </div>
 
         <div className="br-water-clip">
@@ -394,21 +269,21 @@ function BioreactorCard(props: BioreactorCardProps) {
         </div>
 
         <div className="sensor sensor1">
-          <div className="sensor_base"></div>
-          <div className="sensor_stem"></div>
-          <div className="sensor_head"></div>
+          <div className="sensor_base" />
+          <div className="sensor_stem" />
+          <div className="sensor_head" />
         </div>
         <div className="sensor sensor2">
-          <div className="sensor_base"></div>
-          <div className="sensor_stem"></div>
-          <div className="sensor_head"></div>
+          <div className="sensor_base" />
+          <div className="sensor_stem" />
+          <div className="sensor_head" />
         </div>
 
         <BaseAcidSupplyPipe />
 
-        <div className="aerator_submerged"></div>
-        <div className="aerator_supply_pipe_h"></div>
-        <div className="aerator_supply_pipe_v"></div>
+        <div className="aerator_submerged" />
+        <div className="aerator_supply_pipe_h" />
+        <div className="aerator_supply_pipe_v" />
       </div>
     </div>
   );
