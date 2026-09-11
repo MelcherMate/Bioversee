@@ -247,6 +247,7 @@
     "aerator": "Levegőztető",
     "temperature": "Hőmérséklet",
     "ph": "pH érték",
+    "pressure": "Nyomás",
     "pumpPufferActive": "Puffer → Aktív",
     "pumpAdditiveActive": "Adalék → Aktív",
     "pumpActiveClean": "Aktív → Tiszta",

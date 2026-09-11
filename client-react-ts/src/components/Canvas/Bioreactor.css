@@ -261,12 +261,12 @@
   left: 85px;
 }
 
-/* BASE-ACID SUPPLY — pressure-vessel pipe language */
+/* BASE-ACID SUPPLY — pressure-vessel pipe language; behind water when submerged */
 .base-acid-supply {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 3;
+  z-index: 1;
 }
 
 .base-acid-pipe-run {
@@ -274,47 +274,21 @@
   left: -108px;
   top: -163px;
   width: 244px;
-  height: 144px;
+  height: 289px;
   overflow: visible;
-}
-
-.base-acid-nozzle {
-  position: absolute;
-  left: 112px;
-  top: -130px;
-  width: 16px;
-  height: 22px;
-  border-radius: 3px;
-  background: linear-gradient(to bottom, #d4d4d8 0%, #a1a1aa 55%, #71717a 100%);
-  border: 2px solid #52525b;
-  box-shadow:
-    inset 0 1px 3px rgba(255, 255, 255, 0.28),
-    1px 2px 4px rgba(0, 0, 0, 0.18);
-  z-index: 5;
-}
-
-.base-acid-nozzle::before {
-  content: "";
-  position: absolute;
-  inset: -4px -5px;
-  border: 2px solid #52525b;
-  border-radius: 4px;
-  background: linear-gradient(to bottom, #d4d4d8, #a1a1aa);
-  z-index: -1;
-  box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.18);
 }
 
 .base-acid-flange {
   position: absolute;
-  left: 108px;
-  top: -134px;
-  width: 24px;
-  height: 5px;
+  left: 106px;
+  top: -118px;
+  width: 28px;
+  height: 6px;
   border-radius: 2px;
   background: linear-gradient(to bottom, #e4e4e7, #a1a1aa);
   border: 2px solid #52525b;
   box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.18);
-  z-index: 4;
+  z-index: 1;
 }
 
 .base_acid_supply_pipe-text {

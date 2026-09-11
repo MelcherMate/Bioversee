@@ -19,14 +19,14 @@ type BioreactorCardProps = {
 /** L-run matching pressure-vessel pipe stroke language (no flow fill). */
 function BaseAcidSupplyPipe() {
   const prefix = useId().replace(/:/g, "");
-  // Wrapper coords: open end (-92,-147) → elbow (120,-147) → tip (120,-35)
-  const centerline = "M 16 16 L 228 16 L 228 128";
+  // Wrapper coords: open end (-92,-147) → elbow (120,-147) → tip (120, 110)
+  const centerline = "M 16 16 L 228 16 L 228 273";
 
   return (
     <div className="base-acid-supply">
       <svg
         className="base-acid-pipe-run"
-        viewBox="0 0 244 144"
+        viewBox="0 0 244 289"
         aria-hidden
         overflow="visible"
       >
@@ -37,7 +37,7 @@ function BaseAcidSupplyPipe() {
             x="0"
             y="0"
             width="244"
-            height="144"
+            height="289"
           >
             <feDropShadow
               dx="1"
@@ -67,8 +67,8 @@ function BaseAcidSupplyPipe() {
           />
         </g>
       </svg>
+      {/* Lid collar only — no stacked nozzle box that floats over the liquid */}
       <div className="base-acid-flange" />
-      <div className="base-acid-nozzle" />
     </div>
   );
 }

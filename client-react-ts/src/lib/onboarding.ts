@@ -56,6 +56,7 @@ const SENSOR_SERIES: Record<DeviceType, SensorSeries[]> = {
   bioreactor: [
     { name: "temperature", base: 28.2, jitter: 1.2, decimals: 1 },
     { name: "ph", base: 6.85, jitter: 0.25, decimals: 2 },
+    { name: "pressure", base: 14.7, jitter: 1.8, decimals: 1 },
   ],
   pressure_vessel: [{ name: "vesselLevel", base: 52, jitter: 8, decimals: 0 }],
   membrane_bioreactor: [

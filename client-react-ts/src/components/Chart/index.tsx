@@ -17,6 +17,8 @@ interface ChartProps {
   deviceId: string;
   name: string;
   label: string;
+  /** Optional unit shown beside the latest value (e.g. psi). */
+  unit?: string;
 }
 
 type ChartPoint = {
@@ -83,11 +85,16 @@ const Chart: React.FC<ChartProps> = (props) => {
       <div className="bv-chart__meta">
         <h3 className="bv-chart__label">{props.label}</h3>
         {latest !== null && (
-          <AnimatedNumber
-            className="bv-chart__value"
-            value={latest}
-            decimals={2}
-          />
+          <div className="bv-chart__reading">
+            <AnimatedNumber
+              className="bv-chart__value"
+              value={latest}
+              decimals={2}
+            />
+            {props.unit ? (
+              <span className="bv-chart__unit">{props.unit}</span>
+            ) : null}
+          </div>
         )}
       </div>
 
@@ -151,7 +158,7 @@ const Chart: React.FC<ChartProps> = (props) => {
                   strokeWidth: 1,
                   strokeDasharray: "4 4",
                 }}
-                content={<ChartTooltip labelName={props.label} />}
+                content={<ChartTooltip labelName={props.label} unit={props.unit} />}
               />
               <Area
                 type="monotone"
@@ -186,10 +193,12 @@ function ChartTooltip({
   active,
   payload,
   labelName,
+  unit,
 }: {
   active?: boolean;
   payload?: Array<{ value?: number | string; payload?: ChartPoint }>;
   labelName: string;
+  unit?: string;
 }) {
   if (!active || !payload?.length) return null;
 
@@ -200,11 +209,14 @@ function ChartTooltip({
   return (
     <div className="bv-chart__tooltip">
       <div className="bv-chart__tooltip-label">{labelName}</div>
-      <AnimatedNumber
-        className="bv-chart__tooltip-value"
-        value={value}
-        decimals={2}
-      />
+      <div className="bv-chart__tooltip-reading">
+        <AnimatedNumber
+          className="bv-chart__tooltip-value"
+          value={value}
+          decimals={2}
+        />
+        {unit ? <span className="bv-chart__unit">{unit}</span> : null}
+      </div>
       {time && <div className="bv-chart__tooltip-time">{time}</div>}
     </div>
   );

@@ -247,6 +247,7 @@
     "aerator": "Belüfter",
     "temperature": "Temperatur",
     "ph": "pH-Wert",
+    "pressure": "Druck",
     "pumpPufferActive": "Puffer → Aktiv",
     "pumpAdditiveActive": "Additiv → Aktiv",
     "pumpActiveClean": "Aktiv → Rein",

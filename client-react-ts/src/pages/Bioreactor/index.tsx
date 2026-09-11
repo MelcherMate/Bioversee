@@ -159,6 +159,12 @@ function Bioreactor({ user }: BioreactorProps) {
             label={t("process.temperature")}
           />
           <Chart deviceId={device.id} name="ph" label={t("process.ph")} />
+          <Chart
+            deviceId={device.id}
+            name="pressure"
+            label={t("process.pressure")}
+            unit="psi"
+          />
         </div>
       </aside>
     </div>

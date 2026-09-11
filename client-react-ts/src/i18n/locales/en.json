@@ -247,6 +247,7 @@
     "aerator": "Aerator",
     "temperature": "Temperature",
     "ph": "pH value",
+    "pressure": "Pressure",
     "pumpPufferActive": "Puffer → Active",
     "pumpAdditiveActive": "Additive → Active",
     "pumpActiveClean": "Active → Clean",

@@ -27,6 +27,7 @@ const SENSOR_GROUPS: PresetGroup[] = [
     items: [
       { name: "temperature", label: "Temperature", sample: 28.4 },
       { name: "ph", label: "pH", sample: 6.8 },
+      { name: "pressure", label: "Pressure (psi)", sample: 14.7 },
     ],
   },
   {
@@ -287,6 +288,12 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
             id,
             "ph",
             6.5 + Math.random() * 0.8,
+            user.id,
+          );
+          await insertSensorReading(
+            id,
+            "pressure",
+            12 + Math.random() * 6,
             user.id,
           );
           await insertSliderState(
