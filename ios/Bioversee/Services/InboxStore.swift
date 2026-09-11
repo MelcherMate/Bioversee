@@ -70,4 +70,30 @@ final class InboxStore: ObservableObject {
         errorMessage = nil
         UIApplication.shared.applicationIconBadgeNumber = unread
     }
+
+    /// Optimistic remove + server delete (no confirmation).
+    func delete(_ item: InboxItem) async {
+        guard let session,
+              let account = session.accounts.first(where: { $0.id == item.accountId })
+        else { return }
+
+        let previous = items
+        items.removeAll { $0.id == item.id }
+        unread = NotificationService.unreadCount(items)
+        knownIds = Set(items.map(\.id))
+        UIApplication.shared.applicationIconBadgeNumber = unread
+
+        do {
+            try await NotificationService.delete(
+                notificationId: item.notification.id,
+                asAccount: account
+            )
+        } catch {
+            items = previous
+            unread = NotificationService.unreadCount(items)
+            knownIds = Set(items.map(\.id))
+            UIApplication.shared.applicationIconBadgeNumber = unread
+            errorMessage = error.localizedDescription
+        }
+    }
 }

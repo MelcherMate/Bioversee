@@ -73,6 +73,27 @@ enum DeviceService {
         }
         return id
     }
+
+    static func deleteDevice(id: UUID) async throws {
+        try await SupabaseManager.client
+            .rpc("delete_my_device", params: DeviceIdParams(pDeviceId: id))
+            .execute()
+    }
+
+    static func leaveDevice(id: UUID) async throws {
+        try await SupabaseManager.client
+            .rpc("leave_device", params: DeviceIdParams(pDeviceId: id))
+            .execute()
+    }
+
+    /// Owner deletes the device; members leave it.
+    static func removeFromAccount(_ device: AccessibleDevice) async throws {
+        if device.isOwner {
+            try await deleteDevice(id: device.id)
+        } else {
+            try await leaveDevice(id: device.id)
+        }
+    }
 }
 
 private struct CreateDeviceParams: Encodable {
@@ -87,4 +108,9 @@ private struct CreateDeviceParams: Encodable {
         case pMemberEmails = "p_member_emails"
         case pMemberRole = "p_member_role"
     }
+}
+
+private struct DeviceIdParams: Encodable {
+    let pDeviceId: UUID
+    enum CodingKeys: String, CodingKey { case pDeviceId = "p_device_id" }
 }

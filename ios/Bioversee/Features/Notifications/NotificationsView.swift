@@ -48,22 +48,31 @@ struct NotificationsView: View {
                             message: "Invites and updates for every signed-in account show up here."
                         )
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 10) {
-                                ForEach(inbox.items) { item in
-                                    NotificationCard(
-                                        item: item,
-                                        showAccount: session.accounts.count > 1,
-                                        busy: busyId == item.id,
-                                        onAccept: { Task { await accept(item) } },
-                                        onDecline: { Task { await decline(item) } },
-                                        onOpen: { Task { await markRead(item) } }
-                                    )
+                        List {
+                            ForEach(inbox.items) { item in
+                                NotificationCard(
+                                    item: item,
+                                    showAccount: session.accounts.count > 1,
+                                    busy: busyId == item.id,
+                                    onAccept: { Task { await accept(item) } },
+                                    onDecline: { Task { await decline(item) } },
+                                    onOpen: { Task { await markRead(item) } }
+                                )
+                                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        Task { await inbox.delete(item) }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 110)
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .padding(.bottom, 90)
                         .refreshable { await inbox.refresh(announceNew: false) }
                     }
                 }

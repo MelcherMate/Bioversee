@@ -5,6 +5,8 @@ struct DeviceListView: View {
     @State private var loading = true
     @State private var errorMessage: String?
     @State private var path: [AccessibleDevice] = []
+    @State private var devicePendingRemoval: AccessibleDevice?
+    @State private var removing = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -26,21 +28,29 @@ struct DeviceListView: View {
                                 message: "Create a device on the web app, or accept a share invite from Inbox."
                             )
                         } else {
-                            ScrollView {
-                                LazyVStack(spacing: 10) {
-                                    ForEach(devices) { device in
-                                        Button {
-                                            path.append(device)
+                            List {
+                                ForEach(devices) { device in
+                                    Button {
+                                        path.append(device)
+                                    } label: {
+                                        DeviceCard(device: device)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            devicePendingRemoval = device
                                         } label: {
-                                            DeviceCard(device: device)
+                                            Label("Delete", systemImage: "trash")
                                         }
-                                        .buttonStyle(.plain)
                                     }
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8)
-                                .padding(.bottom, 110)
                             }
+                            .listStyle(.plain)
+                            .scrollContentBackground(.hidden)
+                            .padding(.bottom, 90)
                             .refreshable { await refresh() }
                         }
                     }
@@ -60,9 +70,44 @@ struct DeviceListView: View {
                         .padding(.top, 8)
                 }
             }
+            .confirmationDialog(
+                removalTitle,
+                isPresented: Binding(
+                    get: { devicePendingRemoval != nil },
+                    set: { if !$0 { devicePendingRemoval = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(removalConfirmLabel, role: .destructive) {
+                    guard let device = devicePendingRemoval else { return }
+                    Task { await confirmRemoval(device) }
+                }
+                Button("Cancel", role: .cancel) {
+                    devicePendingRemoval = nil
+                }
+            } message: {
+                Text(removalMessage)
+            }
             .task { await refresh() }
             .toolbar(.hidden, for: .navigationBar)
         }
+    }
+
+    private var removalTitle: String {
+        guard let device = devicePendingRemoval else { return "Remove device" }
+        return device.isOwner ? "Delete “\(device.name)”?" : "Remove “\(device.name)”?"
+    }
+
+    private var removalMessage: String {
+        guard let device = devicePendingRemoval else { return "" }
+        if device.isOwner {
+            return "This permanently deletes the device and its data for everyone. This can’t be undone."
+        }
+        return "You’ll lose access to this shared device. The owner’s copy stays."
+    }
+
+    private var removalConfirmLabel: String {
+        devicePendingRemoval?.isOwner == true ? "Delete Device" : "Remove Access"
     }
 
     private var header: some View {
@@ -102,6 +147,23 @@ struct DeviceListView: View {
             errorMessage = error.localizedDescription
         }
         loading = false
+    }
+
+    private func confirmRemoval(_ device: AccessibleDevice) async {
+        removing = true
+        defer {
+            removing = false
+            devicePendingRemoval = nil
+        }
+        do {
+            try await DeviceService.removeFromAccount(device)
+            withAnimation {
+                devices.removeAll { $0.id == device.id }
+            }
+            path.removeAll { $0.id == device.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

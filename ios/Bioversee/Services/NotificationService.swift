@@ -115,6 +115,17 @@ enum NotificationService {
         }
     }
 
+    static func delete(notificationId: UUID, asAccount account: VaultAccount) async throws {
+        try await withAccount(account) {
+            try await SupabaseManager.client
+                .rpc(
+                    "delete_my_notification",
+                    params: NotificationIdParams(pNotificationId: notificationId)
+                )
+                .execute()
+        }
+    }
+
     static func unreadCount(_ items: [InboxItem]) -> Int {
         items.filter(\.isUnread).count
     }
