@@ -189,10 +189,12 @@ type ThermalJacketProps = {
 function ThermalJacket({ mode }: ThermalJacketProps) {
   const prefix = useId().replace(/:/g, "");
   const active = mode !== "idle";
-  const waterColorRef = useRef<string>(APPLE_DEPTH_COLORS.cyan);
-  if (mode === "warm") waterColorRef.current = "#f97316";
-  else if (mode === "cold") waterColorRef.current = APPLE_DEPTH_COLORS.cyan;
-  const waterColor = waterColorRef.current;
+  const lastActiveMode = useRef<"warm" | "cold">("cold");
+  if (mode === "warm" || mode === "cold") {
+    lastActiveMode.current = mode;
+  }
+  const waterColor =
+    lastActiveMode.current === "warm" ? "#f97316" : APPLE_DEPTH_COLORS.cyan;
   const modeClass =
     mode === "warm"
       ? "thermal-jacket--warm"
