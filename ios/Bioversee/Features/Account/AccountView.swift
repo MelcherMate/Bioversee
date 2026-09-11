@@ -53,53 +53,44 @@ struct AccountView: View {
                         }
                         .buttonStyle(.plain)
 
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Accent color")
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("App icon")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(BVTheme.textSecondary)
-                            Text("Matches your Bioversee website preference.")
+                            Text("Choose your home screen icon. App colors still follow your website accent.")
                                 .font(.system(size: 12))
                                 .foregroundStyle(BVTheme.textTertiary)
 
-                            HStack(spacing: 14) {
-                                ForEach(AccentPreset.all) { preset in
-                                    let selected = appearance.selectedPreset.id == preset.id
+                            HStack(spacing: 16) {
+                                ForEach(AppIconOption.all) { option in
+                                    let selected = appearance.selectedIconId == option.id
                                     Button {
-                                        Task {
-                                            await appearance.setPreset(preset, userId: session.userId)
-                                        }
+                                        appearance.setAppIcon(option)
                                     } label: {
-                                        Circle()
-                                            .fill(ColorHex.color(preset.hex))
-                                            .frame(width: 36, height: 36)
-                                            .overlay(
-                                                Circle()
-                                                    .strokeBorder(Color.white, lineWidth: selected ? 3 : 0)
-                                            )
-                                            .overlay(
-                                                Circle()
-                                                    .strokeBorder(
-                                                        selected ? BVTheme.text : BVTheme.line,
-                                                        lineWidth: selected ? 2 : 1
-                                                    )
-                                            )
+                                        VStack(spacing: 8) {
+                                            AppIconPreview(hex: option.previewHex)
+                                                .frame(width: 60, height: 60)
+                                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                        .strokeBorder(
+                                                            selected ? BVTheme.accent : Color.clear,
+                                                            lineWidth: 3
+                                                        )
+                                                )
+                                                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+
+                                            Text(option.label)
+                                                .font(.system(size: 11, weight: selected ? .semibold : .medium))
+                                                .foregroundStyle(selected ? BVTheme.text : BVTheme.textTertiary)
+                                        }
                                     }
                                     .buttonStyle(.plain)
-                                    .accessibilityLabel(preset.label)
+                                    .accessibilityLabel("\(option.label) app icon")
                                     .accessibilityAddTraits(selected ? .isSelected : [])
                                 }
                             }
-
-                            HStack(spacing: 14) {
-                                ForEach(AccentPreset.all) { preset in
-                                    Text(preset.label)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundStyle(BVTheme.textTertiary)
-                                        .frame(width: 36)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.8)
-                                }
-                            }
+                            .frame(maxWidth: .infinity)
                         }
                         .padding(16)
                         .bvCard()
@@ -232,5 +223,20 @@ private struct ProfileAvatar: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(BVTheme.accent)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct AppIconPreview: View {
+    let hex: String
+
+    var body: some View {
+        ZStack {
+            ColorHex.color(hex)
+            Image("BioverseeLogo")
+                .resizable()
+                .scaledToFit()
+                .padding(12)
+                .foregroundStyle(.white)
+        }
     }
 }

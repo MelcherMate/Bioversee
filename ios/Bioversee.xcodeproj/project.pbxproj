@@ -38,7 +38,7 @@
 /* Begin PBXFileReference section */
 		0B99312979798A458ACE8E94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1E5903150B9DE6593F72927D /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
-		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37E655FAA6672908F3000615 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		3C7B397E847936F5A700F54D /* AppearanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceStore.swift; sourceTree = "<group>"; };
 		626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
@@ -249,6 +249,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					7ADD8C5B051AF1B56F27FFAF = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -450,7 +451,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -477,7 +478,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

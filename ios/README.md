@@ -19,7 +19,7 @@ Deploy the web app so `/ios-auth` exists (bridge page). Flow:
 
 ## Stay signed in / appearance
 
-iOS stores sessions in the **Keychain** (no 7-day logout). Accent color syncs from the website’s `user_settings` preferences (Green / Yellow / Red / Blue). Changing it under **Account** updates the cloud preference (in-app tint only — iOS always shows a system alert when changing the home-screen icon, so that is not auto-switched).
+iOS stores sessions in the **Keychain** (no 7-day logout). UI accent color always syncs from the website’s `user_settings` (not editable in the app). Under **Account → App icon**, pick Green / Yellow / Red / Blue for the home-screen icon (local only; iOS shows a system confirmation when it changes).
 
 ## Multi-account (Gmail-style)
 

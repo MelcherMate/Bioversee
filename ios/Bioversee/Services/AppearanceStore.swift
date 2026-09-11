@@ -1,7 +1,9 @@
 import Foundation
 import Supabase
 import SwiftUI
+import UIKit
 
+/// Website accent presets (UI tint only — not editable on iOS).
 struct AccentPreset: Identifiable, Hashable {
     let id: String
     let label: String
@@ -24,18 +26,60 @@ struct AccentPreset: Identifiable, Hashable {
     }
 }
 
+/// Home-screen icon choices (device-local, independent of website accent).
+struct AppIconOption: Identifiable, Hashable {
+    let id: String
+    let label: String
+    /// `nil` = primary AppIcon.
+    let alternateIconName: String?
+    /// Preview plate color (matches generated icon backgrounds).
+    let previewHex: String
+
+    static let all: [AppIconOption] = [
+        .init(id: "green", label: "Green", alternateIconName: nil, previewHex: "#0d9488"),
+        .init(id: "yellow", label: "Yellow", alternateIconName: "AppIconYellow", previewHex: "#ffe15d"),
+        .init(id: "red", label: "Red", alternateIconName: "AppIconRed", previewHex: "#ff6b6b"),
+        .init(id: "blue", label: "Blue", alternateIconName: "AppIconBlue", previewHex: "#5b9fff"),
+    ]
+
+    static let `default` = all[0]
+
+    static func matching(alternateIconName: String?) -> AppIconOption {
+        all.first { $0.alternateIconName == alternateIconName } ?? .default
+    }
+}
+
 @MainActor
 final class AppearanceStore: ObservableObject {
     static let shared = AppearanceStore()
 
+    private static let iconPreferenceKey = "bv.appIcon.id"
+
+    /// UI accent from website `user_settings` — read-only on iOS.
     @Published private(set) var accentHex: String = AccentPreset.default.hex
+    /// Selected home-screen icon (local preference).
+    @Published private(set) var selectedIconId: String = AppIconOption.default.id
 
     var accentColor: Color { ColorHex.color(accentHex) }
     var accentMuted: Color { accentColor.opacity(0.18) }
     var accentSoft: Color { accentColor.opacity(0.08) }
     var accentBorder: Color { accentColor.opacity(0.42) }
 
-    var selectedPreset: AccentPreset { AccentPreset.nearest(to: accentHex) }
+    var selectedIcon: AppIconOption {
+        AppIconOption.all.first { $0.id == selectedIconId } ?? .default
+    }
+
+    private init() {
+        if let saved = UserDefaults.standard.string(forKey: Self.iconPreferenceKey),
+           AppIconOption.all.contains(where: { $0.id == saved })
+        {
+            selectedIconId = saved
+        } else {
+            selectedIconId = AppIconOption.matching(
+                alternateIconName: UIApplication.shared.alternateIconName
+            ).id
+        }
+    }
 
     func loadFromCloud(userId: UUID?) async {
         guard let userId else {
@@ -67,109 +111,22 @@ final class AppearanceStore: ObservableObject {
                 accentHex = AccentPreset.default.hex
             }
         } catch {
-            // Keep current accent on transient errors.
             print("[appearance] load failed:", error.localizedDescription)
         }
     }
 
-    func setAccent(_ hex: String, userId: UUID?) async {
-        let normalized = ColorHex.normalize(hex)
-        accentHex = normalized
-        guard let userId else { return }
-        await persistAccent(normalized, userId: userId)
-    }
+    /// Changes the home-screen icon only. UI accent stays tied to the website.
+    func setAppIcon(_ option: AppIconOption) {
+        selectedIconId = option.id
+        UserDefaults.standard.set(option.id, forKey: Self.iconPreferenceKey)
 
-    func setPreset(_ preset: AccentPreset, userId: UUID?) async {
-        await setAccent(preset.hex, userId: userId)
-    }
-
-    private func persistAccent(_ hex: String, userId: UUID) async {
-        do {
-            struct PrefsRow: Decodable {
-                let preferences: [String: AnyJSON]?
+        guard UIApplication.shared.supportsAlternateIcons else { return }
+        let target = option.alternateIconName
+        guard UIApplication.shared.alternateIconName != target else { return }
+        UIApplication.shared.setAlternateIconName(target) { error in
+            if let error {
+                print("[appearance] icon change failed:", error.localizedDescription)
             }
-
-            let existing: [PrefsRow] = try await SupabaseManager.client
-                .from("user_settings")
-                .select("preferences")
-                .eq("user_id", value: userId.uuidString)
-                .limit(1)
-                .execute()
-                .value
-
-            var prefs: [String: AnyJSON] = existing.first?.preferences ?? [:]
-            prefs["accent"] = .string(hex)
-
-            struct Upsert: Encodable {
-                let userId: UUID
-                let preferences: [String: AnyJSON]
-                let updatedAt: String
-
-                enum CodingKeys: String, CodingKey {
-                    case userId = "user_id"
-                    case preferences
-                    case updatedAt = "updated_at"
-                }
-            }
-
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-            try await SupabaseManager.client
-                .from("user_settings")
-                .upsert(
-                    Upsert(
-                        userId: userId,
-                        preferences: prefs,
-                        updatedAt: formatter.string(from: Date())
-                    ),
-                    onConflict: "user_id"
-                )
-                .execute()
-        } catch {
-            print("[appearance] save failed:", error.localizedDescription)
-        }
-    }
-}
-
-// MARK: - JSON helpers for preferences merge
-
-enum AnyJSON: Codable, Hashable {
-    case string(String)
-    case number(Double)
-    case bool(Bool)
-    case object([String: AnyJSON])
-    case array([AnyJSON])
-    case null
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if container.decodeNil() {
-            self = .null
-        } else if let value = try? container.decode(Bool.self) {
-            self = .bool(value)
-        } else if let value = try? container.decode(Double.self) {
-            self = .number(value)
-        } else if let value = try? container.decode(String.self) {
-            self = .string(value)
-        } else if let value = try? container.decode([String: AnyJSON].self) {
-            self = .object(value)
-        } else if let value = try? container.decode([AnyJSON].self) {
-            self = .array(value)
-        } else {
-            self = .null
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case .string(let value): try container.encode(value)
-        case .number(let value): try container.encode(value)
-        case .bool(let value): try container.encode(value)
-        case .object(let value): try container.encode(value)
-        case .array(let value): try container.encode(value)
-        case .null: try container.encodeNil()
         }
     }
 }
