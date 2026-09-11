@@ -4,9 +4,12 @@ import "./AppPhonePreview.css";
 
 type PhoneTab = "devices" | "inbox" | "account";
 
+const TABS: PhoneTab[] = ["devices", "inbox", "account"];
+
 function AppPhonePreview() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<PhoneTab>("devices");
+  const tabIndex = TABS.indexOf(tab);
 
   return (
     <div className="phone-preview">
@@ -23,10 +26,21 @@ function AppPhonePreview() {
               </span>
             </div>
 
-            <div className="phone-preview__body" data-tab={tab}>
-              {tab === "devices" && <DevicesSkeleton />}
-              {tab === "inbox" && <InboxSkeleton />}
-              {tab === "account" && <AccountSkeleton />}
+            <div className="phone-preview__body">
+              <div
+                className="phone-preview__track"
+                style={{ transform: `translate3d(-${tabIndex * 100}%, 0, 0)` }}
+              >
+                <div className="phone-preview__page" aria-hidden={tab !== "devices"}>
+                  <DevicesSkeleton />
+                </div>
+                <div className="phone-preview__page" aria-hidden={tab !== "inbox"}>
+                  <InboxSkeleton />
+                </div>
+                <div className="phone-preview__page" aria-hidden={tab !== "account"}>
+                  <AccountSkeleton />
+                </div>
+              </div>
             </div>
 
             <nav
@@ -35,7 +49,7 @@ function AppPhonePreview() {
             >
               <div
                 className="phone-preview__tab-thumb"
-                data-index={tab === "devices" ? 0 : tab === "inbox" ? 1 : 2}
+                data-index={tabIndex}
                 aria-hidden="true"
               />
               <TabButton
