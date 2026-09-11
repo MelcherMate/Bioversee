@@ -1,5 +1,6 @@
 .web-preview {
   width: min(680px, 100%);
+  max-width: 100%;
   border-radius: 18px;
   overflow: hidden;
   background: #f5f5f7;
@@ -341,7 +342,22 @@
   display: block;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 860px) {
+  .web-preview {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .web-preview__nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .web-preview__nav-device {
+    display: none;
+  }
+
   .web-preview__controls,
   .web-preview__charts {
     position: relative;
@@ -354,13 +370,16 @@
   .web-preview__stage {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    align-items: stretch;
+    gap: 12px;
+    min-height: 0;
+    padding: 12px;
   }
 
   .web-preview__canvas {
     order: -1;
-    min-height: 210px;
-    padding: 0;
+    min-height: 200px;
+    padding: 8px 0 4px;
   }
 
   .web-preview__controls {
@@ -373,9 +392,40 @@
 
   .web-preview__reactor {
     height: 190px;
+    margin: 0 auto;
   }
 
   .web-preview__tank {
     height: 150px;
+  }
+
+  .web-preview__agitator {
+    height: 138px;
+  }
+
+  .web-preview__paddle--top {
+    top: 88px;
+  }
+
+  .web-preview__paddle--bottom {
+    top: 112px;
+  }
+
+  .web-preview__probe {
+    height: 86px;
+  }
+}
+
+@media (max-width: 420px) {
+  .web-preview__nav-tool:not(.web-preview__nav-tool--badge) {
+    display: none;
+  }
+
+  .web-preview__panel {
+    padding: 10px;
+  }
+
+  .web-preview__charts .web-preview__panel:last-child {
+    display: none;
   }
 }

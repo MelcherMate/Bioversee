@@ -42,6 +42,19 @@
   flex-direction: column;
 }
 
+/* Landing is a long scrolling page — don't pin height/footer over content. */
+.appContainer--landing {
+  height: auto;
+  min-height: 100%;
+  overflow-x: clip;
+}
+
+.page-slot--landing {
+  flex: 1 0 auto;
+  min-height: auto;
+  overflow-x: clip;
+}
+
 @keyframes pulse {
   0%,
   100% {

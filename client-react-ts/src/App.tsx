@@ -157,7 +157,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
     pathname === "/about" || (pathname === "/" && !user);
   const showChrome = Boolean(user) && !addingAccount && !onIosAuth;
   const showMarketingHeader = onLanding && !user;
-  const showFooter = showChrome || onLanding;
+  const showFooter = showChrome;
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
 
   const loginRedirect = (next: string) => (
@@ -166,11 +166,17 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
 
   return (
     <div
-      className={`appContainer ${showChrome || onLanding ? "" : "appContainer--auth"}`.trim()}
+      className={[
+        "appContainer",
+        showChrome || onLanding ? "" : "appContainer--auth",
+        onLanding ? "appContainer--landing" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {showMarketingHeader && <MarketingHeader />}
       {showChrome && user && <Navbar user={user} />}
-      <div className="page-slot">
+      <div className={`page-slot${onLanding ? " page-slot--landing" : ""}`}>
         <Routes>
           <Route path="/" element={user ? <HomeRedirect /> : <About />} />
           <Route
