@@ -475,10 +475,17 @@ const DOSE_SVG_TOP = -163;
 /** Matches .br-water-clip { top, height }. */
 const WATER_CLIP_TOP = -100;
 const WATER_CLIP_HEIGHT = 510;
-/** Drop fall speed toward the water surface (px / s). */
+/** Drop fall speed — fixed so drips never speed up/slow down with level. */
 const DOSE_DRIP_SPEED = 320;
-/** Below this gap, use a short stream instead of spaced drip beads. */
-const DOSE_DRIP_BEAD_MIN_FALL = 110;
+/**
+ * Fixed vertical travel for the drip cycle (covers empty→surface).
+ * Water level only clips visibility; speed and spacing stay constant.
+ */
+const DOSE_DRIP_TRAVEL = 480;
+const DOSE_DRIP_DURATION = DOSE_DRIP_TRAVEL / DOSE_DRIP_SPEED;
+/** Stagger between drips — keeps spacing constant at DOSE_DRIP_SPEED. */
+const DOSE_DRIP_STAGGER = 0.4;
+const DOSE_DRIP_COUNT = 3;
 
 type BaseAcidSupplyPipeProps = {
   mode: DoseMode;
@@ -565,10 +572,8 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   const segLen = Math.max(0, Math.min(segEnd, DOSE_PATH_LENGTH) - segStart);
   const showLiquid = segLen > 0;
   const dripFallPx = doseDripFallPx(fillUnits);
-  const dripDuration = Math.max(0.45, dripFallPx / DOSE_DRIP_SPEED);
-  const doseAtTip = showLiquid && head >= DOSE_PATH_LENGTH - 1 && dripFallPx > 4;
-  const useDripBeads = doseAtTip && dripFallPx >= DOSE_DRIP_BEAD_MIN_FALL;
-  const useDripStream = doseAtTip && dripFallPx < DOSE_DRIP_BEAD_MIN_FALL;
+  const showDrips =
+    showLiquid && head >= DOSE_PATH_LENGTH - 1 && dripFallPx > 4;
 
   return (
     <div className="base-acid-supply">
@@ -661,53 +666,50 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
           </g>
         ) : null}
 
-        {useDripStream ? (
-          <line
-            className="base-acid-drip-stream"
-            x1={264}
-            y1={DOSE_TIP_Y}
-            x2={264}
-            y2={DOSE_TIP_Y + dripFallPx}
-            stroke={liquidColor}
-            strokeWidth={2}
-            strokeLinecap="round"
-            opacity={0.85}
-          />
-        ) : null}
-
-        {useDripBeads ? (
-          <g
-            className="base-acid-drips"
-            transform={`translate(264 ${DOSE_TIP_Y})`}
-          >
-            {[0, 1, 2].map((i) => (
-              <circle
-                key={`${i}-${Math.round(dripFallPx)}`}
-                className="base-acid-drip"
-                cx={0}
-                cy={0}
-                r={2.1}
-                fill={liquidColor}
-              >
-                <animate
-                  attributeName="opacity"
-                  values="0;1;1;0"
-                  keyTimes="0;0.12;0.85;1"
-                  dur={`${dripDuration}s`}
-                  begin={`${i * 0.4}s`}
-                  repeatCount="indefinite"
+        {showDrips ? (
+          <g className="base-acid-drips">
+            <defs>
+              <clipPath id={`${prefix}-drip-clip`}>
+                <rect
+                  x={256}
+                  y={DOSE_TIP_Y - 3}
+                  width={16}
+                  height={dripFallPx + 6}
                 />
-                <animateTransform
-                  attributeName="transform"
-                  type="translate"
-                  from="0 0"
-                  to={`0 ${dripFallPx}`}
-                  dur={`${dripDuration}s`}
-                  begin={`${i * 0.4}s`}
-                  repeatCount="indefinite"
-                />
-              </circle>
-            ))}
+              </clipPath>
+            </defs>
+            <g clipPath={`url(#${prefix}-drip-clip)`}>
+              <g transform={`translate(264 ${DOSE_TIP_Y})`}>
+                {Array.from({ length: DOSE_DRIP_COUNT }, (_, i) => (
+                  <circle
+                    key={i}
+                    className="base-acid-drip"
+                    cx={0}
+                    cy={0}
+                    r={2.1}
+                    fill={liquidColor}
+                  >
+                    <animate
+                      attributeName="opacity"
+                      values="0;1;1;0"
+                      keyTimes="0;0.08;0.72;1"
+                      dur={`${DOSE_DRIP_DURATION}s`}
+                      begin={`${i * DOSE_DRIP_STAGGER}s`}
+                      repeatCount="indefinite"
+                    />
+                    <animateTransform
+                      attributeName="transform"
+                      type="translate"
+                      from="0 0"
+                      to={`0 ${DOSE_DRIP_TRAVEL}`}
+                      dur={`${DOSE_DRIP_DURATION}s`}
+                      begin={`${i * DOSE_DRIP_STAGGER}s`}
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                ))}
+              </g>
+            </g>
           </g>
         ) : null}
       </svg>
