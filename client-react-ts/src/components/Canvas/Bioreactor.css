@@ -24,39 +24,15 @@
   overflow: visible;
 }
 
-/* Thin dashes travel with the flow and periodically fade in/out */
-.thermal-jacket__flow-dash {
-  animation:
-    thermal-jacket-flow-dash 1.4s linear infinite,
-    thermal-jacket-flow-fade 3.4s ease-in-out infinite;
-}
-
-@keyframes thermal-jacket-flow-dash {
-  to {
-    stroke-dashoffset: -100;
-  }
-}
-
-@keyframes thermal-jacket-flow-fade {
-  0%,
-  12% {
-    opacity: 0;
-  }
-  28%,
-  52% {
-    opacity: 0.85;
-  }
-  68%,
-  100% {
-    opacity: 0;
-  }
+/* Flow ~ marks traveling along the jacket water */
+.thermal-jacket__flow-marks {
+  pointer-events: none;
+  user-select: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thermal-jacket__flow-dash {
-    animation: none;
-    opacity: 0.35;
-    stroke-dasharray: none;
+  .thermal-jacket__flow-marks animate {
+    display: none;
   }
 }
 
