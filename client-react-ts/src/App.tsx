@@ -11,6 +11,7 @@ import {
 import "./App.css";
 import DevDataPanel from "./components/DevDataPanel";
 import Footer from "./components/Footer";
+import MarketingHeader from "./components/MarketingHeader";
 import Navbar from "./components/Navbar";
 import OnboardingModal from "./components/OnboardingModal";
 import { AppStatusProvider } from "./lib/appStatus";
@@ -152,13 +153,17 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
   const addingAccount = pathname === "/add-account";
   const onInvite = pathname.startsWith("/invite/");
   const onIosAuth = pathname === "/ios-auth";
+  const onAbout = pathname === "/about";
   const showChrome = Boolean(user) && !addingAccount && !onIosAuth;
+  const showMarketingHeader = onAbout && !user;
+  const showFooter = showChrome || onAbout;
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
 
   return (
     <div
       className={`appContainer ${showChrome ? "" : "appContainer--auth"}`.trim()}
     >
+      {showMarketingHeader && <MarketingHeader />}
       {showChrome && user && <Navbar user={user} />}
       <div className="page-slot">
         <Routes>
@@ -189,7 +194,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
           />
         </Routes>
       </div>
-      {showChrome && <Footer />}
+      {showFooter && <Footer showSignIn={!user} />}
       {user && showOnboarding && <OnboardingModal user={user} />}
       {user && showChrome && (
         <DevDataPanel

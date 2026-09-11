@@ -267,8 +267,28 @@
     "tankClean": "REIN"
   },
   "about": {
+    "eyebrow": "Industrielle Bioprozesssteuerung",
+    "headline": "Automatisierung, die sich kinderleicht anfühlt",
+    "heroBody": "Sensoren überwachen, Aktoren steuern und Geräte teilen — für Labore, Anlagen und Studierende der Ingenieurwissenschaften.",
+    "exploreProduct": "Produkt entdecken",
+    "productKicker": "Produkt",
+    "productTitle": "Alles für Ihre Prozesse an einem Ort",
+    "productBody": "Live-Steuerung, Sensordiagramme und Teamfreigaben für die Prozesstypen, mit denen Sie bereits arbeiten.",
+    "storyKicker": "Über uns",
+    "storyTitle": "Von einem Ingenieur für Ingenieure",
     "founder": "Gründer",
-    "company": "Unternehmen"
+    "founderName": "Mate Melcher",
+    "founderBody": "Biochemieingenieur mit dem Ziel, industrielle Bioprozessautomatisierung so einfach wie Kinderspiel zu machen.",
+    "company": "Unternehmen",
+    "companyBody": "Bioversee will eine erschwingliche und spielerische Lösung für industrielle Automatisierung schaffen — und ein solides Lernwerkzeug für Ingenieurstudierende.",
+    "ctaTitle": "Bereit, Ihr Labor zu öffnen?",
+    "ctaBody": "Melden Sie sich an, um Geräte anzulegen, Mitarbeitende einzuladen und alles auf Web und Smartphone synchron zu halten."
+  },
+  "footer": {
+    "rights": "Alle Rechte vorbehalten.",
+    "about": "Über uns",
+    "github": "GitHub",
+    "navLabel": "Fußzeile"
   },
   "app": {
     "loading": "Bioversee wird geladen…"

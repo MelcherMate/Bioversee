@@ -1,28 +1,41 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "./Footer.css";
 
-function Footer() {
+type FooterProps = {
+  showSignIn?: boolean;
+};
+
+function Footer({ showSignIn = false }: FooterProps) {
+  const { t } = useTranslation();
+  const year = new Date().getFullYear();
+
   return (
-    <div className="footerContainer">
-      <div className="footerCopy">
-        <p>&copy; 2026 Bioversee. All rights reserved. Mate Melcher.</p>
+    <footer className="site-footer">
+      <div className="site-footer__copy">
+        <p>
+          © {year} {t("common.brand")}. {t("footer.rights")} Mate Melcher.
+        </p>
       </div>
-      <div id="linkBox">
-        <span className="divider"> &#124; </span>
-        <Link className="footerLink" to="/about">
-          About Project Bioversee
+      <nav className="site-footer__links" aria-label={t("footer.navLabel")}>
+        <Link className="site-footer__link" to="/about">
+          {t("footer.about")}
         </Link>
-        <span className="divider"> &#124; </span>
+        {showSignIn ? (
+          <Link className="site-footer__link" to="/">
+            {t("auth.signIn")}
+          </Link>
+        ) : null}
         <a
+          className="site-footer__link"
           href="https://github.com/MelcherMate"
-          className="footerLink"
           target="_blank"
           rel="noopener noreferrer"
         >
-          GitHub Repository
+          {t("footer.github")}
         </a>
-      </div>
-    </div>
+      </nav>
+    </footer>
   );
 }
 

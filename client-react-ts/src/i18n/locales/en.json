@@ -267,8 +267,28 @@
     "tankClean": "CLEAN"
   },
   "about": {
+    "eyebrow": "Industrial bioprocess control",
+    "headline": "Automation that feels like child's play",
+    "heroBody": "Monitor sensors, drive actuators, and share devices — built for labs, plants, and engineering students.",
+    "exploreProduct": "Explore the product",
+    "productKicker": "Product",
+    "productTitle": "One place for your processes",
+    "productBody": "Live controls, sensor charts, and team sharing across the process types you already work with.",
+    "storyKicker": "About",
+    "storyTitle": "Built by an engineer, for engineers",
     "founder": "Founder",
-    "company": "Company"
+    "founderName": "Mate Melcher",
+    "founderBody": "Biochemical engineer aiming to make industrial bioprocess automation as easy as child's play.",
+    "company": "Company",
+    "companyBody": "Bioversee aims to create an affordable and playful solution for industrial automation, and a proper educational tool for engineering students.",
+    "ctaTitle": "Ready to open your lab?",
+    "ctaBody": "Sign in to create devices, invite collaborators, and keep everything in sync on web and phone."
+  },
+  "footer": {
+    "rights": "All rights reserved.",
+    "about": "About",
+    "github": "GitHub",
+    "navLabel": "Footer"
   },
   "app": {
     "loading": "Loading Bioversee…"

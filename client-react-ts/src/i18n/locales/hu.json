@@ -267,8 +267,28 @@
     "tankClean": "TISZTA"
   },
   "about": {
+    "eyebrow": "Ipari bioprocesz-vezérlés",
+    "headline": "Automatizálás, ami gyerekjáték",
+    "heroBody": "Érzékelők figyelése, aktuátorok vezérlése és eszközök megosztása — laboroknak, üzemeknek és mérnökhallgatóknak.",
+    "exploreProduct": "A termék felfedezése",
+    "productKicker": "Termék",
+    "productTitle": "Egy helyen a folyamatai",
+    "productBody": "Élő vezérlés, szenzorgrafikonok és csapatmegosztás azokhoz a folyamattípusokhoz, amelyekkel már dolgozik.",
+    "storyKicker": "Rólunk",
+    "storyTitle": "Mérnöknek, mérnök által",
     "founder": "Alapító",
-    "company": "Cég"
+    "founderName": "Mate Melcher",
+    "founderBody": "Biokémiai mérnök, aki az ipari bioprocesz-automatizálást gyerekjátékká szeretné tenni.",
+    "company": "Cég",
+    "companyBody": "A Bioversee megfizethető, játékos megoldást kínál az ipari automatizálásra, és valódi oktatási eszközt a mérnökhallgatóknak.",
+    "ctaTitle": "Készen áll a labor megnyitására?",
+    "ctaBody": "Jelentkezzen be eszközök létrehozásához, munkatársak meghívásához, és tartson mindent szinkronban weben és telefonon."
+  },
+  "footer": {
+    "rights": "Minden jog fenntartva.",
+    "about": "Rólunk",
+    "github": "GitHub",
+    "navLabel": "Lábléc"
   },
   "app": {
     "loading": "Bioversee betöltése…"

@@ -1,0 +1,75 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap");
+
+.mkt-header {
+  --bv-landing-display: "Outfit", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px max(20px, env(safe-area-inset-right)) 12px
+    max(20px, env(safe-area-inset-left));
+  background: color-mix(in srgb, #ffffff 88%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid var(--bv-line);
+}
+
+.mkt-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--bv-text);
+  min-width: 0;
+}
+
+.mkt-header__mark {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--bv-accent-border);
+  display: grid;
+  place-items: center;
+}
+
+.mkt-header__mark img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.mkt-header__name {
+  font-family: var(--bv-landing-display), var(--bv-font);
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.mkt-header__signin {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--bv-cta);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  transition:
+    background 0.2s var(--bv-ease),
+    transform 0.2s var(--bv-ease);
+}
+
+.mkt-header__signin:hover {
+  background: var(--bv-cta-hover);
+  transform: translateY(-1px);
+}
