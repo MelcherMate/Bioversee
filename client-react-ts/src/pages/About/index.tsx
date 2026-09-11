@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AppPhonePreview from "../../components/AppPhonePreview";
+import WebAppPreview from "../../components/WebAppPreview";
 import Mate from "../../img/Mate.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import "./About.css";
@@ -72,10 +73,28 @@ function About() {
         data-reveal
         aria-labelledby="product-title"
       >
+        <div className="landing-section__inner landing-section__inner--web">
+          <WebAppPreview />
+          <div className="landing-app-copy">
+            <p className="landing-kicker">{t("about.webKicker")}</p>
+            <h2 id="product-title" className="landing-title">
+              {t("about.webTitle")}
+            </h2>
+            <p className="landing-lede">{t("about.webBody")}</p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="app"
+        className="landing-section landing-section--muted"
+        data-reveal
+        aria-labelledby="app-title"
+      >
         <div className="landing-section__inner landing-section__inner--app">
           <div className="landing-app-copy">
             <p className="landing-kicker">{t("about.productKicker")}</p>
-            <h2 id="product-title" className="landing-title">
+            <h2 id="app-title" className="landing-title">
               {t("about.productTitle")}
             </h2>
             <p className="landing-lede">{t("about.productBody")}</p>
