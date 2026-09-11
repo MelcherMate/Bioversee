@@ -33,6 +33,11 @@
   --bv-num-duration: 280ms;
 }
 
+.bv-slider__value--live {
+  min-width: 3ch;
+  text-align: right;
+}
+
 .bv-slider__input {
   -webkit-appearance: none;
   appearance: none;
