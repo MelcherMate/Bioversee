@@ -5,18 +5,27 @@ import "./vessel-water.css";
 type VesselWaterBodyProps = {
   fillUnits: number;
   fillVelocity: number;
+  /** When false, omit the surface wave (e.g. bioreactor at 100% so it cannot sit above the lid). */
+  showSurface?: boolean;
 };
 
-export function VesselWaterBody({ fillUnits, fillVelocity }: VesselWaterBodyProps) {
+export function VesselWaterBody({
+  fillUnits,
+  fillVelocity,
+  showSurface = true,
+}: VesselWaterBodyProps) {
   const fillRatio = Math.min(1, Math.max(0, fillUnits / VESSEL_MAX_FILL_UNITS));
 
-  if (fillRatio <= 0) return null;
+  // Hide residual spring/wave puddles; surface wave alone is ~40px tall.
+  if (fillRatio < 0.005) return null;
 
   return (
     <div className="vessel-water-mask">
       <div className="vessel-water" style={{ height: `${fillRatio * 100}%` }}>
         <div className="water-texture" />
-        <WaterSurfaceWave className="water-surface" fillVelocity={fillVelocity} />
+        {showSurface ? (
+          <WaterSurfaceWave className="water-surface" fillVelocity={fillVelocity} />
+        ) : null}
         <div className="bubble-field" aria-hidden>
           <div className="bubble bubble-1" />
           <div className="bubble bubble-2" />

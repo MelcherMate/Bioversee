@@ -41,7 +41,15 @@ export function useSpringFillUnits(
       lastTime = now;
 
       const prev = springRef.current.value;
-      const next = springRef.current.step(targetRef.current, deltaSeconds, stiffness, damping);
+      let next = springRef.current.step(targetRef.current, deltaSeconds, stiffness, damping);
+      // Snap when nearly settled so empty/full targets don't leave a residual puddle.
+      if (
+        Math.abs(next - targetRef.current) < 0.35 &&
+        Math.abs(springRef.current.velocity) < 2.5
+      ) {
+        springRef.current.snap(targetRef.current);
+        next = targetRef.current;
+      }
       const signedRate = (next - prev) / Math.max(deltaSeconds, 0.001);
       const velocity = Math.abs(signedRate);
 

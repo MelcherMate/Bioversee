@@ -157,6 +157,7 @@ function BioreactorCard(props: BioreactorCardProps) {
           <VesselWaterBody
             fillUnits={displayFillUnits}
             fillVelocity={waveVelocity}
+            showSurface={displayFillUnits / VESSEL_MAX_FILL_UNITS < 0.98}
           />
         </div>
 

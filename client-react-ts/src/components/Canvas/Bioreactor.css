@@ -101,17 +101,16 @@
   border-radius: 130px;
 }
 
-/* Pressure-vessel water stack clipped to the old liquid footprint */
+/* Full inner chamber — capsule clip so fill can reach the dome */
 .br-water-clip {
   position: absolute;
-  top: 60px;
+  top: -100px;
   left: 40px;
   z-index: 2;
   width: 260px;
-  height: 350px;
+  height: 510px;
   overflow: hidden;
-  border-bottom-left-radius: 110px;
-  border-bottom-right-radius: 110px;
+  border-radius: 110px;
   pointer-events: none;
 }
 
