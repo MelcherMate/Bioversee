@@ -39,12 +39,10 @@ const VESSEL = {
   radius: 169,
 } as const;
 
-/** Jacket wall thickness — matches pipe OD language. */
+/** Offset of jacket pipe centerline outside the vessel wall. */
 const JACKET_THICK = 18;
-/** Jacket starts on the straight wall (below top dome). */
-const JACKET_TOP = 52;
-/** Horizontal run height of inlet/outlet L-pipes (above jacket top). */
-const JACKET_PIPE_Y = JACKET_TOP - 36;
+/** Horizontal run height of inlet/outlet L (above vessel mid). */
+const JACKET_PIPE_Y = 16;
 
 /**
  * Pressure-vessel-style pipe water: solid slug with head advancing on pump-on
@@ -158,34 +156,11 @@ function jacketRadii() {
   return { inner, outer };
 }
 
-/** Filled U jacket with flat tops, following the vessel bottom. */
-function buildJacketShellPath(): string {
-  const { inner, outer } = jacketRadii();
-  const top = JACKET_TOP;
-  const oLeft = outer.left;
-  const oRight = outer.right;
-  const iLeft = inner.left;
-  const iRight = inner.right;
-
-  return [
-    `M ${oLeft} ${top}`,
-    `L ${oLeft} ${outer.cy}`,
-    `A ${outer.r} ${outer.r} 0 0 0 ${outer.leftCx} ${outer.bottom}`,
-    `L ${outer.rightCx} ${outer.bottom}`,
-    `A ${outer.r} ${outer.r} 0 0 0 ${oRight} ${outer.cy}`,
-    `L ${oRight} ${top}`,
-    `L ${iRight} ${top}`,
-    `L ${iRight} ${inner.cy}`,
-    `A ${inner.r} ${inner.r} 0 0 1 ${inner.rightCx} ${inner.bottom}`,
-    `L ${inner.leftCx} ${inner.bottom}`,
-    `A ${inner.r} ${inner.r} 0 0 1 ${iLeft} ${inner.cy}`,
-    `L ${iLeft} ${top}`,
-    "Z",
-  ].join(" ");
-}
-
-/** Flow: inlet L → down jacket → around bottom → up → outlet L. */
-function buildJacketFlowPath(): string {
+/**
+ * One seamless centerline: left inlet L → jacket U → right outlet L.
+ * Same white-gray pipe language as base/acid and pressure-vessel runs.
+ */
+function buildJacketPipePath(): string {
   const { inner, outer } = jacketRadii();
   const midLeft = (inner.left + outer.left) / 2;
   const midRight = (inner.right + outer.right) / 2;
@@ -194,7 +169,6 @@ function buildJacketFlowPath(): string {
   const leftCx = inner.leftCx;
   const rightCx = inner.rightCx;
   const pipeY = JACKET_PIPE_Y;
-  const top = JACKET_TOP;
 
   return [
     `M -110 ${pipeY}`,
@@ -215,7 +189,7 @@ type ThermalJacketProps = {
 function ThermalJacket({ mode }: ThermalJacketProps) {
   const prefix = useId().replace(/:/g, "");
   const active = mode !== "idle";
-  const waterColorRef = useRef(APPLE_DEPTH_COLORS.cyan);
+  const waterColorRef = useRef<string>(APPLE_DEPTH_COLORS.cyan);
   if (mode === "warm") waterColorRef.current = "#f97316";
   else if (mode === "cold") waterColorRef.current = APPLE_DEPTH_COLORS.cyan;
   const waterColor = waterColorRef.current;
@@ -226,45 +200,13 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         ? "thermal-jacket--cold"
         : "thermal-jacket--idle";
 
-  const shellPath = buildJacketShellPath();
-  const flowPath = buildJacketFlowPath();
-  const { outer } = jacketRadii();
-  const midLeft = (outer.left + VESSEL.left) / 2;
-  const midRight = (outer.right + VESSEL.right) / 2;
-  const pipeY = JACKET_PIPE_Y;
-  const top = JACKET_TOP;
-
+  const pipePath = buildJacketPipePath();
   const { tail, head } = useJacketPipeWater(active);
   const segStart = Math.max(0, tail);
   const segEnd = Math.max(segStart, head);
   const segLen = Math.max(
     0,
     Math.min(segEnd, JACKET_FLOW_PATH_LENGTH) - segStart,
-  );
-
-  // L-turns like base/acid: horizontal then vertical into the jacket top.
-  const supplyPath = `M -110 ${pipeY} L ${midLeft} ${pipeY} L ${midLeft} ${top}`;
-  const dischargePath = `M ${midRight} ${top} L ${midRight} ${pipeY} L 552 ${pipeY}`;
-
-  const paintPipe = (d: string) => (
-    <>
-      <path
-        d={d}
-        fill="none"
-        stroke={PIPE_METAL.stroke}
-        strokeWidth={PIPE_OD + 3}
-        strokeLinecap="butt"
-        strokeLinejoin="round"
-      />
-      <path
-        d={d}
-        fill="none"
-        stroke={PIPE_FILL}
-        strokeWidth={PIPE_OD}
-        strokeLinecap="butt"
-        strokeLinejoin="round"
-      />
-    </>
   );
 
   return (
@@ -290,28 +232,24 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
               floodOpacity="0.18"
             />
           </filter>
-          <linearGradient
-            id={`${prefix}-jacket-fill`}
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop offset="0%" stopColor={PIPE_METAL.light} />
-            <stop offset="55%" stopColor={PIPE_FILL} />
-            <stop offset="100%" stopColor={PIPE_METAL.mid} />
-          </linearGradient>
         </defs>
 
-        <g filter={`url(#${prefix}-metal)`}>{paintPipe(supplyPath)}</g>
-        <g filter={`url(#${prefix}-metal)`}>{paintPipe(dischargePath)}</g>
-
+        {/* Single continuous white-gray pipe (inlet + jacket + outlet) */}
         <g filter={`url(#${prefix}-metal)`}>
           <path
-            d={shellPath}
-            fill={`url(#${prefix}-jacket-fill)`}
+            d={pipePath}
+            fill="none"
             stroke={PIPE_METAL.stroke}
-            strokeWidth={2}
+            strokeWidth={PIPE_OD + 3}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={pipePath}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={PIPE_OD}
+            strokeLinecap="butt"
             strokeLinejoin="round"
           />
         </g>
@@ -319,7 +257,7 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         {/* Solid water slug — same technique as pressure-vessel pipe runs */}
         {segLen > 0 ? (
           <path
-            d={flowPath}
+            d={pipePath}
             pathLength={JACKET_FLOW_PATH_LENGTH}
             fill="none"
             stroke={waterColor}
