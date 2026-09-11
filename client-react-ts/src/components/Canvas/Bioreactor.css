@@ -24,21 +24,34 @@
   overflow: visible;
 }
 
-/* Flow lines traveling along the solid water slug */
-.thermal-jacket__flow-pulse {
-  stroke-dasharray: var(--jacket-flow-dash, 12 48);
-  animation: thermal-jacket-flow var(--jacket-flow-duration, 1.25s) linear
-    infinite;
+/* Sieve-style flow streaks: appear, drift along the pipe, fade out */
+.thermal-jacket__flow-streak {
+  stroke-dasharray: var(--streak-dash, 40 280);
+  animation: thermal-jacket-streak var(--streak-duration, 2.6s) linear
+    var(--streak-delay, 0s) infinite;
 }
 
-@keyframes thermal-jacket-flow {
-  to {
-    stroke-dashoffset: calc(-1 * var(--jacket-flow-cycle, 60));
+@keyframes thermal-jacket-streak {
+  0% {
+    stroke-dashoffset: calc(-1 * var(--streak-phase, 0));
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.5;
+  }
+  100% {
+    stroke-dashoffset: calc(
+      -1 * (var(--streak-phase, 0) + var(--streak-cycle, 320))
+    );
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thermal-jacket__flow-pulse {
+  .thermal-jacket__flow-streak {
     animation: none;
     opacity: 0.35;
     stroke-dasharray: none;
