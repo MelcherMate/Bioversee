@@ -101,7 +101,7 @@ function TabButton({
       onClick={onClick}
     >
       <span className="phone-preview__tab-icon" data-icon={icon} aria-hidden="true">
-        {badge ? <span className="phone-preview__tab-badge" /> : null}
+        {badge ? <span className="phone-preview__tab-badge">2</span> : null}
       </span>
       <span className="phone-preview__tab-label">{label}</span>
     </button>
