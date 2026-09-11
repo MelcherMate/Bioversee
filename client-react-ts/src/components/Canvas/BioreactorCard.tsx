@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
+import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
 import "./Bioreactor.css";
@@ -14,6 +15,63 @@ type BioreactorCardProps = {
   scale: number;
   onMouseDown: (event: React.MouseEvent) => void;
 };
+
+/** L-run matching pressure-vessel pipe stroke language (no flow fill). */
+function BaseAcidSupplyPipe() {
+  const prefix = useId().replace(/:/g, "");
+  // Wrapper coords: open end (-92,-147) → elbow (120,-147) → tip (120,-35)
+  const centerline = "M 16 16 L 228 16 L 228 128";
+
+  return (
+    <div className="base-acid-supply">
+      <svg
+        className="base-acid-pipe-run"
+        viewBox="0 0 244 144"
+        aria-hidden
+        overflow="visible"
+      >
+        <defs>
+          <filter
+            id={`${prefix}-shadow`}
+            filterUnits="userSpaceOnUse"
+            x="0"
+            y="0"
+            width="244"
+            height="144"
+          >
+            <feDropShadow
+              dx="1"
+              dy="2"
+              stdDeviation="1.5"
+              floodColor="#000"
+              floodOpacity="0.2"
+            />
+          </filter>
+        </defs>
+        <g filter={`url(#${prefix}-shadow)`}>
+          <path
+            d={centerline}
+            fill="none"
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={PIPE_OD + 3}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={centerline}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={PIPE_OD}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+        </g>
+      </svg>
+      <div className="base-acid-flange" />
+      <div className="base-acid-nozzle" />
+    </div>
+  );
+}
 
 function BioreactorCard(props: BioreactorCardProps) {
   const { t } = useTranslation();
@@ -114,8 +172,7 @@ function BioreactorCard(props: BioreactorCardProps) {
         </div>
         <div className="sensor-text">{t("process.tempPhSensor")}</div>
 
-        <div className="base_acid_supply_pipe_h"></div>
-        <div className="base_acid_supply_pipe_v"></div>
+        <BaseAcidSupplyPipe />
         <div className="base_acid_supply_pipe-text">
           {t("process.baseAcidSupply")}
         </div>
