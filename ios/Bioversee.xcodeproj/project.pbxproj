@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0D0A70F4AE3A3BC8C4C716DF /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75483D571C891A65DD1D1880 /* LoginView.swift */; };
+		118A1760968D2F62E929B850 /* SensorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFF04A18FD5E1F0031E924 /* SensorService.swift */; };
 		1E862420DB2B56F9B70DA25F /* DeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */; };
 		2195199886027AE1A28080E7 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5F3361006DF679D11251F73 /* PushNotificationManager.swift */; };
 		3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5903150B9DE6593F72927D /* DeviceListView.swift */; };
@@ -18,8 +19,10 @@
 		59B35324EB5F5C68FA4E0545 /* BVTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4813BBF6872F04558239752 /* BVTheme.swift */; };
 		66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB6EB4B11C80B349588ED65 /* DeviceService.swift */; };
 		7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DFB522D85CADF4B5967022F /* RootView.swift */; };
+		82C54E9D12724DCF4CE8067C /* AppearanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7B397E847936F5A700F54D /* AppearanceStore.swift */; };
 		82F7A3E99C50F9A6E962DC83 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */; };
 		8930E027B576DB0A94BA2C63 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */; };
+		8F02490CB52DDE0D59726A34 /* SensorChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97D1BAA246B10107DAED3F7 /* SensorChartCard.swift */; };
 		91F8A82F652325B7CBC4A36E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B624F146A102967FB426216A /* Assets.xcassets */; };
 		9C3272D85F9D2A24B70FD9B8 /* ControlCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88451A6C4395C7ED10B3F75E /* ControlCatalog.swift */; };
 		A64175D3C01E5507B94DFB65 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82F48F7F9156E13AED501BB8 /* AccountView.swift */; };
@@ -35,8 +38,9 @@
 /* Begin PBXFileReference section */
 		0B99312979798A458ACE8E94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1E5903150B9DE6593F72927D /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
-		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37E655FAA6672908F3000615 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
+		3C7B397E847936F5A700F54D /* AppearanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceStore.swift; sourceTree = "<group>"; };
 		626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
 		75483D571C891A65DD1D1880 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		7937A7F3453161CE51B0C8F5 /* AccountVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountVault.swift; sourceTree = "<group>"; };
@@ -50,6 +54,7 @@
 		BBCC2F449231692241170C0D /* NotificationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationModels.swift; sourceTree = "<group>"; };
 		BDC2514BD6E87ADAE23B04E0 /* InboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxStore.swift; sourceTree = "<group>"; };
 		CD8864E7FF5A99069D387231 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		CDEFF04A18FD5E1F0031E924 /* SensorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorService.swift; sourceTree = "<group>"; };
 		E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		E4813BBF6872F04558239752 /* BVTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BVTheme.swift; sourceTree = "<group>"; };
 		E73ABD1E317C7F40419AE451 /* Bioversee.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Bioversee.entitlements; sourceTree = "<group>"; };
@@ -58,6 +63,7 @@
 		F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActuatorService.swift; sourceTree = "<group>"; };
 		F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F5F3361006DF679D11251F73 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
+		F97D1BAA246B10107DAED3F7 /* SensorChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorChartCard.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				9EDBB6ADB289BB02637E711A /* DeviceControlsView.swift */,
+				F97D1BAA246B10107DAED3F7 /* SensorChartCard.swift */,
 			);
 			path = Controls;
 			sourceTree = "<group>";
@@ -153,10 +160,12 @@
 			children = (
 				7937A7F3453161CE51B0C8F5 /* AccountVault.swift */,
 				F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */,
+				3C7B397E847936F5A700F54D /* AppearanceStore.swift */,
 				EAB6EB4B11C80B349588ED65 /* DeviceService.swift */,
 				BDC2514BD6E87ADAE23B04E0 /* InboxStore.swift */,
 				F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */,
 				F5F3361006DF679D11251F73 /* PushNotificationManager.swift */,
+				CDEFF04A18FD5E1F0031E924 /* SensorService.swift */,
 				37E655FAA6672908F3000615 /* SupabaseManager.swift */,
 			);
 			path = Services;
@@ -240,6 +249,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					7ADD8C5B051AF1B56F27FFAF = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -288,6 +298,7 @@
 				FFB8C6768BFB5138B5EE07E7 /* AppConfig.swift in Sources */,
 				EB04164A6C8282AC075E9935 /* AppDelegate.swift in Sources */,
 				B43D8D213AA612E2805356AC /* AppSession.swift in Sources */,
+				82C54E9D12724DCF4CE8067C /* AppearanceStore.swift in Sources */,
 				59B35324EB5F5C68FA4E0545 /* BVTheme.swift in Sources */,
 				3AD36B603ABB8CA07D05590F /* BioverseeApp.swift in Sources */,
 				9C3272D85F9D2A24B70FD9B8 /* ControlCatalog.swift in Sources */,
@@ -302,6 +313,8 @@
 				82F7A3E99C50F9A6E962DC83 /* NotificationsView.swift in Sources */,
 				2195199886027AE1A28080E7 /* PushNotificationManager.swift in Sources */,
 				7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */,
+				8F02490CB52DDE0D59726A34 /* SensorChartCard.swift in Sources */,
+				118A1760968D2F62E929B850 /* SensorService.swift in Sources */,
 				32D03374E6C876A3756E2E28 /* SupabaseManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -433,11 +446,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Bioversee/Bioversee.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -459,11 +473,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Bioversee/Bioversee.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

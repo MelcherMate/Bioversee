@@ -61,3 +61,28 @@ enum ControlCatalog {
         }
     }
 }
+
+struct SensorChartSpec: Identifiable, Hashable {
+    var id: String { name }
+    let name: String
+    let label: String
+}
+
+enum SensorCatalog {
+    /// Matches web Chart usage (bioreactor + water purifier only).
+    static func charts(for type: DeviceType) -> [SensorChartSpec] {
+        switch type {
+        case .bioreactor:
+            return [
+                .init(name: "temperature", label: "Temperature"),
+                .init(name: "ph", label: "pH"),
+            ]
+        case .waterPurifier:
+            return [
+                .init(name: "pufferwtlvl", label: "Buffer water level"),
+            ]
+        case .pressureVessel, .membraneBioreactor:
+            return []
+        }
+    }
+}

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccountView: View {
     @EnvironmentObject private var session: AppSession
+    @EnvironmentObject private var appearance: AppearanceStore
 
     var body: some View {
         NavigationStack {
@@ -52,7 +53,58 @@ struct AccountView: View {
                         }
                         .buttonStyle(.plain)
 
-                        Text("Native Bioversee app for devices, controls, and notifications. Charts stay on the web. Inbox and push notifications cover every account signed in here.")
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Accent color")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(BVTheme.textSecondary)
+                            Text("Matches your Bioversee website preference. Also updates the home screen icon.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(BVTheme.textTertiary)
+
+                            HStack(spacing: 14) {
+                                ForEach(AccentPreset.all) { preset in
+                                    let selected = appearance.selectedPreset.id == preset.id
+                                    Button {
+                                        Task {
+                                            await appearance.setPreset(preset, userId: session.userId)
+                                        }
+                                    } label: {
+                                        Circle()
+                                            .fill(ColorHex.color(preset.hex))
+                                            .frame(width: 36, height: 36)
+                                            .overlay(
+                                                Circle()
+                                                    .strokeBorder(Color.white, lineWidth: selected ? 3 : 0)
+                                            )
+                                            .overlay(
+                                                Circle()
+                                                    .strokeBorder(
+                                                        selected ? BVTheme.text : BVTheme.line,
+                                                        lineWidth: selected ? 2 : 1
+                                                    )
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(preset.label)
+                                    .accessibilityAddTraits(selected ? .isSelected : [])
+                                }
+                            }
+
+                            HStack(spacing: 14) {
+                                ForEach(AccentPreset.all) { preset in
+                                    Text(preset.label)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(BVTheme.textTertiary)
+                                        .frame(width: 36)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                }
+                            }
+                        }
+                        .padding(16)
+                        .bvCard()
+
+                        Text("Native Bioversee app for devices, controls, sensor charts, and notifications. Inbox covers every account signed in here.")
                             .font(.system(size: 13))
                             .foregroundStyle(BVTheme.textSecondary)
                             .padding(.horizontal, 4)

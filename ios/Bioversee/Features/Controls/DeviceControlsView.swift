@@ -8,12 +8,17 @@ struct DeviceControlsView: View {
 
     @State private var switchStates: [String: Bool] = [:]
     @State private var sliderStates: [String: Double] = [:]
+    @State private var chartPoints: [String: [SensorReading]] = [:]
     @State private var loading = true
     @State private var busyName: String?
     @State private var errorMessage: String?
 
     private var controls: [DeviceControl] {
         ControlCatalog.controls(for: device.type)
+    }
+
+    private var chartSpecs: [SensorChartSpec] {
+        SensorCatalog.charts(for: device.type)
     }
 
     var body: some View {
@@ -45,7 +50,7 @@ struct DeviceControlsView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
 
-                if loading {
+                if loading && switchStates.isEmpty && chartPoints.isEmpty {
                     ProgressView()
                         .tint(BVTheme.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -62,6 +67,13 @@ struct DeviceControlsView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
                             }
 
+                            ForEach(chartSpecs) { spec in
+                                SensorChartCard(
+                                    label: spec.label,
+                                    points: chartPoints[spec.name] ?? []
+                                )
+                            }
+
                             ForEach(controls) { control in
                                 controlCard(control)
                             }
@@ -75,13 +87,20 @@ struct DeviceControlsView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 110)
                     }
-                    .refreshable { await loadStates() }
+                    .refreshable { await reloadAll() }
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .task { await loadStates() }
+        .task {
+            await reloadAll()
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { break }
+                await loadCharts()
+            }
+        }
     }
 
     @ViewBuilder
@@ -132,8 +151,14 @@ struct DeviceControlsView: View {
         .bvCard()
     }
 
+    private func reloadAll() async {
+        await loadStates()
+        await loadCharts()
+    }
+
     private func loadStates() async {
-        loading = true
+        let showSpinner = switchStates.isEmpty
+        if showSpinner { loading = true }
         errorMessage = nil
         defer { loading = false }
 
@@ -159,6 +184,27 @@ struct DeviceControlsView: View {
             sliderStates = nextSliders
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func loadCharts() async {
+        guard !chartSpecs.isEmpty else {
+            chartPoints = [:]
+            return
+        }
+
+        var next: [String: [SensorReading]] = [:]
+        do {
+            for spec in chartSpecs {
+                let rows = try await SensorService.readings(deviceId: device.id, name: spec.name)
+                next[spec.name] = SensorService.chartPoints(from: rows)
+            }
+            chartPoints = next
+        } catch {
+            // Keep last good chart data; surface error lightly.
+            if chartPoints.isEmpty {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

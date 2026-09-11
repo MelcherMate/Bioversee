@@ -17,6 +17,10 @@ Deploy the web app so `/ios-auth` exists (bridge page). Flow:
 2. If the custom scheme is allowlisted, the auth sheet returns straight into the app  
 3. Otherwise Safari finishes on `https://bioversee.com/ios-auth`, which immediately deep-links to `com.bioversee.app://login-callback…`
 
+## Stay signed in / appearance
+
+iOS stores sessions in the **Keychain** (no 7-day logout). Accent color syncs from the website’s `user_settings` preferences (Green / Yellow / Red / Blue). Changing it under **Account** updates the cloud preference and the home-screen icon (iOS shows a system confirmation).
+
 ## Multi-account (Gmail-style)
 
 Account → **Add account** keeps every session in the Keychain. You can switch the active account for devices/controls; **Inbox** merges notifications from all signed-in accounts.

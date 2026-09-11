@@ -224,6 +224,8 @@ final class AppSession: ObservableObject {
         session = nil
         if let next = accounts.first {
             await switchToAccount(next)
+        } else {
+            await AppearanceStore.shared.loadFromCloud(userId: nil)
         }
     }
 
@@ -242,6 +244,7 @@ final class AppSession: ObservableObject {
         accounts = []
         session = nil
         isAddingAccount = false
+        await AppearanceStore.shared.loadFromCloud(userId: nil)
     }
 
     func reloadAccountsFromVault() {
@@ -255,5 +258,6 @@ final class AppSession: ObservableObject {
         } else {
             accounts = AccountVault.load()
         }
+        await AppearanceStore.shared.loadFromCloud(userId: session.user.id)
     }
 }

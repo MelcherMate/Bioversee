@@ -9,10 +9,13 @@ enum BVTheme {
     static let card = Color.white
     static let fill = Color(red: 0.961, green: 0.961, blue: 0.969)
     static let line = Color.black.opacity(0.08)
-    static let accent = Color(red: 0.051, green: 0.580, blue: 0.533) // #0d9488
-    static let accentMuted = Color(red: 0.051, green: 0.580, blue: 0.533).opacity(0.18)
-    static let accentSoft = Color(red: 0.051, green: 0.580, blue: 0.533).opacity(0.08)
-    static let accentBorder = Color(red: 0.051, green: 0.580, blue: 0.533).opacity(0.42)
+
+    /// Live accent from the signed-in user's web preference.
+    @MainActor static var accent: Color { AppearanceStore.shared.accentColor }
+    @MainActor static var accentMuted: Color { AppearanceStore.shared.accentMuted }
+    @MainActor static var accentSoft: Color { AppearanceStore.shared.accentSoft }
+    @MainActor static var accentBorder: Color { AppearanceStore.shared.accentBorder }
+
     static let cta = Color(red: 0.114, green: 0.114, blue: 0.122)
     static let danger = Color(red: 0.706, green: 0.137, blue: 0.094) // #b42318
     static let success = Color(red: 0.008, green: 0.478, blue: 0.282) // #027a48

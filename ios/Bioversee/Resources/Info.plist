@@ -52,5 +52,39 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array/>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
+		</dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>AppIconYellow</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array/>
+				<key>CFBundleIconName</key>
+				<string>AppIconYellow</string>
+			</dict>
+			<key>AppIconRed</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array/>
+				<key>CFBundleIconName</key>
+				<string>AppIconRed</string>
+			</dict>
+			<key>AppIconBlue</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array/>
+				<key>CFBundleIconName</key>
+				<string>AppIconBlue</string>
+			</dict>
+		</dict>
+	</dict>
 </dict>
 </plist>

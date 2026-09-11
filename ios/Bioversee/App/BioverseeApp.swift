@@ -5,6 +5,7 @@ struct BioverseeApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var session = AppSession()
     @StateObject private var inbox = InboxStore()
+    @ObservedObject private var appearance = AppearanceStore.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -12,12 +13,15 @@ struct BioverseeApp: App {
             RootView()
                 .environmentObject(session)
                 .environmentObject(inbox)
-                .tint(BVTheme.accent)
+                .environmentObject(appearance)
+                .tint(appearance.accentColor)
                 .preferredColorScheme(.light)
+                .id(appearance.accentHex)
                 .onAppear {
                     PushNotificationManager.shared.bind(session: session)
                     inbox.bind(session: session)
                     PushNotificationManager.shared.requestAuthorizationAndRegister()
+                    Task { await appearance.loadFromCloud(userId: session.userId) }
                 }
                 .onOpenURL { url in
                     Task { await session.handleIncomingURL(url) }
@@ -27,6 +31,7 @@ struct BioverseeApp: App {
                         Task {
                             await session.refreshIfNeeded()
                             await inbox.refresh(announceNew: false)
+                            await appearance.loadFromCloud(userId: session.userId)
                         }
                     }
                 }
@@ -35,6 +40,9 @@ struct BioverseeApp: App {
                         await PushNotificationManager.shared.uploadTokenToAllAccounts()
                         await inbox.refresh(announceNew: false)
                     }
+                }
+                .onChange(of: session.userId) { _, userId in
+                    Task { await appearance.loadFromCloud(userId: userId) }
                 }
         }
     }
