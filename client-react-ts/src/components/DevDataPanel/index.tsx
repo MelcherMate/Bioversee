@@ -1,12 +1,12 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   insertSensorReading,
   insertSliderState,
   insertSwitchState,
 } from "../../lib/actuators";
 import {
-  getMyDevicesByType,
-  type Device,
+  listAccessibleDevices,
+  type AccessibleDevice,
   type DeviceType,
 } from "../../lib/devices";
 import type { AppUser } from "../../lib/user";
@@ -106,44 +106,85 @@ const SWITCH_GROUPS: PresetGroup[] = [
   },
 ];
 
-const ALL_SENSORS = SENSOR_GROUPS.flatMap((g) =>
-  g.items.map((item) => ({ ...item, deviceType: g.deviceType })),
-);
-const ALL_SLIDERS = SLIDER_GROUPS.flatMap((g) =>
-  g.items.map((item) => ({ ...item, deviceType: g.deviceType })),
-);
-const ALL_SWITCHES = SWITCH_GROUPS.flatMap((g) =>
-  g.items.map((item) => ({ ...item, deviceType: g.deviceType })),
-);
-
 type DevDataPanelProps = {
   open: boolean;
   onClose: () => void;
   user: AppUser;
 };
 
+function presetsForType(groups: PresetGroup[], type: DeviceType | null) {
+  if (!type) return [];
+  return groups.find((g) => g.deviceType === type)?.items ?? [];
+}
+
 function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
-  const [devicesByType, setDevicesByType] = useState<
-    Partial<Record<DeviceType, Device>>
-  >({});
-  const [sensorName, setSensorName] = useState(ALL_SENSORS[0].name);
-  const [sensorValue, setSensorValue] = useState(
-    String(ALL_SENSORS[0].sample ?? 0),
-  );
-  const [sliderName, setSliderName] = useState(ALL_SLIDERS[0].name);
-  const [sliderValue, setSliderValue] = useState(
-    String(ALL_SLIDERS[0].sample ?? 0),
-  );
-  const [switchName, setSwitchName] = useState(ALL_SWITCHES[0].name);
+  const [devices, setDevices] = useState<AccessibleDevice[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+  const [sensorName, setSensorName] = useState("");
+  const [sensorValue, setSensorValue] = useState("0");
+  const [sliderName, setSliderName] = useState("");
+  const [sliderValue, setSliderValue] = useState("0");
+  const [switchName, setSwitchName] = useState("");
   const [switchValue, setSwitchValue] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [loadingDevices, setLoadingDevices] = useState(false);
   const { toasts, push, replace, dismiss } = useToasts();
+
+  const selectedDevice =
+    devices.find((device) => device.id === selectedDeviceId) ?? null;
+  const selectedType = selectedDevice?.type ?? null;
+
+  const sensorPresets = useMemo(
+    () => presetsForType(SENSOR_GROUPS, selectedType),
+    [selectedType],
+  );
+  const sliderPresets = useMemo(
+    () => presetsForType(SLIDER_GROUPS, selectedType),
+    [selectedType],
+  );
+  const switchPresets = useMemo(
+    () => presetsForType(SWITCH_GROUPS, selectedType),
+    [selectedType],
+  );
+
+  const applyPresetsForType = (type: DeviceType) => {
+    const sensors = presetsForType(SENSOR_GROUPS, type);
+    const sliders = presetsForType(SLIDER_GROUPS, type);
+    const switches = presetsForType(SWITCH_GROUPS, type);
+    setSensorName(sensors[0]?.name ?? "");
+    setSensorValue(String(sensors[0]?.sample ?? 0));
+    setSliderName(sliders[0]?.name ?? "");
+    setSliderValue(String(sliders[0]?.sample ?? 0));
+    setSwitchName(switches[0]?.name ?? "");
+  };
 
   useEffect(() => {
     if (!open) return;
-    getMyDevicesByType()
-      .then(setDevicesByType)
-      .catch((error) => console.error(error));
+    let cancelled = false;
+    setLoadingDevices(true);
+    listAccessibleDevices()
+      .then((list) => {
+        if (cancelled) return;
+        setDevices(list);
+        const stillValid =
+          selectedDeviceId && list.some((device) => device.id === selectedDeviceId);
+        const next = stillValid
+          ? list.find((device) => device.id === selectedDeviceId)!
+          : list[0];
+        if (next) {
+          setSelectedDeviceId(next.id);
+          applyPresetsForType(next.type);
+        } else {
+          setSelectedDeviceId("");
+        }
+      })
+      .catch((error) => console.error(error))
+      .finally(() => {
+        if (!cancelled) setLoadingDevices(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, user.id]);
 
   useEffect(() => {
@@ -155,14 +196,11 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const deviceIdFor = (type: DeviceType) => {
-    const device = devicesByType[type];
-    if (!device) {
-      throw new Error(
-        `No ${String(type).replace(/_/g, " ")} device — create one with + first`
-      );
+  const requireSelectedDevice = () => {
+    if (!selectedDevice) {
+      throw new Error("Select a device first");
     }
-    return device.id;
+    return selectedDevice;
   };
 
   const run = async (
@@ -172,7 +210,7 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
     okDetail?: string,
   ) => {
     setBusy(true);
-    const toastId = push("info", pendingTitle, "Writing to your devices…");
+    const toastId = push("info", pendingTitle, "Writing to selected device…");
     try {
       await action();
       replace(toastId, "success", okTitle, okDetail ?? "Upload complete");
@@ -190,17 +228,13 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
 
   const onSensorSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const preset = ALL_SENSORS.find((p) => p.name === sensorName);
-    if (!preset) return;
+    if (!sensorName) return;
     const value = Number(sensorValue);
     void run(
-      () =>
-        insertSensorReading(
-          deviceIdFor(preset.deviceType),
-          sensorName,
-          value,
-          user.id,
-        ),
+      async () => {
+        const device = requireSelectedDevice();
+        await insertSensorReading(device.id, sensorName, value, user.id);
+      },
       "Sending sensor…",
       "Sensor uploaded",
       `${sensorName} = ${value}`,
@@ -209,17 +243,13 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
 
   const onSliderSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const preset = ALL_SLIDERS.find((p) => p.name === sliderName);
-    if (!preset) return;
+    if (!sliderName) return;
     const value = Number(sliderValue);
     void run(
-      () =>
-        insertSliderState(
-          deviceIdFor(preset.deviceType),
-          sliderName,
-          value,
-          user.id,
-        ),
+      async () => {
+        const device = requireSelectedDevice();
+        await insertSliderState(device.id, sliderName, value, user.id);
+      },
       "Sending slider…",
       "Slider uploaded",
       `${sliderName} = ${value}%`,
@@ -228,16 +258,12 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
 
   const onSwitchSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const preset = ALL_SWITCHES.find((p) => p.name === switchName);
-    if (!preset) return;
+    if (!switchName) return;
     void run(
-      () =>
-        insertSwitchState(
-          deviceIdFor(preset.deviceType),
-          switchName,
-          switchValue,
-          user.id,
-        ),
+      async () => {
+        const device = requireSelectedDevice();
+        await insertSwitchState(device.id, switchName, switchValue, user.id);
+      },
       "Sending switch…",
       "Switch uploaded",
       `${switchName} = ${switchValue ? "ON" : "OFF"}`,
@@ -247,87 +273,84 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
   const seedDemoBundle = () =>
     run(
       async () => {
-        const byType = await getMyDevicesByType();
-        setDevicesByType(byType);
+        const device = requireSelectedDevice();
+        const id = device.id;
 
-        const bio = byType.bioreactor?.id;
-        const vessel = byType.pressure_vessel?.id;
-        const mbr = byType.membrane_bioreactor?.id;
-        const water = byType.water_purifier?.id;
-
-        if (!bio && !vessel && !mbr && !water) {
-          throw new Error("Create at least one device with + before seeding");
-        }
-
-        if (bio) {
+        if (device.type === "bioreactor") {
           await insertSensorReading(
-            bio,
+            id,
             "temperature",
             27 + Math.random() * 4,
             user.id,
           );
           await insertSensorReading(
-            bio,
+            id,
             "ph",
             6.5 + Math.random() * 0.8,
             user.id,
           );
           await insertSliderState(
-            bio,
+            id,
             "rotor",
             40 + Math.round(Math.random() * 40),
             user.id,
           );
           await insertSliderState(
-            bio,
+            id,
             "aerator",
             35 + Math.round(Math.random() * 45),
             user.id,
           );
-          await insertSwitchState(bio, "switchWarmWaterPump", true, user.id);
-          await insertSwitchState(bio, "switchColdWaterPump", false, user.id);
+          await insertSwitchState(id, "switchWarmWaterPump", true, user.id);
+          await insertSwitchState(id, "switchColdWaterPump", false, user.id);
+          return;
         }
 
-        if (vessel) {
+        if (device.type === "pressure_vessel") {
           const vesselPct = 35 + Math.round(Math.random() * 45);
-          await insertSensorReading(vessel, "vesselLevel", vesselPct, user.id);
-          await insertSliderState(vessel, "vesselLevel", vesselPct, user.id);
+          await insertSensorReading(id, "vesselLevel", vesselPct, user.id);
+          await insertSliderState(id, "vesselLevel", vesselPct, user.id);
+          return;
         }
 
-        if (mbr) {
-          await insertSensorReading(mbr, "mbrTankLevel", 95, user.id);
+        if (device.type === "membrane_bioreactor") {
+          await insertSensorReading(id, "mbrTankLevel", 95, user.id);
           await insertSliderState(
-            mbr,
+            id,
             "mbrAerationLevel",
             50 + Math.round(Math.random() * 40),
             user.id,
           );
-          await insertSwitchState(mbr, "mbrFlow", true, user.id);
-          await insertSwitchState(mbr, "mbrAeration", true, user.id);
+          await insertSwitchState(id, "mbrFlow", true, user.id);
+          await insertSwitchState(id, "mbrAeration", true, user.id);
+          return;
         }
 
-        if (water) {
+        if (device.type === "water_purifier") {
           await insertSensorReading(
-            water,
+            id,
             "pufferwtlvl",
             50 + Math.round(Math.random() * 40),
             user.id,
           );
           await insertSliderState(
-            water,
+            id,
             "agitator",
             30 + Math.round(Math.random() * 50),
             user.id,
           );
-          await insertSwitchState(water, "switchPump1", true, user.id);
+          await insertSwitchState(id, "switchPump1", true, user.id);
         }
       },
       "Seeding demo data…",
       "Demo bundle uploaded",
-      "Only your existing devices were seeded",
+      selectedDevice
+        ? `Seeded ${selectedDevice.name}`
+        : "Seed complete",
     );
 
-  const devicesReady = Object.keys(devicesByType).length > 0;
+  const devicesReady = devices.length > 0 && Boolean(selectedDeviceId);
+  const canSend = devicesReady && !busy;
 
   return (
     <>
@@ -352,18 +375,48 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
         </header>
 
         <p className="dev-panel__hint">
-          Shortcut <kbd>L</kbd> + <kbd>B</kbd> · Esc to dismiss · Writes only to{" "}
-          <strong>your</strong> devices
+          Shortcut <kbd>L</kbd> + <kbd>B</kbd> · Esc to dismiss · Writes to the{" "}
+          <strong>selected</strong> device
         </p>
 
-        {!devicesReady && (
-          <p className="dev-panel__hint">Provisioning your devices…</p>
+        <label className="dev-panel__target">
+          <span>Target device</span>
+          <select
+            value={selectedDeviceId}
+            disabled={loadingDevices || devices.length === 0}
+            onChange={(e) => {
+              const nextId = e.target.value;
+              setSelectedDeviceId(nextId);
+              const next = devices.find((device) => device.id === nextId);
+              if (next) applyPresetsForType(next.type);
+            }}
+          >
+            {devices.length === 0 ? (
+              <option value="">No devices available</option>
+            ) : (
+              devices.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.name} · {device.type.replace(/_/g, " ")}
+                  {device.isOwner ? "" : " · shared"}
+                </option>
+              ))
+            )}
+          </select>
+        </label>
+
+        {loadingDevices && (
+          <p className="dev-panel__hint">Loading your devices…</p>
+        )}
+        {!loadingDevices && devices.length === 0 && (
+          <p className="dev-panel__hint">
+            Create or accept a device first, then reopen this panel.
+          </p>
         )}
 
         <button
           type="button"
           className="dev-panel__seed"
-          disabled={busy || !devicesReady}
+          disabled={!canSend}
           onClick={seedDemoBundle}
         >
           Seed random demo bundle
@@ -375,24 +428,25 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
             <span>Name</span>
             <select
               value={sensorName}
+              disabled={sensorPresets.length === 0}
               onChange={(e) => {
                 const next = e.target.value;
                 setSensorName(next);
-                const preset = ALL_SENSORS.find((p) => p.name === next);
+                const preset = sensorPresets.find((p) => p.name === next);
                 if (preset?.sample != null) {
                   setSensorValue(String(preset.sample));
                 }
               }}
             >
-              {SENSOR_GROUPS.map((group) => (
-                <optgroup key={group.device} label={group.device}>
-                  {group.items.map((preset) => (
-                    <option key={preset.name} value={preset.name}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+              {sensorPresets.length === 0 ? (
+                <option value="">No sensors for this type</option>
+              ) : (
+                sensorPresets.map((preset) => (
+                  <option key={preset.name} value={preset.name}>
+                    {preset.label}
+                  </option>
+                ))
+              )}
             </select>
           </label>
           <label>
@@ -403,9 +457,10 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
               value={sensorValue}
               onChange={(e) => setSensorValue(e.target.value)}
               required
+              disabled={sensorPresets.length === 0}
             />
           </label>
-          <button type="submit" disabled={busy || !devicesReady}>
+          <button type="submit" disabled={!canSend || !sensorName}>
             Send sensor
           </button>
         </form>
@@ -416,24 +471,25 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
             <span>Name</span>
             <select
               value={sliderName}
+              disabled={sliderPresets.length === 0}
               onChange={(e) => {
                 const next = e.target.value;
                 setSliderName(next);
-                const preset = ALL_SLIDERS.find((p) => p.name === next);
+                const preset = sliderPresets.find((p) => p.name === next);
                 if (preset?.sample != null) {
                   setSliderValue(String(preset.sample));
                 }
               }}
             >
-              {SLIDER_GROUPS.map((group) => (
-                <optgroup key={group.device} label={group.device}>
-                  {group.items.map((preset) => (
-                    <option key={preset.name} value={preset.name}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+              {sliderPresets.length === 0 ? (
+                <option value="">No sliders for this type</option>
+              ) : (
+                sliderPresets.map((preset) => (
+                  <option key={preset.name} value={preset.name}>
+                    {preset.label}
+                  </option>
+                ))
+              )}
             </select>
           </label>
           <label>
@@ -445,9 +501,10 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
               value={sliderValue}
               onChange={(e) => setSliderValue(e.target.value)}
               required
+              disabled={sliderPresets.length === 0}
             />
           </label>
-          <button type="submit" disabled={busy || !devicesReady}>
+          <button type="submit" disabled={!canSend || !sliderName}>
             Send slider
           </button>
         </form>
@@ -458,17 +515,18 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
             <span>Name</span>
             <select
               value={switchName}
+              disabled={switchPresets.length === 0}
               onChange={(e) => setSwitchName(e.target.value)}
             >
-              {SWITCH_GROUPS.map((group) => (
-                <optgroup key={group.device} label={group.device}>
-                  {group.items.map((preset) => (
-                    <option key={preset.name} value={preset.name}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+              {switchPresets.length === 0 ? (
+                <option value="">No switches for this type</option>
+              ) : (
+                switchPresets.map((preset) => (
+                  <option key={preset.name} value={preset.name}>
+                    {preset.label}
+                  </option>
+                ))
+              )}
             </select>
           </label>
           <label className="dev-panel__toggle">
@@ -476,10 +534,11 @@ function DevDataPanel({ open, onClose, user }: DevDataPanelProps) {
               type="checkbox"
               checked={switchValue}
               onChange={(e) => setSwitchValue(e.target.checked)}
+              disabled={switchPresets.length === 0}
             />
             <span>{switchValue ? "ON" : "OFF"}</span>
           </label>
-          <button type="submit" disabled={busy || !devicesReady}>
+          <button type="submit" disabled={!canSend || !switchName}>
             Send switch
           </button>
         </form>
