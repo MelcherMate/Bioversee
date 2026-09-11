@@ -37,14 +37,24 @@ export type ShareLinkRow = {
 };
 
 const PATH_BY_TYPE: Record<DeviceType, string> = {
-  bioreactor: "/dashboard",
-  pressure_vessel: "/pressure-vessel",
-  membrane_bioreactor: "/membrane-bioreactor",
-  water_purifier: "/waterpurifier",
+  bioreactor: "/dashboard/bioreactor",
+  pressure_vessel: "/dashboard/pressure-vessel",
+  membrane_bioreactor: "/dashboard/membrane-bioreactor",
+  water_purifier: "/dashboard/water-purifier",
 };
 
 /** Default authenticated home (bioreactor dashboard). */
 export const APP_HOME_PATH = PATH_BY_TYPE.bioreactor;
+
+/** Old top-level process URLs → new /dashboard/… paths. */
+const LEGACY_PATH_REDIRECTS: Record<string, string> = {
+  "/dashboard": PATH_BY_TYPE.bioreactor,
+  "/bioreactor": PATH_BY_TYPE.bioreactor,
+  "/pressure-vessel": PATH_BY_TYPE.pressure_vessel,
+  "/membrane-bioreactor": PATH_BY_TYPE.membrane_bioreactor,
+  "/waterpurifier": PATH_BY_TYPE.water_purifier,
+  "/water-purifier": PATH_BY_TYPE.water_purifier,
+};
 
 export function pathForDeviceType(type: DeviceType): string {
   return PATH_BY_TYPE[type];
@@ -52,18 +62,28 @@ export function pathForDeviceType(type: DeviceType): string {
 
 export function deviceTypeFromPath(pathname: string): DeviceType | null {
   switch (pathname) {
+    case "/dashboard/bioreactor":
     case "/dashboard":
-    case "/bioreactor": // legacy alias
+    case "/bioreactor":
       return "bioreactor";
+    case "/dashboard/pressure-vessel":
     case "/pressure-vessel":
       return "pressure_vessel";
+    case "/dashboard/membrane-bioreactor":
     case "/membrane-bioreactor":
       return "membrane_bioreactor";
+    case "/dashboard/water-purifier":
     case "/waterpurifier":
+    case "/water-purifier":
       return "water_purifier";
     default:
       return null;
   }
+}
+
+/** Map a legacy process URL to the current /dashboard/… path, or null. */
+export function legacyDashboardRedirect(pathname: string): string | null {
+  return LEGACY_PATH_REDIRECTS[pathname] ?? null;
 }
 
 export function inviteUrlForToken(token: string): string {

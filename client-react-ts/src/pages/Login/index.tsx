@@ -5,14 +5,16 @@ import Google from "../../img/google.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import SegmentedControl from "../../components/SegmentedControl";
 import { upsertStoredSession } from "../../lib/accountSessions";
-import { APP_HOME_PATH } from "../../lib/sharing";
+import { APP_HOME_PATH, legacyDashboardRedirect } from "../../lib/sharing";
 import { supabase } from "../../lib/supabase";
 import "./Login.css";
 
 function safeNextPath(raw: string | null): string | null {
   if (!raw) return null;
   if (!raw.startsWith("/") || raw.startsWith("//")) return null;
-  return raw;
+  const [pathname, query = ""] = raw.split("?");
+  const mapped = legacyDashboardRedirect(pathname) ?? pathname;
+  return query ? `${mapped}?${query}` : mapped;
 }
 
 type LoginProps = {

@@ -15,7 +15,7 @@ import Navbar from "./components/Navbar";
 import OnboardingModal from "./components/OnboardingModal";
 import { AppStatusProvider } from "./lib/appStatus";
 import { syncAccountVaultFromSession, enforceSessionMaxAge } from "./lib/accountSessions";
-import { APP_HOME_PATH } from "./lib/sharing";
+import { APP_HOME_PATH, legacyDashboardRedirect } from "./lib/sharing";
 import { supabase } from "./lib/supabase";
 import { type AppUser, toAppUser } from "./lib/user";
 import About from "./pages/About";
@@ -30,7 +30,9 @@ import WaterPurifier from "./pages/WaterPurifier";
 function safeNextPath(raw: string | null): string | null {
   if (!raw) return null;
   if (!raw.startsWith("/") || raw.startsWith("//")) return null;
-  return raw;
+  const [pathname, query = ""] = raw.split("?");
+  const mapped = legacyDashboardRedirect(pathname) ?? pathname;
+  return query ? `${mapped}?${query}` : mapped;
 }
 
 function HomeRedirect() {
@@ -39,12 +41,12 @@ function HomeRedirect() {
   return <Navigate to={nextPath ?? APP_HOME_PATH} replace />;
 }
 
-function LegacyBioreactorRedirect() {
+function LegacyProcessRedirect() {
+  const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
+  const target = legacyDashboardRedirect(pathname) ?? APP_HOME_PATH;
   const qs = searchParams.toString();
-  return (
-    <Navigate to={qs ? `${APP_HOME_PATH}?${qs}` : APP_HOME_PATH} replace />
-  );
+  return <Navigate to={qs ? `${target}?${qs}` : target} replace />;
 }
 
 const App = () => {
@@ -193,41 +195,52 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
           <Route path="/add-account" element={<Login mode="add-account" />} />
           <Route
             path="/dashboard"
+            element={<Navigate to={APP_HOME_PATH} replace />}
+          />
+          <Route
+            path="/dashboard/bioreactor"
             element={
               user ? <Bioreactor user={user} /> : loginRedirect(APP_HOME_PATH)
             }
           />
-          <Route path="/bioreactor" element={<LegacyBioreactorRedirect />} />
           <Route
-            path="/pressure-vessel"
+            path="/dashboard/pressure-vessel"
             element={
               user ? (
                 <PressureVessel user={user} />
               ) : (
-                loginRedirect("/pressure-vessel")
+                loginRedirect("/dashboard/pressure-vessel")
               )
             }
           />
           <Route
-            path="/membrane-bioreactor"
+            path="/dashboard/membrane-bioreactor"
             element={
               user ? (
                 <MembraneBioreactor user={user} />
               ) : (
-                loginRedirect("/membrane-bioreactor")
+                loginRedirect("/dashboard/membrane-bioreactor")
               )
             }
           />
           <Route
-            path="/waterpurifier"
+            path="/dashboard/water-purifier"
             element={
               user ? (
                 <WaterPurifier user={user} />
               ) : (
-                loginRedirect("/waterpurifier")
+                loginRedirect("/dashboard/water-purifier")
               )
             }
           />
+          <Route path="/bioreactor" element={<LegacyProcessRedirect />} />
+          <Route path="/pressure-vessel" element={<LegacyProcessRedirect />} />
+          <Route
+            path="/membrane-bioreactor"
+            element={<LegacyProcessRedirect />}
+          />
+          <Route path="/waterpurifier" element={<LegacyProcessRedirect />} />
+          <Route path="/water-purifier" element={<LegacyProcessRedirect />} />
           <Route path="/invite/:token" element={<Invite user={user} />} />
           <Route path="/ios-auth" element={<IosAuthBridge />} />
           <Route path="/about" element={<About />} />
