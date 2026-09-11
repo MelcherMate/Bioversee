@@ -140,12 +140,14 @@ struct BVField: View {
 struct BVSegmented<T: Hashable>: View {
     let options: [(T, String)]
     @Binding var selection: T
+    @Namespace private var segmentThumb
 
     var body: some View {
         HStack(spacing: 4) {
             ForEach(options, id: \.0) { value, title in
+                let active = selection == value
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
+                    withAnimation(.easeInOut(duration: 0.38)) {
                         selection = value
                     }
                 } label: {
@@ -153,15 +155,15 @@ struct BVSegmented<T: Hashable>: View {
                         .font(.system(size: 13, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .foregroundStyle(selection == value ? BVTheme.text : BVTheme.textSecondary)
-                        .background(
-                            Group {
-                                if selection == value {
-                                    Capsule().fill(BVTheme.card)
-                                        .shadow(color: .black.opacity(0.08), radius: 4, y: 1)
-                                }
+                        .foregroundStyle(active ? BVTheme.text : BVTheme.textSecondary)
+                        .background {
+                            if active {
+                                Capsule()
+                                    .fill(BVTheme.card)
+                                    .shadow(color: .black.opacity(0.08), radius: 4, y: 1)
+                                    .matchedGeometryEffect(id: "segmentThumb", in: segmentThumb)
                             }
-                        )
+                        }
                 }
                 .buttonStyle(.plain)
             }

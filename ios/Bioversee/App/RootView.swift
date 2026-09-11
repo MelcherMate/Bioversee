@@ -66,12 +66,24 @@ struct MainTabView: View {
 private struct BVTabBar: View {
     @Binding var selection: AppTab
     let unread: Int
+    @Namespace private var tabThumb
+
+    private let tabs: [(AppTab, String, String)] = [
+        (.devices, "Devices", "cpu"),
+        (.inbox, "Inbox", "bell"),
+        (.account, "Account", "person.crop.circle"),
+    ]
 
     var body: some View {
         HStack(spacing: 6) {
-            tabButton(.devices, title: "Devices", systemImage: "cpu")
-            tabButton(.inbox, title: "Inbox", systemImage: "bell", badge: unread)
-            tabButton(.account, title: "Account", systemImage: "person.crop.circle")
+            ForEach(tabs, id: \.0) { value, title, systemImage in
+                tabButton(
+                    value,
+                    title: title,
+                    systemImage: systemImage,
+                    badge: value == .inbox ? unread : 0
+                )
+            }
         }
         .padding(6)
         .background(.ultraThinMaterial)
@@ -91,7 +103,7 @@ private struct BVTabBar: View {
     ) -> some View {
         let active = selection == value
         return Button {
-            withAnimation(.easeInOut(duration: 0.15)) { selection = value }
+            withAnimation(.easeInOut(duration: 0.38)) { selection = value }
         } label: {
             VStack(spacing: 4) {
                 ZStack(alignment: .topTrailing) {
@@ -114,10 +126,13 @@ private struct BVTabBar: View {
             .foregroundStyle(active ? BVTheme.accent : BVTheme.textSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(active ? BVTheme.accentSoft : Color.clear)
-            )
+            .background {
+                if active {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(BVTheme.accentSoft)
+                        .matchedGeometryEffect(id: "tabThumb", in: tabThumb)
+                }
+            }
         }
         .buttonStyle(.plain)
     }
