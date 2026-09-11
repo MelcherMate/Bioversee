@@ -579,7 +579,7 @@ function BaseAcidSupplyPipe({ mode }: BaseAcidSupplyPipeProps) {
           </g>
         ) : null}
 
-        {active && showLiquid && head >= DOSE_PATH_LENGTH - 1 ? (
+        {showLiquid && head >= DOSE_PATH_LENGTH - 1 ? (
           <g className="base-acid-drips">
             {[0, 1, 2].map((i) => (
               <circle
