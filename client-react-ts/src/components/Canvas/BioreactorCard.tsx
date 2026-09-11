@@ -37,8 +37,9 @@ const JACKET_FLOW_DASH = 12;
 const JACKET_FLOW_GAP = 48;
 const JACKET_FLOW_CYCLE = JACKET_FLOW_DASH + JACKET_FLOW_GAP;
 const JACKET_FLOW_CYCLE_SECONDS = 1.25;
-/** Pipe fill/clear speed — matches white flow-line travel. */
-const JACKET_PIPE_WATER_SPEED = JACKET_FLOW_CYCLE / JACKET_FLOW_CYCLE_SECONDS;
+/** Pipe fill/clear speed — 2× white flow-line travel. */
+const JACKET_PIPE_WATER_SPEED =
+  (JACKET_FLOW_CYCLE / JACKET_FLOW_CYCLE_SECONDS) * 2;
 /** Thin motion dashes inside the water slug. */
 const JACKET_FLOW_LINE_WIDTH = 2;
 
