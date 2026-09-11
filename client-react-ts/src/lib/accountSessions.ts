@@ -312,13 +312,20 @@ export async function signOutAllAccounts(): Promise<void> {
  * Permanently delete the signed-in auth user + cascaded app data,
  * remove them from the local vault, then switch to another saved
  * session if one remains.
+ *
+ * @param deleteOwnedDevices When true, owned devices (and their data) are
+ * deleted. When false, ownership transfers to another member when possible.
  */
-export async function deleteCurrentAccount(): Promise<void> {
+export async function deleteCurrentAccount(
+  deleteOwnedDevices = false
+): Promise<void> {
   const { data } = await supabase.auth.getSession();
   const userId = data.session?.user.id;
   if (!userId) throw new Error("Not authenticated");
 
-  const { error } = await supabase.rpc("delete_my_account");
+  const { error } = await supabase.rpc("delete_my_account", {
+    p_delete_owned_devices: deleteOwnedDevices,
+  });
   if (error) throw error;
 
   removeStoredAccount(userId);

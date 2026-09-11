@@ -357,7 +357,7 @@ export type Database = {
         Returns: string;
       };
       delete_my_account: {
-        Args: Record<string, never>;
+        Args: { p_delete_owned_devices?: boolean };
         Returns: undefined;
       };
       create_pending_device_invite_as: {

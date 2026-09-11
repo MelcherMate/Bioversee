@@ -66,6 +66,7 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const [showAccount, setShowAccount] = useState(false);
   const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+  const [deleteOwnedDevices, setDeleteOwnedDevices] = useState(false);
   const [shareDevice, setShareDevice] = useState<AccessibleDevice | null>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [addDeviceDefaultType, setAddDeviceDefaultType] =
@@ -434,6 +435,7 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const onRequestDeleteAccount = () => {
     setError(null);
+    setDeleteOwnedDevices(false);
     setShowAccount(false);
     setConfirmDeleteAccount(true);
   };
@@ -442,8 +444,9 @@ const Navbar = ({ user }: NavbarProps) => {
     setBusy(true);
     setError(null);
     try {
-      await deleteCurrentAccount();
+      await deleteCurrentAccount(deleteOwnedDevices);
       setConfirmDeleteAccount(false);
+      setDeleteOwnedDevices(false);
       refreshAccounts();
       if (!listStoredAccounts().some(isAccountSignedIn)) {
         navigate("/", { replace: true });
@@ -822,6 +825,20 @@ const Navbar = ({ user }: NavbarProps) => {
             <p className="topbar__confirm-body">
               {t("nav.deleteAccountConfirmBody")}
             </p>
+            <label className="topbar__confirm-check">
+              <input
+                type="checkbox"
+                checked={deleteOwnedDevices}
+                disabled={busy}
+                onChange={(event) => setDeleteOwnedDevices(event.target.checked)}
+              />
+              <span>{t("nav.deleteAccountAlsoDevices")}</span>
+            </label>
+            <p className="topbar__confirm-hint">
+              {deleteOwnedDevices
+                ? t("nav.deleteAccountDevicesHintOn")
+                : t("nav.deleteAccountDevicesHintOff")}
+            </p>
             {error ? <p className="topbar__menu-error">{error}</p> : null}
             <div className="topbar__confirm-actions">
               <button
@@ -836,7 +853,10 @@ const Navbar = ({ user }: NavbarProps) => {
                 type="button"
                 className="topbar__menu-secondary topbar__confirm-btn"
                 disabled={busy}
-                onClick={() => setConfirmDeleteAccount(false)}
+                onClick={() => {
+                  setConfirmDeleteAccount(false);
+                  setDeleteOwnedDevices(false);
+                }}
               >
                 {t("common.cancel")}
               </button>

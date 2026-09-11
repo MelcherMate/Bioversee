@@ -517,10 +517,35 @@ button.topbar__account-row:hover:not(:disabled) {
 }
 
 .topbar__confirm-body {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   font-size: 14px;
   line-height: 1.5;
   color: var(--bv-text-secondary);
+}
+
+.topbar__confirm-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--bv-text);
+  cursor: pointer;
+}
+
+.topbar__confirm-check input {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--bv-accent);
+}
+
+.topbar__confirm-hint {
+  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--bv-text-tertiary);
 }
 
 .topbar__confirm-actions {
