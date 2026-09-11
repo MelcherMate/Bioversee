@@ -10,6 +10,10 @@ import {
   unreadCount,
   type AppNotification,
 } from "../../lib/notifications";
+import {
+  emitNotificationsChanged,
+  NOTIFICATIONS_CHANGED_EVENT,
+} from "../../lib/notificationsSync";
 import { openSharedDeviceUrl } from "../../lib/sharing";
 import "./NotificationsPanel.css";
 
@@ -48,8 +52,8 @@ function NotificationsPanel({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = async () => {
-    setLoading(true);
+  const refresh = async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoading(true);
     setError(null);
     try {
       const list = await listMyNotifications();
@@ -58,13 +62,24 @@ function NotificationsPanel({
     } catch (err) {
       setError(err instanceof Error ? err.message : t("notifications.failedLoad"));
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     if (!open) return;
     void refresh();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onChanged = () => {
+      void refresh({ silent: true });
+    };
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -97,6 +112,7 @@ function NotificationsPanel({
     try {
       const result = await acceptDeviceInvite(inviteId);
       await refresh();
+      emitNotificationsChanged();
       await onDevicesChanged?.();
       onClose();
       navigate(
@@ -120,6 +136,7 @@ function NotificationsPanel({
     try {
       await declineDeviceInvite(inviteId);
       await refresh();
+      emitNotificationsChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("notifications.couldNotDecline"));
     } finally {
@@ -159,6 +176,7 @@ function NotificationsPanel({
     onUnreadChange?.(unreadCount(next));
     try {
       await deleteNotification(notification.id);
+      emitNotificationsChanged();
     } catch (err) {
       setItems(previous);
       onUnreadChange?.(unreadCount(previous));
@@ -276,14 +294,6 @@ function NotificationsPanel({
                           {t("notifications.markRead")}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="notif-panel__text-btn notif-panel__text-btn--danger"
-                        disabled={busyId === notification.id}
-                        onClick={() => onDelete(notification)}
-                      >
-                        {t("notifications.delete")}
-                      </button>
                     </div>
                   </div>
                 )}

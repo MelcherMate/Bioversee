@@ -43,6 +43,8 @@ struct BioverseeApp: App {
                 }
                 .onChange(of: session.userId) { _, userId in
                     Task { await appearance.loadFromCloud(userId: userId) }
+                    inbox.restartRealtime()
+                    Task { await inbox.refresh(announceNew: false) }
                 }
         }
     }

@@ -35,6 +35,7 @@ import {
   type DeviceType,
 } from "../../lib/devices";
 import { listMyNotifications, unreadCount } from "../../lib/notifications";
+import { subscribeMyNotifications } from "../../lib/notificationsSync";
 import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
 import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
@@ -124,7 +125,7 @@ const Navbar = ({ user }: NavbarProps) => {
   useEffect(() => {
     let cancelled = false;
     const pullUnread = () => {
-      listMyNotifications(20)
+      listMyNotifications(40)
         .then((list) => {
           if (!cancelled) setUnread(unreadCount(list));
         })
@@ -133,10 +134,10 @@ const Navbar = ({ user }: NavbarProps) => {
         });
     };
     pullUnread();
-    const interval = window.setInterval(pullUnread, 30000);
+    const unsubscribe = subscribeMyNotifications(user.id, pullUnread);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      unsubscribe();
     };
   }, [user.id]);
 
