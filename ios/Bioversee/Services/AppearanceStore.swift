@@ -1,20 +1,17 @@
 import Foundation
 import Supabase
 import SwiftUI
-import UIKit
 
 struct AccentPreset: Identifiable, Hashable {
     let id: String
     let label: String
     let hex: String
-    /// Alternate icon asset name; `nil` = primary AppIcon (green).
-    let alternateIconName: String?
 
     static let all: [AccentPreset] = [
-        .init(id: "green", label: "Green", hex: "#0d9488", alternateIconName: nil),
-        .init(id: "yellow", label: "Yellow", hex: "#ffe15d", alternateIconName: "AppIconYellow"),
-        .init(id: "red", label: "Red", hex: "#ff6b6b", alternateIconName: "AppIconRed"),
-        .init(id: "blue", label: "Blue", hex: "#5b9fff", alternateIconName: "AppIconBlue"),
+        .init(id: "green", label: "Green", hex: "#0d9488"),
+        .init(id: "yellow", label: "Yellow", hex: "#ffe15d"),
+        .init(id: "red", label: "Red", hex: "#ff6b6b"),
+        .init(id: "blue", label: "Blue", hex: "#5b9fff"),
     ]
 
     static let `default` = all[0]
@@ -42,7 +39,7 @@ final class AppearanceStore: ObservableObject {
 
     func loadFromCloud(userId: UUID?) async {
         guard let userId else {
-            await applyLocal(AccentPreset.default.hex, updateIcon: true)
+            accentHex = AccentPreset.default.hex
             return
         }
 
@@ -65,9 +62,9 @@ final class AppearanceStore: ObservableObject {
             if let accent = rows.first?.preferences?.accent,
                ColorHex.isValid(accent)
             {
-                await applyLocal(ColorHex.normalize(accent), updateIcon: true)
+                accentHex = ColorHex.normalize(accent)
             } else {
-                await applyLocal(AccentPreset.default.hex, updateIcon: true)
+                accentHex = AccentPreset.default.hex
             }
         } catch {
             // Keep current accent on transient errors.
@@ -77,20 +74,13 @@ final class AppearanceStore: ObservableObject {
 
     func setAccent(_ hex: String, userId: UUID?) async {
         let normalized = ColorHex.normalize(hex)
-        await applyLocal(normalized, updateIcon: true)
+        accentHex = normalized
         guard let userId else { return }
         await persistAccent(normalized, userId: userId)
     }
 
     func setPreset(_ preset: AccentPreset, userId: UUID?) async {
         await setAccent(preset.hex, userId: userId)
-    }
-
-    private func applyLocal(_ hex: String, updateIcon: Bool) async {
-        accentHex = hex
-        if updateIcon {
-            syncAlternateIcon(for: AccentPreset.nearest(to: hex))
-        }
     }
 
     private func persistAccent(_ hex: String, userId: UUID) async {
@@ -138,18 +128,6 @@ final class AppearanceStore: ObservableObject {
                 .execute()
         } catch {
             print("[appearance] save failed:", error.localizedDescription)
-        }
-    }
-
-    private func syncAlternateIcon(for preset: AccentPreset) {
-        guard UIApplication.shared.supportsAlternateIcons else { return }
-        let target = preset.alternateIconName
-        let current = UIApplication.shared.alternateIconName
-        guard current != target else { return }
-        UIApplication.shared.setAlternateIconName(target) { error in
-            if let error {
-                print("[appearance] icon change failed:", error.localizedDescription)
-            }
         }
     }
 }

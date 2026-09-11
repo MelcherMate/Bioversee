@@ -57,7 +57,7 @@ struct AccountView: View {
                             Text("Accent color")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(BVTheme.textSecondary)
-                            Text("Matches your Bioversee website preference. Also updates the home screen icon.")
+                            Text("Matches your Bioversee website preference.")
                                 .font(.system(size: 12))
                                 .foregroundStyle(BVTheme.textTertiary)
 
