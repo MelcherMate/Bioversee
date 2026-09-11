@@ -131,6 +131,9 @@
   background: var(--bv-fill);
   color: var(--bv-text);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
   transition:
     background 0.2s var(--bv-ease),
     box-shadow 0.2s var(--bv-ease),

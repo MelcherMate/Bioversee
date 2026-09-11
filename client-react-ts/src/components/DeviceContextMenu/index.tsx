@@ -1,12 +1,16 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  CreateOutline,
   ExitOutline,
   SettingsOutline,
   ShareSocialOutline,
   TrashOutline,
 } from "react-ionicons";
-import type { AccessibleDevice } from "../../lib/devices";
+import {
+  canAdminDevice,
+  type AccessibleDevice,
+} from "../../lib/devices";
 import "./DeviceContextMenu.css";
 
 type DeviceContextMenuProps = {
@@ -32,6 +36,7 @@ function DeviceContextMenu({
 }: DeviceContextMenuProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
+  const canAdmin = canAdminDevice(device.role);
 
   useEffect(() => {
     const handlePointer = (event: MouseEvent) => {
@@ -56,7 +61,7 @@ function DeviceContextMenu({
 
   const menuWidth = 200;
   const left = Math.min(x, window.innerWidth - menuWidth - 12);
-  const top = Math.min(y, window.innerHeight - 200);
+  const top = Math.min(y, window.innerHeight - 220);
 
   return (
     <div
@@ -67,35 +72,52 @@ function DeviceContextMenu({
       aria-label={t("deviceMenu.options", { name: device.name })}
     >
       <p className="device-ctx__name">{device.name}</p>
-      <button
-        type="button"
-        className="device-ctx__item"
-        role="menuitem"
-        onClick={() => {
-          onSettings(device);
-          onClose();
-        }}
-      >
-        <SettingsOutline color="#1d1d1f" height="16px" width="16px" title="" />
-        {t("deviceMenu.settings")}
-      </button>
-      <button
-        type="button"
-        className="device-ctx__item"
-        role="menuitem"
-        onClick={() => {
-          onShare(device);
-          onClose();
-        }}
-      >
-        <ShareSocialOutline
-          color="#1d1d1f"
-          height="16px"
-          width="16px"
-          title=""
-        />
-        {t("deviceMenu.share")}
-      </button>
+      {canAdmin ? (
+        <button
+          type="button"
+          className="device-ctx__item"
+          role="menuitem"
+          onClick={() => {
+            onSettings(device);
+            onClose();
+          }}
+        >
+          <CreateOutline color="#1d1d1f" height="16px" width="16px" title="" />
+          {t("deviceMenu.rename")}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="device-ctx__item"
+          role="menuitem"
+          onClick={() => {
+            onSettings(device);
+            onClose();
+          }}
+        >
+          <SettingsOutline color="#1d1d1f" height="16px" width="16px" title="" />
+          {t("deviceMenu.settings")}
+        </button>
+      )}
+      {canAdmin ? (
+        <button
+          type="button"
+          className="device-ctx__item"
+          role="menuitem"
+          onClick={() => {
+            onShare(device);
+            onClose();
+          }}
+        >
+          <ShareSocialOutline
+            color="#1d1d1f"
+            height="16px"
+            width="16px"
+            title=""
+          />
+          {t("deviceMenu.share")}
+        </button>
+      ) : null}
       {device.isOwner ? (
         <button
           type="button"

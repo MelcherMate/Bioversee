@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -91,6 +92,11 @@ const Navbar = ({ user }: NavbarProps) => {
   const accountRef = useRef<HTMLDivElement | null>(null);
   const addRef = useRef<HTMLDivElement | null>(null);
   const devicesRef = useRef<HTMLDivElement | null>(null);
+  const longPressRef = useRef<{
+    timer: number;
+    deviceId: string;
+  } | null>(null);
+  const skipClickRef = useRef(false);
 
   const preferredDeviceId = searchParams.get("device");
   const routeType = deviceTypeFromPath(location.pathname);
@@ -246,10 +252,38 @@ const Navbar = ({ user }: NavbarProps) => {
     : connectivityLabel(connectivity);
 
   const onSelectDevice = (device: AccessibleDevice) => {
+    if (skipClickRef.current) {
+      skipClickRef.current = false;
+      return;
+    }
     closeOverlays();
     setSettingsDevice(null);
     setSettingsAnchor(null);
     navigate(deviceHref(device));
+  };
+
+  const openDeviceSettings = (device: AccessibleDevice, x: number, y: number) => {
+    closeOverlays();
+    setShareDevice(null);
+    setShowNotifications(false);
+    setShowAccount(false);
+    setShowAddDevice(false);
+    setShowAppSettings(false);
+    const btn = devicesRef.current?.querySelector(
+      `[data-device-id="${device.id}"]`
+    );
+    const rect = btn?.getBoundingClientRect();
+    setSettingsAnchor(
+      rect ? { x: rect.left, y: rect.bottom } : { x, y }
+    );
+    setSettingsDevice(device);
+  };
+
+  const clearLongPress = () => {
+    if (longPressRef.current) {
+      window.clearTimeout(longPressRef.current.timer);
+      longPressRef.current = null;
+    }
   };
 
   const onDeviceCreated = async (deviceId: string, type: DeviceType) => {
@@ -263,10 +297,31 @@ const Navbar = ({ user }: NavbarProps) => {
   ) => {
     event.preventDefault();
     event.stopPropagation();
+    clearLongPress();
     closeOverlays();
     setSettingsDevice(null);
     setSettingsAnchor(null);
     setContextMenu({ device, x: event.clientX, y: event.clientY });
+  };
+
+  const onDevicePointerDown = (
+    event: ReactPointerEvent,
+    device: AccessibleDevice
+  ) => {
+    if (event.button !== 0) return;
+    clearLongPress();
+    const { clientX, clientY } = event;
+    longPressRef.current = {
+      deviceId: device.id,
+      timer: window.setTimeout(() => {
+        longPressRef.current = null;
+        skipClickRef.current = true;
+        closeOverlays();
+        setSettingsDevice(null);
+        setSettingsAnchor(null);
+        setContextMenu({ device, x: clientX, y: clientY });
+      }, 480),
+    };
   };
 
   const onDeleteDevice = async (device: AccessibleDevice) => {
@@ -467,6 +522,10 @@ const Navbar = ({ user }: NavbarProps) => {
                   aria-pressed={active}
                   onClick={() => onSelectDevice(device)}
                   onContextMenu={(event) => onDeviceContextMenu(event, device)}
+                  onPointerDown={(event) => onDevicePointerDown(event, device)}
+                  onPointerUp={clearLongPress}
+                  onPointerCancel={clearLongPress}
+                  onPointerLeave={clearLongPress}
                 >
                   <span className="topbar__device-chip-label">{device.name}</span>
                   {!device.isOwner && (
@@ -504,21 +563,7 @@ const Navbar = ({ user }: NavbarProps) => {
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
             onSettings={(device) => {
-              setShareDevice(null);
-              setShowNotifications(false);
-              setShowAccount(false);
-              setShowAddDevice(false);
-              setShowAppSettings(false);
-              const btn = devicesRef.current?.querySelector(
-                `[data-device-id="${device.id}"]`
-              );
-              const rect = btn?.getBoundingClientRect();
-              setSettingsAnchor(
-                rect
-                  ? { x: rect.left, y: rect.bottom }
-                  : { x: contextMenu.x, y: contextMenu.y }
-              );
-              setSettingsDevice(device);
+              openDeviceSettings(device, contextMenu?.x ?? 0, contextMenu?.y ?? 0);
             }}
             onShare={(device) => {
               setSettingsDevice(null);
@@ -574,8 +619,18 @@ const Navbar = ({ user }: NavbarProps) => {
               setSettingsDevice(null);
               setSettingsAnchor(null);
             }}
-            onRenamed={() => {
-              void refreshDevices();
+            onRenamed={async () => {
+              try {
+                const next = await listAccessibleDevices();
+                setDevices(next);
+                setSettingsDevice((prev) =>
+                  prev
+                    ? next.find((device) => device.id === prev.id) ?? prev
+                    : null
+                );
+              } catch (err) {
+                console.error(err);
+              }
             }}
             onRequestDelete={(device) => {
               void onDeleteDevice(device);

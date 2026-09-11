@@ -158,6 +158,7 @@
   },
   "deviceMenu": {
     "settings": "Eszközbeállítások",
+    "rename": "Átnevezés",
     "share": "Megosztás",
     "delete": "Eszköz törlése",
     "leave": "Eszköz elhagyása",

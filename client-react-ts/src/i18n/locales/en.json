@@ -158,6 +158,7 @@
   },
   "deviceMenu": {
     "settings": "Device settings",
+    "rename": "Rename",
     "share": "Share",
     "delete": "Delete device",
     "leave": "Leave device",

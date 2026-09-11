@@ -29,6 +29,7 @@ function DeviceSettingsPanel({
 }: DeviceSettingsPanelProps) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,16 @@ function DeviceSettingsPanel({
     setName(device.name);
     setError(null);
     setSaved(false);
+  }, [open, device]);
+
+  useEffect(() => {
+    if (!open || !device) return;
+    if (!canAdminDevice(device.role)) return;
+    const id = window.setTimeout(() => {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    }, 30);
+    return () => window.clearTimeout(id);
   }, [open, device]);
 
   useEffect(() => {
@@ -128,6 +139,7 @@ function DeviceSettingsPanel({
         </label>
         <input
           id="device-settings-name"
+          ref={nameInputRef}
           className="device-settings__input"
           value={name}
           onChange={(event) => setName(event.target.value)}
