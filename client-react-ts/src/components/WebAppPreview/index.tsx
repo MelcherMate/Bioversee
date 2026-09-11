@@ -68,10 +68,6 @@ function WebAppPreview() {
 
         <div className="web-preview__canvas">
           <div className="web-preview__reactor">
-            <span className="web-preview__pipe web-preview__pipe--l1" />
-            <span className="web-preview__pipe web-preview__pipe--l2" />
-            <span className="web-preview__pipe web-preview__pipe--l3" />
-            <span className="web-preview__pipe web-preview__pipe--r1" />
             <span className="web-preview__tank">
               <span className="web-preview__liquid" />
               <span className="web-preview__agitator" />

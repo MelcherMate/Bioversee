@@ -329,37 +329,6 @@
   z-index: 2;
 }
 
-.web-preview__pipe {
-  position: absolute;
-  height: 8px;
-  border-radius: 999px;
-  background: #c7c7cc;
-}
-
-.web-preview__pipe--l1 {
-  left: 0;
-  top: 48px;
-  width: 42px;
-}
-
-.web-preview__pipe--l2 {
-  left: 0;
-  top: 98px;
-  width: 42px;
-}
-
-.web-preview__pipe--l3 {
-  left: 0;
-  top: 148px;
-  width: 42px;
-}
-
-.web-preview__pipe--r1 {
-  right: 0;
-  top: 78px;
-  width: 42px;
-}
-
 .web-preview__chart-value {
   width: 28px;
   height: 10px;
