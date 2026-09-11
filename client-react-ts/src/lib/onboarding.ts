@@ -6,9 +6,16 @@ import { mergeUserPreferences } from "./userSettings";
 const LOCAL_KEY_PREFIX = "bv.onboarding.v1:";
 
 export const DEVICES_CHANGED_EVENT = "bioversee:devices-changed";
+export const OPEN_ADD_DEVICE_EVENT = "bioversee:open-add-device";
 
 export function notifyDevicesChanged() {
   window.dispatchEvent(new Event(DEVICES_CHANGED_EVENT));
+}
+
+export function requestOpenAddDevice(type?: DeviceType) {
+  window.dispatchEvent(
+    new CustomEvent(OPEN_ADD_DEVICE_EVENT, { detail: { type } })
+  );
 }
 
 export function isOnboardingDoneLocal(userId: string): boolean {

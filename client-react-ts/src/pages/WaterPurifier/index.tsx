@@ -60,7 +60,7 @@ function WaterPurifier({ user }: WaterpurifierProps) {
   }
 
   if (!device) {
-    return <EmptyDeviceState processLabel={t("devices.water_purifier")} />;
+    return <EmptyDeviceState deviceType="water_purifier" />;
   }
 
   const readOnly = !canOperateDevice(device.role);

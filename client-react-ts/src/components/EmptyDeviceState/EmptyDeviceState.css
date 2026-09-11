@@ -6,11 +6,13 @@
 }
 
 .empty-device__card {
-  width: min(440px, 100%);
+  position: relative;
+  width: min(400px, 100%);
   padding: 28px 24px;
   border-radius: var(--bv-radius-lg);
   background: var(--bv-card);
   box-shadow: var(--bv-shadow-card);
+  text-align: center;
 }
 
 .empty-device__eyebrow {
@@ -23,28 +25,32 @@
 }
 
 .empty-device__title {
-  margin: 0 0 8px;
+  margin: 0 0 20px;
   font-size: 24px;
   font-weight: 650;
   letter-spacing: -0.03em;
 }
 
-.empty-device__body {
-  margin: 0;
+.empty-device__actions {
+  display: flex;
+  justify-content: center;
+}
+
+.empty-device__add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
   font-size: 14px;
-  line-height: 1.5;
-  color: var(--bv-text-secondary);
+  font-weight: 650;
+  cursor: pointer;
+  background: var(--bv-cta);
+  color: #fff;
 }
 
-.empty-device__hint {
-  display: inline-block;
-  margin-top: 16px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--bv-accent-hover);
-  text-decoration: none;
-}
-
-.empty-device__hint:hover {
-  text-decoration: underline;
+.empty-device__add-btn:hover {
+  background: var(--bv-cta-hover);
 }

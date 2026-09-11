@@ -62,7 +62,7 @@ function Bioreactor({ user }: BioreactorProps) {
   }
 
   if (!device) {
-    return <EmptyDeviceState processLabel={t("devices.bioreactor")} />;
+    return <EmptyDeviceState deviceType="bioreactor" />;
   }
 
   const readOnly = !canOperateDevice(device.role);

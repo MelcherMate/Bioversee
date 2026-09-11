@@ -38,7 +38,7 @@ import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import { subscribeMyNotifications } from "../../lib/notificationsSync";
 import { subscribeMyDevices } from "../../lib/devicesSync";
 import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice } from "../../lib/sharing";
-import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
+import { DEVICES_CHANGED_EVENT, OPEN_ADD_DEVICE_EVENT } from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
 import AddDevicePanel from "../AddDevicePanel";
@@ -68,6 +68,8 @@ const Navbar = ({ user }: NavbarProps) => {
   const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
   const [shareDevice, setShareDevice] = useState<AccessibleDevice | null>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
+  const [addDeviceDefaultType, setAddDeviceDefaultType] =
+    useState<DeviceType>("bioreactor");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAppSettings, setShowAppSettings] = useState(false);
   const [settingsDevice, setSettingsDevice] =
@@ -134,6 +136,23 @@ const Navbar = ({ user }: NavbarProps) => {
       window.removeEventListener(DEVICES_CHANGED_EVENT, onDevicesChanged);
     };
   }, [refreshDevices]);
+
+  useEffect(() => {
+    const onOpenAdd = (event: Event) => {
+      const detail = (event as CustomEvent<{ type?: DeviceType }>).detail;
+      setAddDeviceDefaultType(detail?.type ?? routeType ?? "bioreactor");
+      setShowAccount(false);
+      setShowNotifications(false);
+      setShowAppSettings(false);
+      setShareDevice(null);
+      setContextMenu(null);
+      setShowAddDevice(true);
+    };
+    window.addEventListener(OPEN_ADD_DEVICE_EVENT, onOpenAdd);
+    return () => {
+      window.removeEventListener(OPEN_ADD_DEVICE_EVENT, onOpenAdd);
+    };
+  }, [routeType]);
 
   useEffect(() => {
     const unsubscribe = subscribeMyDevices(user.id, () => {
@@ -414,6 +433,7 @@ const Navbar = ({ user }: NavbarProps) => {
                 setSettingsDevice(null);
                 setShowAppSettings(false);
                 setShowNotifications(false);
+                setAddDeviceDefaultType(routeType ?? "bioreactor");
                 setShowAddDevice((open) => !open);
               }}
             >
@@ -426,6 +446,7 @@ const Navbar = ({ user }: NavbarProps) => {
             </button>
             <AddDevicePanel
               open={showAddDevice}
+              defaultType={addDeviceDefaultType}
               onClose={() => setShowAddDevice(false)}
               onCreated={onDeviceCreated}
             />

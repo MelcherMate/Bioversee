@@ -125,7 +125,7 @@ function PressureVessel({ user }: PressureVesselProps) {
   }
 
   if (!device) {
-    return <EmptyDeviceState processLabel={t("devices.pressure_vessel")} />;
+    return <EmptyDeviceState deviceType="pressure_vessel" />;
   }
 
   const readOnly = !canOperateDevice(device.role);

@@ -165,9 +165,8 @@
   },
   "emptyDevice": {
     "title": "Még nincs eszköz",
-    "heading": "{{process}} hozzáadása",
-    "body": "A Bioversee melletti + gombbal adjon hozzá egyet, vagy fogadjon el meghívót az Értesítéseknél.",
-    "hint": "Maradjon itt a létrehozás után — válassza ki a fejléc ikonok közül."
+    "heading": "Eszköz hozzáadása",
+    "addButton": "Eszköz hozzáadása"
   },
   "onboarding": {
     "eyebrow": "Üdvözöljük",

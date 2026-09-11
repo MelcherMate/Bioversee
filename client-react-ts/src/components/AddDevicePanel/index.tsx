@@ -18,6 +18,8 @@ type AddDevicePanelProps = {
   open: boolean;
   onClose: () => void;
   onCreated: (deviceId: string, type: DeviceType) => void;
+  /** Prefill device type when the panel opens. */
+  defaultType?: DeviceType;
 };
 
 type MemberDraft = {
@@ -25,10 +27,15 @@ type MemberDraft = {
   role: ShareRole;
 };
 
-function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
+function AddDevicePanel({
+  open,
+  onClose,
+  onCreated,
+  defaultType = "bioreactor",
+}: AddDevicePanelProps) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [type, setType] = useState<DeviceType>("bioreactor");
+  const [type, setType] = useState<DeviceType>(defaultType);
   const [name, setName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState<ShareRole>("viewer");
@@ -38,13 +45,13 @@ function AddDevicePanel({ open, onClose, onCreated }: AddDevicePanelProps) {
 
   useEffect(() => {
     if (!open) return;
-    setType("bioreactor");
-    setName(t(DEVICE_TYPE_META.bioreactor.labelKey));
+    setType(defaultType);
+    setName(t(DEVICE_TYPE_META[defaultType].labelKey));
     setMemberEmail("");
     setMemberRole("viewer");
     setMembers([]);
     setError(null);
-  }, [open, t]);
+  }, [open, t, defaultType]);
 
   useEffect(() => {
     if (!open) return;

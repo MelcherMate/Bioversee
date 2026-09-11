@@ -165,9 +165,8 @@
   },
   "emptyDevice": {
     "title": "No device yet",
-    "heading": "Add a {{process}}",
-    "body": "Use + next to Bioversee to add one, or accept a share invite from Notifications.",
-    "hint": "Stay here after you create one — pick it from the header icons."
+    "heading": "Add a device",
+    "addButton": "Add device"
   },
   "onboarding": {
     "eyebrow": "Welcome",

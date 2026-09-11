@@ -165,9 +165,8 @@
   },
   "emptyDevice": {
     "title": "Noch kein Gerät",
-    "heading": "{{process}} hinzufügen",
-    "body": "Mit + neben Bioversee eines hinzufügen oder eine Freigabe-Einladung unter Benachrichtigungen annehmen.",
-    "hint": "Bleiben Sie hier nach dem Erstellen — wählen Sie es über die Symbole in der Kopfzeile."
+    "heading": "Gerät hinzufügen",
+    "addButton": "Gerät hinzufügen"
   },
   "onboarding": {
     "eyebrow": "Willkommen",

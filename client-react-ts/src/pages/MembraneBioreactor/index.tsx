@@ -105,7 +105,7 @@ function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   }
 
   if (!device) {
-    return <EmptyDeviceState processLabel={t("devices.membrane_bioreactor")} />;
+    return <EmptyDeviceState deviceType="membrane_bioreactor" />;
   }
 
   const readOnly = !canOperateDevice(device.role);
