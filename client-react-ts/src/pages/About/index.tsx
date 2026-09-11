@@ -24,7 +24,7 @@ function useRevealOnScroll() {
           }
         }
       },
-      { threshold: 0.16, rootMargin: "0px 0px -8% 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
     );
 
     nodes.forEach((node) => observer.observe(node));
@@ -56,21 +56,12 @@ function About() {
           </h1>
           <p className="landing-hero__headline">{t("about.headline")}</p>
           <p className="landing-hero__body">{t("about.heroBody")}</p>
-          <div className="landing-hero__actions">
-            <Link to="/login" className="landing-btn landing-btn--primary">
-              {t("auth.signIn")}
-            </Link>
-            <a href="#product" className="landing-btn landing-btn--ghost">
-              {t("about.exploreProduct")}
-            </a>
-          </div>
         </div>
       </section>
 
       <section
         id="product"
-        className="landing-section"
-        data-reveal
+        className="landing-section landing-section--web-peek"
         aria-labelledby="product-title"
       >
         <div className="landing-section__inner landing-section__inner--web">

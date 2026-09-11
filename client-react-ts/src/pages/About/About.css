@@ -30,11 +30,11 @@
 
 .landing-hero {
   position: relative;
-  min-height: min(100vh, 920px);
-  min-height: min(100dvh, 920px);
+  /* Keep the first fold short so ~half the web skeleton peeks below */
+  min-height: 0;
   display: grid;
   place-items: center;
-  padding: 72px 24px 64px;
+  padding: 48px 24px 28px;
   overflow: hidden;
 }
 
@@ -66,9 +66,9 @@
 
 .landing-hero__logo {
   display: block;
-  width: 88px;
-  height: 88px;
-  margin: 0 auto 22px;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
   object-fit: contain;
   filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--bv-accent) 28%, transparent));
 }
@@ -83,9 +83,9 @@
 }
 
 .landing-hero__brand {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   font-family: var(--bv-landing-display), var(--bv-font);
-  font-size: clamp(42px, 9vw, 72px);
+  font-size: clamp(36px, 8vw, 64px);
   font-weight: 700;
   letter-spacing: -0.045em;
   line-height: 0.95;
@@ -93,9 +93,9 @@
 }
 
 .landing-hero__headline {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   font-family: var(--bv-landing-display), var(--bv-font);
-  font-size: clamp(20px, 3.4vw, 28px);
+  font-size: clamp(18px, 3vw, 26px);
   font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1.25;
@@ -103,7 +103,7 @@
 }
 
 .landing-hero__body {
-  margin: 0 auto 28px;
+  margin: 0 auto;
   max-width: min(34em, 100%);
   font-size: 16px;
   line-height: 1.55;
@@ -172,6 +172,12 @@
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: clip;
+}
+
+/* First product block sits tight under the hero so the skeleton peeks on load */
+.landing-section--web-peek {
+  padding-top: 20px;
+  padding-bottom: 72px;
 }
 
 .landing-section--muted {
@@ -403,13 +409,22 @@
 
 @media (max-width: 520px) {
   .landing-hero {
-    padding-top: 56px;
-    min-height: auto;
+    padding: 36px 16px 20px;
+  }
+
+  .landing-hero__logo {
+    width: 64px;
+    height: 64px;
   }
 
   .landing-section,
   .landing-cta {
     padding: 48px 16px;
+  }
+
+  .landing-section--web-peek {
+    padding-top: 12px;
+    padding-bottom: 48px;
   }
 
   .landing-section__inner,
