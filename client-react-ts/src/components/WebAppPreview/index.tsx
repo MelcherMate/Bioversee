@@ -13,7 +13,7 @@ function WebAppPreview() {
       <header className="web-preview__nav" aria-hidden="true">
         <div className="web-preview__nav-left">
           <span className="web-preview__brand-dot" />
-          <span className="web-preview__brand-bar" />
+          <span className="web-preview__brand-name">{t("common.brand")}</span>
           <span className="web-preview__nav-add" />
           <span className="web-preview__nav-device" />
           <span className="web-preview__nav-device" />
@@ -79,14 +79,6 @@ function WebAppPreview() {
               <span className="web-preview__probe" />
               <span className="web-preview__sparger" />
             </span>
-            <span className="web-preview__anno web-preview__anno--a" />
-            <span className="web-preview__anno web-preview__anno--b" />
-            <span className="web-preview__anno web-preview__anno--c" />
-            <span className="web-preview__anno web-preview__anno--d" />
-          </div>
-          <div className="web-preview__zoom">
-            <span />
-            <span />
           </div>
         </div>
 
@@ -139,14 +131,6 @@ function WebAppPreview() {
           </div>
         </aside>
       </div>
-
-      <footer className="web-preview__footer" aria-hidden="true">
-        <span className="web-preview__footer-bar" />
-        <span className="web-preview__footer-links">
-          <span />
-          <span />
-        </span>
-      </footer>
     </div>
   );
 }
