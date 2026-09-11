@@ -134,7 +134,7 @@ function Bioreactor({ user }: BioreactorProps) {
         </div>
       </aside>
       <main id="reactorBox" ref={canvasRef}>
-        <Canvas cards={cards} rotorVal={rotorVal} />
+        <Canvas cards={cards} rotorVal={rotorVal} aeratorVal={aeratorVal} />
       </main>
       <aside id="sensorSide">
         <div className="chartBox">

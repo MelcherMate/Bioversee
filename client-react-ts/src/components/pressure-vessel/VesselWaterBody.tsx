@@ -1,5 +1,6 @@
 import { VESSEL_MAX_FILL_UNITS } from "./constants";
 import { WaterSurfaceWave } from "./WaterSurfaceWave";
+import "./vessel-water.css";
 
 type VesselWaterBodyProps = {
   fillUnits: number;

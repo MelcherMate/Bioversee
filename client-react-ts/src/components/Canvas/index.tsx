@@ -78,6 +78,7 @@ function Canvas(props) {
           <BioreactorCard
             key={card.id}
             rotorVal={props.rotorVal}
+            aeratorVal={props.aeratorVal}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}
             scale={zoomLevel}
