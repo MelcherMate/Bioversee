@@ -24,29 +24,16 @@
   overflow: visible;
 }
 
-/* Sieve-style flow streaks: appear, drift along the pipe, fade out */
+/* Thin dashes that travel continuously along the jacket flow */
 .thermal-jacket__flow-streak {
-  stroke-dasharray: var(--streak-dash, 40 280);
-  animation: thermal-jacket-streak var(--streak-duration, 2.6s) linear
+  stroke-dasharray: var(--streak-dash, 28 72);
+  animation: thermal-jacket-streak var(--streak-duration, 1.4s) linear
     var(--streak-delay, 0s) infinite;
 }
 
 @keyframes thermal-jacket-streak {
-  0% {
-    stroke-dashoffset: calc(-1 * var(--streak-phase, 0));
-    opacity: 0;
-  }
-  15% {
-    opacity: 0.85;
-  }
-  70% {
-    opacity: 0.5;
-  }
-  100% {
-    stroke-dashoffset: calc(
-      -1 * (var(--streak-phase, 0) + var(--streak-cycle, 320))
-    );
-    opacity: 0;
+  to {
+    stroke-dashoffset: calc(-1 * var(--streak-cycle, 100));
   }
 }
 

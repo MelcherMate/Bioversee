@@ -33,16 +33,13 @@ const JACKET_WATER_COLD: string = APPLE_DEPTH_COLORS.cyan;
 const JACKET_COLOR_BLEND_SECONDS = 7.5;
 
 /**
- * Flow streaks inside jacket water — same appear/drift/fade behavior as
- * mates_garage sieve channel streaks, adapted to the pipe centerline.
+ * Flow streaks inside jacket water — thin dashes that travel continuously
+ * along the pipe (sieve pipe dash motion, sparse like channel streaks).
  */
 const JACKET_FLOW_STREAKS = [
-  { dash: 40, gap: 280, duration: 2.6, delay: 0, phase: 0 },
-  { dash: 52, gap: 300, duration: 3.1, delay: 0.7, phase: 90 },
-  { dash: 34, gap: 290, duration: 2.9, delay: 1.4, phase: 180 },
-  { dash: 46, gap: 310, duration: 3.4, delay: 0.3, phase: 40 },
-  { dash: 38, gap: 295, duration: 2.7, delay: 1.1, phase: 140 },
-  { dash: 44, gap: 305, duration: 3.2, delay: 1.9, phase: 220 },
+  { dash: 28, gap: 72, duration: 1.4, delay: 0 },
+  { dash: 36, gap: 84, duration: 1.6, delay: 0.35 },
+  { dash: 22, gap: 78, duration: 1.5, delay: 0.7 },
 ] as const;
 
 /** Representative streak travel speed (pathLength units / sec). */
@@ -51,7 +48,7 @@ const JACKET_STREAK_SPEED =
   JACKET_FLOW_STREAKS[0].duration;
 /** Pipe fill/clear speed — 2× streak travel. */
 const JACKET_PIPE_WATER_SPEED = JACKET_STREAK_SPEED * 2;
-/** Thin streak strokes (sieve channel streaks use ~2.5). */
+/** Thin streak strokes. */
 const JACKET_FLOW_LINE_WIDTH = 2.5;
 
 function hexToRgb(hex: string) {
@@ -170,8 +167,8 @@ const VESSEL = {
 
 /** Offset of jacket pipe centerline outside the vessel wall. */
 const JACKET_THICK = 18;
-/** Horizontal run height of inlet/outlet L (above vessel mid). */
-const JACKET_PIPE_Y = 16;
+/** Horizontal run height of inlet/outlet L (lower on the vessel). */
+const JACKET_PIPE_Y = 120;
 
 /**
  * Pressure-vessel-style pipe water: solid slug with head advancing on pump-on
@@ -457,7 +454,6 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
                     ["--streak-cycle" as string]: String(
                       streak.dash + streak.gap,
                     ),
-                    ["--streak-phase" as string]: String(streak.phase),
                     ["--streak-duration" as string]: `${streak.duration}s`,
                     ["--streak-delay" as string]: `${streak.delay}s`,
                   } as React.CSSProperties
