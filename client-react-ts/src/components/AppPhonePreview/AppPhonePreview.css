@@ -193,6 +193,18 @@
   cursor: pointer;
   color: #6e6e73;
   font: inherit;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.phone-preview__tab:focus,
+.phone-preview__tab:focus-visible,
+.phone-preview__tab:active {
+  outline: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 .phone-preview__tab.is-active {
