@@ -16,15 +16,6 @@ enum DeviceType: String, Codable, CaseIterable, Identifiable, Hashable {
         case .waterPurifier: return "Water Purifier"
         }
     }
-
-    var systemImage: String {
-        switch self {
-        case .bioreactor: return "flask"
-        case .pressureVessel: return "cylinder.split.1x2"
-        case .membraneBioreactor: return "drop.triangle"
-        case .waterPurifier: return "drop.fill"
-        }
-    }
 }
 
 struct AccessibleDevice: Identifiable, Hashable, Codable {

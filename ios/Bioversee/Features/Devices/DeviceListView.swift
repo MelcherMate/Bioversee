@@ -163,15 +163,6 @@ private struct DeviceCard: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(BVTheme.accentSoft)
-                Image(systemName: device.type.systemImage)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(BVTheme.accent)
-            }
-            .frame(width: 44, height: 44)
-
             VStack(alignment: .leading, spacing: 3) {
                 Text(device.name)
                     .font(.system(size: 16, weight: .semibold))
