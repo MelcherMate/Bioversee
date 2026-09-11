@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { DEVICE_TYPE_META, DEVICE_TYPE_ORDER } from "../../lib/deviceIcons";
+import AppPhonePreview from "../../components/AppPhonePreview";
 import Mate from "../../img/Mate.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import "./About.css";
@@ -72,31 +72,15 @@ function About() {
         data-reveal
         aria-labelledby="product-title"
       >
-        <div className="landing-section__inner">
-          <p className="landing-kicker">{t("about.productKicker")}</p>
-          <h2 id="product-title" className="landing-title">
-            {t("about.productTitle")}
-          </h2>
-          <p className="landing-lede">{t("about.productBody")}</p>
-          <ul className="landing-processes">
-            {DEVICE_TYPE_ORDER.map((type) => {
-              const meta = DEVICE_TYPE_META[type];
-              const Icon = meta.Icon;
-              return (
-                <li key={type} className="landing-process">
-                  <span className="landing-process__icon" aria-hidden="true">
-                    <Icon color="var(--bv-accent)" height="22px" width="22px" />
-                  </span>
-                  <span className="landing-process__label">
-                    {t(meta.labelKey)}
-                  </span>
-                  <span className="landing-process__desc">
-                    {t(meta.descriptionKey)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+        <div className="landing-section__inner landing-section__inner--app">
+          <div className="landing-app-copy">
+            <p className="landing-kicker">{t("about.productKicker")}</p>
+            <h2 id="product-title" className="landing-title">
+              {t("about.productTitle")}
+            </h2>
+            <p className="landing-lede">{t("about.productBody")}</p>
+          </div>
+          <AppPhonePreview />
         </div>
       </section>
 
