@@ -36,6 +36,7 @@ import {
 } from "../../lib/devices";
 import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import { subscribeMyNotifications } from "../../lib/notificationsSync";
+import { subscribeMyDevices } from "../../lib/devicesSync";
 import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
 import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
@@ -121,6 +122,13 @@ const Navbar = ({ user }: NavbarProps) => {
       window.removeEventListener(DEVICES_CHANGED_EVENT, onDevicesChanged);
     };
   }, [refreshDevices]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeMyDevices(user.id, () => {
+      void refreshDevices();
+    });
+    return unsubscribe;
+  }, [user.id, refreshDevices]);
 
   useEffect(() => {
     let cancelled = false;

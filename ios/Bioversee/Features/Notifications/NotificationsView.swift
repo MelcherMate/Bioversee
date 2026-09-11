@@ -111,6 +111,7 @@ struct NotificationsView: View {
         do {
             try await NotificationService.acceptInvite(inviteId: inviteId, asAccount: account)
             await inbox.refresh(announceNew: false)
+            NotificationCenter.default.post(name: .bioverseeDevicesShouldRefresh, object: nil)
         } catch {
             inbox.errorMessage = error.localizedDescription
         }

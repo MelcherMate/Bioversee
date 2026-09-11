@@ -19,6 +19,7 @@
 		59B35324EB5F5C68FA4E0545 /* BVTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4813BBF6872F04558239752 /* BVTheme.swift */; };
 		66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB6EB4B11C80B349588ED65 /* DeviceService.swift */; };
 		7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DFB522D85CADF4B5967022F /* RootView.swift */; };
+		778A8A0769672AFFA63DFDD0 /* DeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EF9482D0C37EAD50216988A /* DeviceStore.swift */; };
 		82C54E9D12724DCF4CE8067C /* AppearanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7B397E847936F5A700F54D /* AppearanceStore.swift */; };
 		82F7A3E99C50F9A6E962DC83 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */; };
 		8930E027B576DB0A94BA2C63 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */; };
@@ -38,7 +39,8 @@
 /* Begin PBXFileReference section */
 		0B99312979798A458ACE8E94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1E5903150B9DE6593F72927D /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
-		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1EF9482D0C37EAD50216988A /* DeviceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStore.swift; sourceTree = "<group>"; };
+		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37E655FAA6672908F3000615 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		3C7B397E847936F5A700F54D /* AppearanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceStore.swift; sourceTree = "<group>"; };
 		626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */,
 				3C7B397E847936F5A700F54D /* AppearanceStore.swift */,
 				EAB6EB4B11C80B349588ED65 /* DeviceService.swift */,
+				1EF9482D0C37EAD50216988A /* DeviceStore.swift */,
 				BDC2514BD6E87ADAE23B04E0 /* InboxStore.swift */,
 				F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */,
 				F5F3361006DF679D11251F73 /* PushNotificationManager.swift */,
@@ -247,6 +250,12 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					7ADD8C5B051AF1B56F27FFAF = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
 			};
 			buildConfigurationList = D090F05A782796984017380D /* Build configuration list for PBXProject "Bioversee" */;
 			developmentRegion = en;
@@ -300,6 +309,7 @@
 				3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */,
 				1E862420DB2B56F9B70DA25F /* DeviceModels.swift in Sources */,
 				66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */,
+				778A8A0769672AFFA63DFDD0 /* DeviceStore.swift in Sources */,
 				4073D09668C8AAA16679F664 /* InboxStore.swift in Sources */,
 				0D0A70F4AE3A3BC8C4C716DF /* LoginView.swift in Sources */,
 				EB34CD0AA1AA8E5C3C79E719 /* NotificationModels.swift in Sources */,
@@ -442,10 +452,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Bioversee/Bioversee.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -456,7 +466,6 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bioversee.app;
 				PRODUCT_NAME = Bioversee;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -470,10 +479,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Bioversee/Bioversee.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -484,7 +493,6 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bioversee.app;
 				PRODUCT_NAME = Bioversee;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -61,7 +61,7 @@ final class PushNotificationManager: NSObject, ObservableObject {
         }
 
         if let previous {
-            try? await client.auth.setSession(
+            _ = try? await client.auth.setSession(
                 accessToken: previous.accessToken,
                 refreshToken: previous.refreshToken
             )

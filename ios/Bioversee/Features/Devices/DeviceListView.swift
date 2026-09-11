@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct DeviceListView: View {
-    @State private var devices: [AccessibleDevice] = []
-    @State private var loading = true
-    @State private var errorMessage: String?
+    @EnvironmentObject private var devicesStore: DeviceStore
     @State private var path: [AccessibleDevice] = []
     @State private var devicePendingRemoval: AccessibleDevice?
     @State private var removing = false
+
+    private var devices: [AccessibleDevice] { devicesStore.devices }
+    private var loading: Bool { devicesStore.loading }
+    private var errorMessage: String? { devicesStore.errorMessage }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -17,7 +19,7 @@ struct DeviceListView: View {
                     header
 
                     Group {
-                        if loading {
+                        if loading && devices.isEmpty {
                             ProgressView()
                                 .tint(BVTheme.accent)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -51,7 +53,7 @@ struct DeviceListView: View {
                             .listStyle(.plain)
                             .scrollContentBackground(.hidden)
                             .padding(.bottom, 90)
-                            .refreshable { await refresh() }
+                            .refreshable { await devicesStore.refresh(silent: false) }
                         }
                     }
                 }
@@ -88,7 +90,6 @@ struct DeviceListView: View {
             } message: {
                 Text(removalMessage)
             }
-            .task { await refresh() }
             .toolbar(.hidden, for: .navigationBar)
         }
     }
@@ -138,17 +139,6 @@ struct DeviceListView: View {
         .padding(.bottom, 10)
     }
 
-    private func refresh() async {
-        loading = devices.isEmpty
-        errorMessage = nil
-        do {
-            devices = try await DeviceService.listAccessibleDevices()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        loading = false
-    }
-
     private func confirmRemoval(_ device: AccessibleDevice) async {
         removing = true
         defer {
@@ -158,11 +148,12 @@ struct DeviceListView: View {
         do {
             try await DeviceService.removeFromAccount(device)
             withAnimation {
-                devices.removeAll { $0.id == device.id }
+                devicesStore.removeLocally(device.id)
             }
             path.removeAll { $0.id == device.id }
+            await devicesStore.refresh(silent: true)
         } catch {
-            errorMessage = error.localizedDescription
+            devicesStore.errorMessage = error.localizedDescription
         }
     }
 }

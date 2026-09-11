@@ -1,7 +1,6 @@
 import Foundation
 import Realtime
 import Supabase
-import UIKit
 import UserNotifications
 
 /// Shared inbox across all signed-in accounts + badge updates.
@@ -50,7 +49,7 @@ final class InboxStore: ObservableObject {
                 AnyAction.self,
                 schema: "public",
                 table: "notifications",
-                filter: "user_id=eq.\(userId.uuidString)"
+                filter: .eq("user_id", value: userId.uuidString)
             )
 
             do {
@@ -82,7 +81,7 @@ final class InboxStore: ObservableObject {
             unread = 0
             knownIds = []
             hasSeeded = false
-            UIApplication.shared.applicationIconBadgeNumber = 0
+            await setAppBadge(0)
             return
         }
 
@@ -108,7 +107,7 @@ final class InboxStore: ObservableObject {
         knownIds = Set(next.map(\.id))
         hasSeeded = true
         errorMessage = nil
-        UIApplication.shared.applicationIconBadgeNumber = unread
+        await setAppBadge(unread)
     }
 
     /// Optimistic remove + server delete (no confirmation).
@@ -125,7 +124,7 @@ final class InboxStore: ObservableObject {
         items.removeAll { $0.id == item.id }
         unread = NotificationService.unreadCount(items)
         knownIds = Set(items.map(\.id))
-        UIApplication.shared.applicationIconBadgeNumber = unread
+        await setAppBadge(unread)
 
         do {
             try await NotificationService.delete(
@@ -136,8 +135,16 @@ final class InboxStore: ObservableObject {
             items = previous
             unread = NotificationService.unreadCount(items)
             knownIds = Set(items.map(\.id))
-            UIApplication.shared.applicationIconBadgeNumber = unread
+            await setAppBadge(unread)
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func setAppBadge(_ count: Int) async {
+        do {
+            try await UNUserNotificationCenter.current().setBadgeCount(count)
+        } catch {
+            print("[inbox] badge update failed:", error.localizedDescription)
         }
     }
 }

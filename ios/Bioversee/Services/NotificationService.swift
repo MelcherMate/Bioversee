@@ -76,7 +76,7 @@ enum NotificationService {
         }
 
         if let previous {
-            try? await client.auth.setSession(
+            _ = try? await client.auth.setSession(
                 accessToken: previous.accessToken,
                 refreshToken: previous.refreshToken
             )
@@ -144,7 +144,7 @@ enum NotificationService {
             try await work()
         } catch {
             if let previous {
-                try? await client.auth.setSession(
+                _ = try? await client.auth.setSession(
                     accessToken: previous.accessToken,
                     refreshToken: previous.refreshToken
                 )
@@ -152,7 +152,7 @@ enum NotificationService {
             throw error
         }
         if let previous {
-            try? await client.auth.setSession(
+            _ = try? await client.auth.setSession(
                 accessToken: previous.accessToken,
                 refreshToken: previous.refreshToken
             )
