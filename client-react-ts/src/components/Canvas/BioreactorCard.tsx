@@ -477,6 +477,8 @@ const WATER_CLIP_TOP = -100;
 const WATER_CLIP_HEIGHT = 510;
 /** Drop fall speed toward the water surface (px / s). */
 const DOSE_DRIP_SPEED = 320;
+/** Below this gap, use a short stream instead of spaced drip beads. */
+const DOSE_DRIP_BEAD_MIN_FALL = 110;
 
 type BaseAcidSupplyPipeProps = {
   mode: DoseMode;
@@ -564,7 +566,9 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   const showLiquid = segLen > 0;
   const dripFallPx = doseDripFallPx(fillUnits);
   const dripDuration = Math.max(0.45, dripFallPx / DOSE_DRIP_SPEED);
-  const showDrips = showLiquid && head >= DOSE_PATH_LENGTH - 1 && dripFallPx > 4;
+  const doseAtTip = showLiquid && head >= DOSE_PATH_LENGTH - 1 && dripFallPx > 4;
+  const useDripBeads = doseAtTip && dripFallPx >= DOSE_DRIP_BEAD_MIN_FALL;
+  const useDripStream = doseAtTip && dripFallPx < DOSE_DRIP_BEAD_MIN_FALL;
 
   return (
     <div className="base-acid-supply">
@@ -657,7 +661,21 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
           </g>
         ) : null}
 
-        {showDrips ? (
+        {useDripStream ? (
+          <line
+            className="base-acid-drip-stream"
+            x1={264}
+            y1={DOSE_TIP_Y}
+            x2={264}
+            y2={DOSE_TIP_Y + dripFallPx}
+            stroke={liquidColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+            opacity={0.85}
+          />
+        ) : null}
+
+        {useDripBeads ? (
           <g
             className="base-acid-drips"
             transform={`translate(264 ${DOSE_TIP_Y})`}
