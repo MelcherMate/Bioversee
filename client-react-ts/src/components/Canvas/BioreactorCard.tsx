@@ -475,14 +475,74 @@ type BaseAcidSupplyPipeProps = {
   mode: DoseMode;
 };
 
+function doseColor(mode: DoseMode) {
+  if (mode === "acid") return DOSE_ACID;
+  if (mode === "base") return DOSE_BASE;
+  return null;
+}
+
+/**
+ * Dose tube sequencer: on acid↔base switch, finish draining the current
+ * fluid (and drips) before the new fluid starts filling.
+ */
 function BaseAcidSupplyPipe({ mode }: BaseAcidSupplyPipeProps) {
   const prefix = useId().replace(/:/g, "");
-  const active = mode !== "idle";
-  const colorRef = useRef(DOSE_ACID);
-  if (mode === "acid") colorRef.current = DOSE_ACID;
-  if (mode === "base") colorRef.current = DOSE_BASE;
-  const liquidColor = colorRef.current;
-  const { tail, head } = usePipeSlug(active, DOSE_PATH_LENGTH, DOSE_PIPE_SPEED);
+  const [liquidColor, setLiquidColor] = useState(DOSE_ACID);
+  const [feeding, setFeeding] = useState(false);
+  const liquidColorRef = useRef(liquidColor);
+  const pendingRef = useRef<"acid" | "base" | "idle">("idle");
+  const headAmtRef = useRef(0);
+  const tailAmtRef = useRef(0);
+
+  const { tail, head } = usePipeSlug(
+    feeding,
+    DOSE_PATH_LENGTH,
+    DOSE_PIPE_SPEED,
+  );
+  headAmtRef.current = head;
+  tailAmtRef.current = tail;
+  liquidColorRef.current = liquidColor;
+
+  useEffect(() => {
+    const desiredColor = doseColor(mode);
+    const empty = headAmtRef.current <= 0.5 && tailAmtRef.current <= 0.5;
+
+    if (mode === "idle") {
+      pendingRef.current = "idle";
+      setFeeding(false);
+      return;
+    }
+
+    if (desiredColor === liquidColorRef.current) {
+      pendingRef.current = "idle";
+      setFeeding(true);
+      return;
+    }
+
+    // Different fluid requested — drain current first if anything remains.
+    if (empty) {
+      setLiquidColor(desiredColor!);
+      liquidColorRef.current = desiredColor!;
+      pendingRef.current = "idle";
+      setFeeding(true);
+    } else {
+      pendingRef.current = mode;
+      setFeeding(false);
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (head > 0.5 || tail > 0.5) return;
+    const pending = pendingRef.current;
+    if (pending !== "acid" && pending !== "base") return;
+
+    const next = doseColor(pending)!;
+    setLiquidColor(next);
+    liquidColorRef.current = next;
+    pendingRef.current = "idle";
+    if (mode === pending) setFeeding(true);
+  }, [head, tail, mode]);
+
   const segStart = Math.max(0, tail);
   const segEnd = Math.max(segStart, head);
   const segLen = Math.max(0, Math.min(segEnd, DOSE_PATH_LENGTH) - segStart);
