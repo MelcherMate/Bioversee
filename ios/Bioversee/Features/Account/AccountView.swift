@@ -68,17 +68,29 @@ struct AccountView: View {
                                         appearance.setAppIcon(option)
                                     } label: {
                                         VStack(spacing: 8) {
-                                            AppIconPreview(hex: option.previewHex)
-                                                .frame(width: 60, height: 60)
-                                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                        .strokeBorder(
-                                                            selected ? BVTheme.accent : Color.clear,
-                                                            lineWidth: 3
-                                                        )
-                                                )
-                                                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+                                            ZStack(alignment: .bottomTrailing) {
+                                                Image(option.previewImageName)
+                                                    .resizable()
+                                                    .scaledToFill()
+                                                    .frame(width: 60, height: 60)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                            .strokeBorder(
+                                                                selected ? BVTheme.text : BVTheme.line,
+                                                                lineWidth: selected ? 2.5 : 1
+                                                            )
+                                                    )
+                                                    .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+
+                                                if selected {
+                                                    Image(systemName: "checkmark.circle.fill")
+                                                        .font(.system(size: 18, weight: .semibold))
+                                                        .foregroundStyle(BVTheme.text)
+                                                        .background(Circle().fill(Color.white).padding(2))
+                                                        .offset(x: 4, y: 4)
+                                                }
+                                            }
 
                                             Text(option.label)
                                                 .font(.system(size: 11, weight: selected ? .semibold : .medium))
@@ -223,20 +235,5 @@ private struct ProfileAvatar: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(BVTheme.accent)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-private struct AppIconPreview: View {
-    let hex: String
-
-    var body: some View {
-        ZStack {
-            ColorHex.color(hex)
-            Image("BioverseeLogo")
-                .resizable()
-                .scaledToFit()
-                .padding(12)
-                .foregroundStyle(.white)
-        }
     }
 }

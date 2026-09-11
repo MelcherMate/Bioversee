@@ -32,14 +32,13 @@ struct AppIconOption: Identifiable, Hashable {
     let label: String
     /// `nil` = primary AppIcon.
     let alternateIconName: String?
-    /// Preview plate color (matches generated icon backgrounds).
-    let previewHex: String
+    let previewImageName: String
 
     static let all: [AppIconOption] = [
-        .init(id: "green", label: "Green", alternateIconName: nil, previewHex: "#0d9488"),
-        .init(id: "yellow", label: "Yellow", alternateIconName: "AppIconYellow", previewHex: "#ffe15d"),
-        .init(id: "red", label: "Red", alternateIconName: "AppIconRed", previewHex: "#ff6b6b"),
-        .init(id: "blue", label: "Blue", alternateIconName: "AppIconBlue", previewHex: "#5b9fff"),
+        .init(id: "green", label: "Green", alternateIconName: nil, previewImageName: "IconPreviewGreen"),
+        .init(id: "yellow", label: "Yellow", alternateIconName: "AppIconYellow", previewImageName: "IconPreviewYellow"),
+        .init(id: "red", label: "Red", alternateIconName: "AppIconRed", previewImageName: "IconPreviewRed"),
+        .init(id: "blue", label: "Blue", alternateIconName: "AppIconBlue", previewImageName: "IconPreviewBlue"),
     ]
 
     static let `default` = all[0]

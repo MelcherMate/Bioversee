@@ -31,9 +31,9 @@ struct LoginView: View {
                                 )
                             Image("BioverseeLogo")
                                 .resizable()
+                                .renderingMode(.original)
                                 .scaledToFit()
                                 .frame(width: 34, height: 34)
-                                .foregroundStyle(BVTheme.accent)
                         }
                         .frame(width: 48, height: 48)
 
