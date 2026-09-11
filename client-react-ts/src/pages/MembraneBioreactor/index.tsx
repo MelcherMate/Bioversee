@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
 import { MbrControlPanel } from "../../components/membrane-bioreactor/MbrControlPanel";
 import { MbrDrawing } from "../../components/membrane-bioreactor/MbrDrawing";
 import {
@@ -16,11 +15,8 @@ import {
   insertSliderState,
   insertSwitchState,
 } from "../../lib/actuators";
-import {
-  canOperateDevice,
-  getDeviceForPage,
-  type DeviceWithAccess,
-} from "../../lib/devices";
+import { canOperateDevice } from "../../lib/devices";
+import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
 import "../Bioreactor/Bioreactor.css";
@@ -50,35 +46,13 @@ function snapAerationLevel(value: number): MbrAerationLevel {
 
 function MembraneBioreactor({ user }: MembraneBioreactorProps) {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const preferredDeviceId = searchParams.get("device");
-  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
-  const [ready, setReady] = useState(false);
+  const { device, ready } = useProcessDevice("membrane_bioreactor", user.id);
   const [isFlowOn, setIsFlowOn] = useState(false);
   const [isAerationOn, setIsAerationOn] = useState(false);
   const [aerationLevel, setAerationLevel] = useState<MbrAerationLevel>(
     MBR_DEFAULT_AERATION_LEVEL,
   );
   const flow = useMbrFlowAnimation(isFlowOn);
-
-  useEffect(() => {
-    let cancelled = false;
-    setReady(false);
-    getDeviceForPage("membrane_bioreactor", preferredDeviceId)
-      .then((next) => {
-        if (!cancelled) setDevice(next);
-      })
-      .catch((error) => {
-        console.error(error);
-        if (!cancelled) setDevice(null);
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
     if (!device) return;

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
 import {
   fillUnitsToPercent,
   VESSEL_MAX_FILL_UNITS,
@@ -14,11 +13,8 @@ import {
   insertSensorReading,
   insertSliderState,
 } from "../../lib/actuators";
-import {
-  canOperateDevice,
-  getDeviceForPage,
-  type DeviceWithAccess,
-} from "../../lib/devices";
+import { canOperateDevice } from "../../lib/devices";
+import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
 import "../Bioreactor/Bioreactor.css";
@@ -32,10 +28,7 @@ type PressureVesselProps = {
 
 function PressureVessel({ user }: PressureVesselProps) {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const preferredDeviceId = searchParams.get("device");
-  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
-  const [ready, setReady] = useState(false);
+  const { device, ready } = useProcessDevice("pressure_vessel", user.id);
   const [fillUnits, setFillUnits] = useState(
     Math.round(VESSEL_MAX_FILL_UNITS / 2),
   );
@@ -50,25 +43,6 @@ function PressureVessel({ user }: PressureVesselProps) {
       : fillUnits;
 
   fillUnitsRef.current = fillUnits;
-
-  useEffect(() => {
-    let cancelled = false;
-    setReady(false);
-    getDeviceForPage("pressure_vessel", preferredDeviceId)
-      .then((next) => {
-        if (!cancelled) setDevice(next);
-      })
-      .catch((error) => {
-        console.error(error);
-        if (!cancelled) setDevice(null);
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user.id, preferredDeviceId]);
 
   const persistLevel = (units: number) => {
     if (!device || !canOperateDevice(device.role)) return;

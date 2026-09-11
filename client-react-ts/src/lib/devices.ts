@@ -106,7 +106,10 @@ async function withMembership(
 
 /**
  * Resolve the device for a process page.
- * Prefer `preferredId` when accessible; otherwise the first owned device of that type.
+ * Prefer `preferredId` when accessible. If a preferred id was requested but is
+ * no longer accessible, return null (caller should redirect) — do not silently
+ * fall back to another device while the URL still points at the lost one.
+ * With no preferred id, use the first owned device of that type.
  */
 export async function getDeviceForPage(
   type: DeviceType,
@@ -121,7 +124,8 @@ export async function getDeviceForPage(
       .maybeSingle();
 
     if (error) throw error;
-    if (data) return withMembership(data as Device);
+    if (!data) return null;
+    return withMembership(data as Device);
   }
 
   const owned = await getMyDevice(type);

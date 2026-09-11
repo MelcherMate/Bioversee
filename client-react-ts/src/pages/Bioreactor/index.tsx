@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
 import Canvas from "../../components/Canvas";
 import Chart from "../../components/Chart/index";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
-import {
-  canOperateDevice,
-  getDeviceForPage,
-  type DeviceWithAccess,
-} from "../../lib/devices";
+import { canOperateDevice } from "../../lib/devices";
+import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./Bioreactor.css";
@@ -27,11 +23,8 @@ interface BioreactorProps {
 
 function Bioreactor({ user }: BioreactorProps) {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
-  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
-  const [ready, setReady] = useState(false);
+  const { device, ready } = useProcessDevice("bioreactor", user.id);
   const [cards, setCards] = useState<Card[]>([
     {
       id: "bioreactor",
@@ -39,25 +32,6 @@ function Bioreactor({ user }: BioreactorProps) {
       text: "",
     },
   ]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setReady(false);
-    getDeviceForPage("bioreactor", preferredDeviceId)
-      .then((next) => {
-        if (!cancelled) setDevice(next);
-      })
-      .catch((error) => {
-        console.error(error);
-        if (!cancelled) setDevice(null);
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
     setCards([

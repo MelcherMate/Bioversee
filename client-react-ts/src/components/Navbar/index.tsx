@@ -37,7 +37,7 @@ import {
 import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import { subscribeMyNotifications } from "../../lib/notificationsSync";
 import { subscribeMyDevices } from "../../lib/devicesSync";
-import { pathForDeviceType, deviceTypeFromPath } from "../../lib/sharing";
+import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice } from "../../lib/sharing";
 import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
@@ -98,12 +98,24 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const refreshDevices = useCallback(() => {
     return listAccessibleDevices()
-      .then(setDevices)
+      .then((next) => {
+        setDevices(next);
+        const preferred = searchParams.get("device");
+        if (preferred && !next.some((device) => device.id === preferred)) {
+          navigate(
+            fallbackPathAfterLostDevice(
+              next,
+              deviceTypeFromPath(location.pathname)
+            ),
+            { replace: true }
+          );
+        }
+      })
       .catch((err) => {
         console.error(err);
         setDevices([]);
       });
-  }, []);
+  }, [location.pathname, navigate, searchParams]);
 
   useEffect(() => {
     refreshAccounts();

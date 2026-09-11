@@ -1,5 +1,6 @@
 -- Live device list sync (web + iOS Realtime).
 -- Run in Supabase SQL Editor. Idempotent.
+-- Also run device_members_select_for_realtime.sql so leave/DELETE events deliver.
 
 alter table public.devices replica identity full;
 alter table public.device_members replica identity full;

@@ -363,7 +363,10 @@ drop policy if exists "Members delete by device admins" on public.device_members
 create policy "Members readable by device members"
   on public.device_members for select
   to authenticated
-  using (public.user_can_access_device(device_id));
+  using (
+    user_id = auth.uid()
+    or public.user_can_access_device(device_id)
+  );
 
 create policy "Members insert by device admins"
   on public.device_members for insert

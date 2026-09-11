@@ -72,6 +72,23 @@ export function openSharedDeviceUrl(device: Pick<Device, "id" | "type">): string
   return `${pathForDeviceType(device.type)}?device=${device.id}`;
 }
 
+/** Path to open after the current `?device=` is no longer accessible. */
+export function fallbackPathAfterLostDevice(
+  devices: Array<Pick<Device, "id" | "type">>,
+  routeType: DeviceType | null
+): string {
+  const sameType =
+    (routeType && devices.find((device) => device.type === routeType)) || null;
+  if (sameType) {
+    return `${pathForDeviceType(sameType.type)}?device=${sameType.id}`;
+  }
+  const first = devices[0];
+  if (first) {
+    return `${pathForDeviceType(first.type)}?device=${first.id}`;
+  }
+  return routeType ? pathForDeviceType(routeType) : "/bioreactor";
+}
+
 /** Devices the caller can admin (owner/admin membership). */
 export async function listShareableDevices(): Promise<Device[]> {
   const { data: memberships, error: memberError } = await supabase

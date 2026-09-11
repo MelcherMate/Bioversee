@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
 import Canvas2 from "../../components/Canvas2";
 import Chart from "../../components/Chart";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
-import {
-  canOperateDevice,
-  getDeviceForPage,
-  type DeviceWithAccess,
-} from "../../lib/devices";
+import { canOperateDevice } from "../../lib/devices";
+import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./WaterPurifier.css";
@@ -27,11 +23,8 @@ interface WaterpurifierProps {
 
 function WaterPurifier({ user }: WaterpurifierProps) {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const preferredDeviceId = searchParams.get("device");
   const [canvasRef, canvasSize] = useDimensions();
-  const [device, setDevice] = useState<DeviceWithAccess | null>(null);
-  const [ready, setReady] = useState(false);
+  const { device, ready } = useProcessDevice("water_purifier", user.id);
   const [cards, setCards] = useState<Card[]>([
     {
       id: "waterpurifier",
@@ -39,25 +32,6 @@ function WaterPurifier({ user }: WaterpurifierProps) {
       text: "",
     },
   ]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setReady(false);
-    getDeviceForPage("water_purifier", preferredDeviceId)
-      .then((next) => {
-        if (!cancelled) setDevice(next);
-      })
-      .catch((error) => {
-        console.error(error);
-        if (!cancelled) setDevice(null);
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user.id, preferredDeviceId]);
 
   useEffect(() => {
     setCards([
