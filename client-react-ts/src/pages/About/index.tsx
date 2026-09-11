@@ -108,23 +108,26 @@ function About() {
           <div className="landing-story">
             <article className="landing-story__block">
               <img
-                className="landing-story__photo"
+                className="landing-story__media landing-story__photo"
                 src={Mate}
                 alt={t("about.founderName")}
-                width={120}
-                height={120}
+                width={96}
+                height={96}
               />
-              <div>
+              <div className="landing-story__copy">
                 <p className="landing-story__role">{t("about.founder")}</p>
                 <h3 className="landing-story__name">{t("about.founderName")}</h3>
                 <p className="landing-story__text">{t("about.founderBody")}</p>
               </div>
             </article>
             <article className="landing-story__block">
-              <span className="landing-story__logo-wrap" aria-hidden="true">
-                <img src={Logo} alt="" width={64} height={64} />
+              <span
+                className="landing-story__media landing-story__logo-wrap"
+                aria-hidden="true"
+              >
+                <img src={Logo} alt="" width={48} height={48} />
               </span>
-              <div>
+              <div className="landing-story__copy">
                 <p className="landing-story__role">{t("about.company")}</p>
                 <h3 className="landing-story__name">{t("common.brand")}</h3>
                 <p className="landing-story__text">{t("about.companyBody")}</p>
