@@ -7,71 +7,21 @@
   height: 521px;
 }
 
-/* THERMAL JACKET — original U-shell, fitted to widened vessel */
+/* THERMAL JACKET — SVG shell follows vessel; pipe-matched metal */
 .thermal-jacket {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 442px;
-  height: 521px;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
 }
 
-.thermal_jacket_shell {
-  display: block;
-  position: relative;
-  border-left: 20px solid grey;
-  border-right: 20px solid grey;
-  height: 300px;
-  width: 442px;
-  box-sizing: border-box;
-  z-index: 0;
-}
-
-/* Patch the straight-to-curve join so page white cannot show through */
-.thermal_jacket_shell::before,
-.thermal_jacket_shell::after {
-  content: "";
-  position: absolute;
-  bottom: -3px;
-  width: 20px;
-  height: 6px;
-  background: grey;
-  pointer-events: none;
-}
-
-.thermal_jacket_shell::before {
-  left: -20px;
-}
-
-.thermal_jacket_shell::after {
-  right: -20px;
-}
-
-.thermal_jacket_lower_cap {
-  display: block;
-  position: relative;
-  width: 442px;
-  height: 221px;
-  box-sizing: border-box;
-  border-bottom-left-radius: 221px;
-  border-bottom-right-radius: 221px;
-  border: 20px solid grey;
-  border-top: 0;
-  margin-top: -2px;
-  z-index: 0;
-}
-
-.thermal-jacket__flow-svg {
+.thermal-jacket__svg {
   position: absolute;
   left: -120px;
-  top: -20px;
+  top: -140px;
   width: 682px;
-  height: 560px;
+  height: 620px;
   overflow: visible;
-  z-index: 1;
-  pointer-events: none;
 }
 
 .thermal-jacket__water {

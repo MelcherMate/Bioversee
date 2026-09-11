@@ -25,12 +25,112 @@ const CARD_HEIGHT = 750;
 const FLOW_WARM = "#e11d48";
 const FLOW_COLD = "#0284c7";
 
-/**
- * Centerline: left supply → down jacket wall → around bottom U → up right → discharge.
- * Coordinates are wrapper-local (jacket outer box 0..442, top at 0).
- */
-const JACKET_FLOW_PATH =
-  "M -100 40 L 10 40 L 10 300 A 211 211 0 0 0 432 300 L 432 250 L 542 250";
+/** Chamber outer box (matches .reaction_chamber, border-box). */
+const VESSEL = {
+  left: 20,
+  right: 422,
+  top: -120,
+  bottom: 430,
+  radius: 169,
+} as const;
+
+/** Jacket wall thickness — matches pipe OD language. */
+const JACKET_THICK = 18;
+/** Jacket starts on the straight wall (below top dome). */
+const JACKET_TOP = 52;
+/** Diagonal cut depth on both tops. */
+const JACKET_DIAG = 26;
+/** Inlet / outlet height (outlet raised to near the top). */
+const JACKET_PORT_Y = JACKET_TOP + 14;
+
+function jacketRadii() {
+  const inner = {
+    left: VESSEL.left,
+    right: VESSEL.right,
+    bottom: VESSEL.bottom,
+    r: VESSEL.radius,
+    leftCx: VESSEL.left + VESSEL.radius,
+    rightCx: VESSEL.right - VESSEL.radius,
+    cy: VESSEL.bottom - VESSEL.radius,
+  };
+  const outer = {
+    left: VESSEL.left - JACKET_THICK,
+    right: VESSEL.right + JACKET_THICK,
+    bottom: VESSEL.bottom + JACKET_THICK,
+    r: VESSEL.radius + JACKET_THICK,
+    leftCx: inner.leftCx,
+    rightCx: inner.rightCx,
+    cy: inner.cy,
+  };
+  return { inner, outer };
+}
+
+/** Filled U jacket with diagonal tops, following the vessel bottom. */
+function buildJacketShellPath(): string {
+  const { inner, outer } = jacketRadii();
+  const top = JACKET_TOP;
+  const diag = JACKET_DIAG;
+
+  // Outer outline (left top → down → around bottom → up right → diagonal in)
+  // Left outer top (high) to left outer after starting the side
+  const oLeftTop = outer.left;
+  const oRightTop = outer.right;
+  const iLeftTop = inner.left;
+  const iRightTop = inner.right;
+
+  return [
+    // Start at left outer top (after diagonal: outer corner is higher)
+    `M ${oLeftTop} ${top}`,
+    // Down outer left wall to start of bottom arc
+    `L ${oLeftTop} ${outer.cy}`,
+    // Outer bottom-left arc (west → south)
+    `A ${outer.r} ${outer.r} 0 0 0 ${outer.leftCx} ${outer.bottom}`,
+    // Flat outer bottom
+    `L ${outer.rightCx} ${outer.bottom}`,
+    // Outer bottom-right arc (south → east)
+    `A ${outer.r} ${outer.r} 0 0 0 ${oRightTop} ${outer.cy}`,
+    // Up outer right wall
+    `L ${oRightTop} ${top}`,
+    // Right diagonal cut (outer high → inner low)
+    `L ${iRightTop} ${top + diag}`,
+    // Down? No — go down the INNER right wall
+    `L ${iRightTop} ${inner.cy}`,
+    // Inner bottom-right arc (east → south) reversed direction along inner
+    `A ${inner.r} ${inner.r} 0 0 1 ${inner.rightCx} ${inner.bottom}`,
+    // Flat inner bottom (right → left)
+    `L ${inner.leftCx} ${inner.bottom}`,
+    // Inner bottom-left arc (south → west)
+    `A ${inner.r} ${inner.r} 0 0 1 ${iLeftTop} ${inner.cy}`,
+    // Up inner left wall to diagonal
+    `L ${iLeftTop} ${top + diag}`,
+    // Left diagonal cut back to outer top
+    `L ${oLeftTop} ${top}`,
+    "Z",
+  ].join(" ");
+}
+
+/** Flow centerline through the jacket channel. */
+function buildJacketFlowPath(): string {
+  const { inner, outer } = jacketRadii();
+  const midLeft = (inner.left + outer.left) / 2;
+  const midRight = (inner.right + outer.right) / 2;
+  const midR = (inner.r + outer.r) / 2;
+  const midBottom = (inner.bottom + outer.bottom) / 2;
+  const leftCx = inner.leftCx;
+  const rightCx = inner.rightCx;
+  const yPort = JACKET_PORT_Y;
+
+  return [
+    `M -100 ${yPort}`,
+    `L ${midLeft} ${yPort}`,
+    `L ${midLeft} ${inner.cy}`,
+    `A ${midR} ${midR} 0 0 0 ${leftCx} ${midBottom}`,
+    `L ${rightCx} ${midBottom}`,
+    `A ${midR} ${midR} 0 0 0 ${midRight} ${inner.cy}`,
+    `L ${midRight} ${yPort}`,
+    `L 542 ${yPort}`,
+  ].join(" ");
+}
 
 type ThermalJacketProps = {
   mode: JacketMode;
@@ -47,19 +147,25 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         ? "thermal-jacket--cold"
         : "thermal-jacket--idle";
 
+  const shellPath = buildJacketShellPath();
+  const flowPath = buildJacketFlowPath();
+  const yPort = JACKET_PORT_Y;
+  const { inner, outer } = jacketRadii();
+  const midLeft = (inner.left + outer.left) / 2;
+  const midRight = (inner.right + outer.right) / 2;
+  const supplyPath = `M -100 ${yPort} L ${midLeft} ${yPort}`;
+  const dischargePath = `M ${midRight} ${yPort} L 542 ${yPort}`;
+
   return (
     <div className={`thermal-jacket ${modeClass}`}>
-      <div className="thermal_jacket_shell" />
-      <div className="thermal_jacket_lower_cap" />
-
       <svg
-        className="thermal-jacket__flow-svg"
-        viewBox="-120 -20 682 560"
+        className="thermal-jacket__svg"
+        viewBox="-120 -140 682 620"
         aria-hidden
       >
         <defs>
           <filter
-            id={`${prefix}-pipe`}
+            id={`${prefix}-metal`}
             x="-20%"
             y="-20%"
             width="140%"
@@ -73,33 +179,44 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
               floodOpacity="0.18"
             />
           </filter>
+          <linearGradient
+            id={`${prefix}-jacket-fill`}
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+          >
+            <stop offset="0%" stopColor={PIPE_METAL.light} />
+            <stop offset="55%" stopColor={PIPE_FILL} />
+            <stop offset="100%" stopColor={PIPE_METAL.mid} />
+          </linearGradient>
         </defs>
 
-        {/* Metal supply + discharge stubs */}
-        <g filter={`url(#${prefix}-pipe)`}>
+        {/* Inlet / outlet behind the jacket shell */}
+        <g filter={`url(#${prefix}-metal)`}>
           <path
-            d="M -100 40 L 10 40"
+            d={supplyPath}
             fill="none"
             stroke={PIPE_METAL.stroke}
             strokeWidth={PIPE_OD + 3}
             strokeLinecap="butt"
           />
           <path
-            d="M -100 40 L 10 40"
+            d={supplyPath}
             fill="none"
             stroke={PIPE_FILL}
             strokeWidth={PIPE_OD}
             strokeLinecap="butt"
           />
           <path
-            d="M 432 250 L 542 250"
+            d={dischargePath}
             fill="none"
             stroke={PIPE_METAL.stroke}
             strokeWidth={PIPE_OD + 3}
             strokeLinecap="butt"
           />
           <path
-            d="M 432 250 L 542 250"
+            d={dischargePath}
             fill="none"
             stroke={PIPE_FILL}
             strokeWidth={PIPE_OD}
@@ -107,25 +224,34 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
           />
         </g>
 
+        {/* Jacket shell on top of pipe stubs at the connection */}
+        <g filter={`url(#${prefix}-metal)`}>
+          <path
+            d={shellPath}
+            fill={`url(#${prefix}-jacket-fill)`}
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={2}
+            strokeLinejoin="round"
+          />
+        </g>
+
         {flowing ? (
           <g className="thermal-jacket__flow-group">
-            {/* Solid water body in the jacket channel + stubs */}
             <path
               className="thermal-jacket__water"
-              d={JACKET_FLOW_PATH}
+              d={flowPath}
               fill="none"
               stroke={flowColor}
-              strokeWidth={12}
+              strokeWidth={11}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {/* Brighter moving highlight on top of the solid stream */}
             <path
               className="thermal-jacket__flow-pulse"
-              d={JACKET_FLOW_PATH}
+              d={flowPath}
               fill="none"
               stroke="rgba(255, 255, 255, 0.55)"
-              strokeWidth={5}
+              strokeWidth={4.5}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
