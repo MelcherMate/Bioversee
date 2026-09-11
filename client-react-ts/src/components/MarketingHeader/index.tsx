@@ -8,13 +8,13 @@ function MarketingHeader() {
 
   return (
     <header className="mkt-header">
-      <Link to="/about" className="mkt-header__brand">
+      <Link to="/" className="mkt-header__brand">
         <span className="mkt-header__mark" aria-hidden="true">
           <img src={Logo} alt="" width={28} height={28} />
         </span>
         <span className="mkt-header__name">{t("common.brand")}</span>
       </Link>
-      <Link to="/" className="mkt-header__signin">
+      <Link to="/login" className="mkt-header__signin">
         {t("auth.signIn")}
       </Link>
     </header>

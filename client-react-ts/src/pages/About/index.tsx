@@ -56,7 +56,7 @@ function About() {
           <p className="landing-hero__headline">{t("about.headline")}</p>
           <p className="landing-hero__body">{t("about.heroBody")}</p>
           <div className="landing-hero__actions">
-            <Link to="/" className="landing-btn landing-btn--primary">
+            <Link to="/login" className="landing-btn landing-btn--primary">
               {t("auth.signIn")}
             </Link>
             <a href="#product" className="landing-btn landing-btn--ghost">
@@ -148,7 +148,7 @@ function About() {
           <p className="landing-lede landing-lede--on-accent">
             {t("about.ctaBody")}
           </p>
-          <Link to="/" className="landing-btn landing-btn--on-accent">
+          <Link to="/login" className="landing-btn landing-btn--on-accent">
             {t("auth.signIn")}
           </Link>
         </div>

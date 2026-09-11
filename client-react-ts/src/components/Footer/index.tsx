@@ -22,7 +22,7 @@ function Footer({ showSignIn = false }: FooterProps) {
           {t("footer.about")}
         </Link>
         {showSignIn ? (
-          <Link className="site-footer__link" to="/">
+          <Link className="site-footer__link" to="/login">
             {t("auth.signIn")}
           </Link>
         ) : null}

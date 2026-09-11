@@ -77,7 +77,7 @@ function Invite({ user }: InviteProps) {
           <p className="invite-card__body">
             {t("auth.subtitle")}
           </p>
-          <Link className="invite-card__cta" to={`/?next=/invite/${token ?? ""}`}>
+          <Link className="invite-card__cta" to={`/login?next=/invite/${token ?? ""}`}>
             {t("invite.signIn")}
           </Link>
         </div>

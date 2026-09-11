@@ -117,7 +117,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
       ? `${window.location.origin}/bioreactor`
       : nextPath
         ? `${window.location.origin}${nextPath}`
-        : window.location.origin;
+        : `${window.location.origin}/bioreactor`;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -223,7 +223,12 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           {message && <p className="auth-message">{message}</p>}
 
           {!addingAccount && (
-            <p className="auth-note">{t("auth.demoNote")}</p>
+            <>
+              <p className="auth-note">{t("auth.demoNote")}</p>
+              <Link className="auth-note auth-note--link" to="/">
+                {t("auth.backHome")}
+              </Link>
+            </>
           )}
         </div>
       </div>

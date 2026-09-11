@@ -153,37 +153,66 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
   const addingAccount = pathname === "/add-account";
   const onInvite = pathname.startsWith("/invite/");
   const onIosAuth = pathname === "/ios-auth";
-  const onAbout = pathname === "/about";
+  const onLanding =
+    pathname === "/about" || (pathname === "/" && !user);
   const showChrome = Boolean(user) && !addingAccount && !onIosAuth;
-  const showMarketingHeader = onAbout && !user;
-  const showFooter = showChrome || onAbout;
+  const showMarketingHeader = onLanding && !user;
+  const showFooter = showChrome || onLanding;
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
+
+  const loginRedirect = (next: string) => (
+    <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
+  );
 
   return (
     <div
-      className={`appContainer ${showChrome ? "" : "appContainer--auth"}`.trim()}
+      className={`appContainer ${showChrome || onLanding ? "" : "appContainer--auth"}`.trim()}
     >
       {showMarketingHeader && <MarketingHeader />}
       {showChrome && user && <Navbar user={user} />}
       <div className="page-slot">
         <Routes>
-          <Route path="/" element={user ? <HomeRedirect /> : <Login />} />
+          <Route path="/" element={user ? <HomeRedirect /> : <About />} />
+          <Route
+            path="/login"
+            element={user ? <HomeRedirect /> : <Login />}
+          />
           <Route path="/add-account" element={<Login mode="add-account" />} />
           <Route
             path="/bioreactor"
-            element={user ? <Bioreactor user={user} /> : <Login />}
+            element={
+              user ? <Bioreactor user={user} /> : loginRedirect("/bioreactor")
+            }
           />
           <Route
             path="/pressure-vessel"
-            element={user ? <PressureVessel user={user} /> : <Login />}
+            element={
+              user ? (
+                <PressureVessel user={user} />
+              ) : (
+                loginRedirect("/pressure-vessel")
+              )
+            }
           />
           <Route
             path="/membrane-bioreactor"
-            element={user ? <MembraneBioreactor user={user} /> : <Login />}
+            element={
+              user ? (
+                <MembraneBioreactor user={user} />
+              ) : (
+                loginRedirect("/membrane-bioreactor")
+              )
+            }
           />
           <Route
             path="/waterpurifier"
-            element={user ? <WaterPurifier user={user} /> : <Login />}
+            element={
+              user ? (
+                <WaterPurifier user={user} />
+              ) : (
+                loginRedirect("/waterpurifier")
+              )
+            }
           />
           <Route path="/invite/:token" element={<Invite user={user} />} />
           <Route path="/ios-auth" element={<IosAuthBridge />} />
