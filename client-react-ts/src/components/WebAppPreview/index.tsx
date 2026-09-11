@@ -53,14 +53,14 @@ function WebAppPreview() {
               <span className="web-preview__row-text" />
               <span className="web-preview__slider">
                 <span className="web-preview__slider-track" />
-                <span className="web-preview__slider-thumb" style={{ left: "50%" }} />
+                <span className="web-preview__slider-thumb web-preview__slider-thumb--a" />
               </span>
             </span>
             <span className="web-preview__slider-block">
               <span className="web-preview__row-text" />
               <span className="web-preview__slider">
                 <span className="web-preview__slider-track web-preview__slider-track--alt" />
-                <span className="web-preview__slider-thumb" style={{ left: "53%" }} />
+                <span className="web-preview__slider-thumb web-preview__slider-thumb--b" />
               </span>
             </span>
           </div>

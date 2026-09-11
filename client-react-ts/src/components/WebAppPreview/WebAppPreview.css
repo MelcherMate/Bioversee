@@ -1,5 +1,5 @@
 .web-preview {
-  width: min(620px, 100%);
+  width: min(680px, 100%);
   border-radius: 18px;
   overflow: hidden;
   background: #f5f5f7;
@@ -79,12 +79,11 @@
   background: #d2d2d7;
 }
 
+/* Same spatial model as the real bioreactor page: full-bleed center,
+   controls docked left, measurements docked right. */
 .web-preview__stage {
   position: relative;
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr) 150px;
-  gap: 10px;
-  min-height: 300px;
+  min-height: 320px;
   padding: 12px;
   background:
     radial-gradient(
@@ -97,10 +96,21 @@
 
 .web-preview__controls,
 .web-preview__charts {
+  position: absolute;
+  top: 12px;
+  z-index: 3;
+  width: 148px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 2;
+}
+
+.web-preview__controls {
+  left: 12px;
+}
+
+.web-preview__charts {
+  right: 12px;
 }
 
 .web-preview__panel {
@@ -109,9 +119,9 @@
   gap: 8px;
   padding: 12px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.75);
-  box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(10px);
 }
 
@@ -225,16 +235,26 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 
+.web-preview__slider-thumb--a {
+  left: 50%;
+}
+
+.web-preview__slider-thumb--b {
+  left: 53%;
+}
+
 .web-preview__canvas {
   position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
-  min-height: 260px;
+  min-height: 296px;
+  padding: 0 160px;
 }
 
 .web-preview__reactor {
   position: relative;
-  width: min(220px, 100%);
+  width: min(240px, 100%);
   height: 230px;
 }
 
@@ -372,11 +392,12 @@
 
 .web-preview__zoom {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
+  right: 168px;
+  bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  z-index: 2;
 }
 
 .web-preview__zoom span {
@@ -430,15 +451,38 @@
 }
 
 @media (max-width: 720px) {
+  .web-preview__controls,
+  .web-preview__charts {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    width: 100%;
+  }
+
   .web-preview__stage {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .web-preview__canvas {
-    grid-column: 1 / -1;
     order: -1;
     min-height: 210px;
+    padding: 0;
+  }
+
+  .web-preview__controls {
+    order: 0;
+  }
+
+  .web-preview__charts {
+    order: 1;
+  }
+
+  .web-preview__zoom {
+    right: 8px;
+    bottom: 8px;
   }
 
   .web-preview__reactor {
