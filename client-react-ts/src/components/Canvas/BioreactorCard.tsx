@@ -35,11 +35,17 @@ const JACKET_COLOR_BLEND_SECONDS = 7.5;
 /**
  * Flow dashes that travel continuously along the jacket pipe
  * (same stroke-dashoffset motion as mates_garage sieve-dash).
+ * Multiple layers with staggered fades so lines appear/disappear over time.
  */
 const JACKET_FLOW_DASH = 28;
 const JACKET_FLOW_GAP = 72;
 const JACKET_FLOW_CYCLE = JACKET_FLOW_DASH + JACKET_FLOW_GAP;
 const JACKET_FLOW_CYCLE_SECONDS = 1.4;
+const JACKET_FLOW_LAYERS = [
+  { moveDelay: "0s", fadeDelay: "0s" },
+  { moveDelay: "0.45s", fadeDelay: "1.1s" },
+  { moveDelay: "0.9s", fadeDelay: "2.2s" },
+] as const;
 /** Pipe fill/clear speed — 2× dash travel. */
 const JACKET_PIPE_WATER_SPEED =
   (JACKET_FLOW_CYCLE / JACKET_FLOW_CYCLE_SECONDS) * 2;
@@ -431,18 +437,24 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
               strokeDasharray={`${segLen} ${JACKET_FLOW_PATH_LENGTH}`}
               strokeDashoffset={-segStart}
             />
-            <path
-              className="thermal-jacket__flow-dash"
-              d={pipePath}
-              pathLength={JACKET_FLOW_PATH_LENGTH}
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.55)"
-              strokeWidth={JACKET_FLOW_LINE_WIDTH}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={`${JACKET_FLOW_DASH} ${JACKET_FLOW_GAP}`}
-              mask={`url(#${prefix}-water-mask)`}
-            />
+            {JACKET_FLOW_LAYERS.map((layer, i) => (
+              <path
+                key={i}
+                className="thermal-jacket__flow-dash"
+                d={pipePath}
+                pathLength={JACKET_FLOW_PATH_LENGTH}
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.55)"
+                strokeWidth={JACKET_FLOW_LINE_WIDTH}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray={`${JACKET_FLOW_DASH} ${JACKET_FLOW_GAP}`}
+                mask={`url(#${prefix}-water-mask)`}
+                style={{
+                  animationDelay: `${layer.moveDelay}, ${layer.fadeDelay}`,
+                }}
+              />
+            ))}
           </g>
         ) : null}
       </svg>
