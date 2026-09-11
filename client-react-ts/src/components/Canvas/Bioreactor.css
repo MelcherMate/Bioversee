@@ -24,15 +24,22 @@
   overflow: visible;
 }
 
-/* Flow ~ marks traveling along the jacket water */
-.thermal-jacket__flow-marks {
-  pointer-events: none;
-  user-select: none;
+/* Simple dashes traveling along the jacket flow */
+.thermal-jacket__flow-dash {
+  animation: thermal-jacket-flow-dash 1.4s linear infinite;
+}
+
+@keyframes thermal-jacket-flow-dash {
+  to {
+    stroke-dashoffset: -100;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thermal-jacket__flow-marks animate {
-    display: none;
+  .thermal-jacket__flow-dash {
+    animation: none;
+    opacity: 0.35;
+    stroke-dasharray: none;
   }
 }
 

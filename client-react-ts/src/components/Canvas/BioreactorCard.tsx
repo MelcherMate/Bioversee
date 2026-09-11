@@ -33,15 +33,16 @@ const JACKET_WATER_COLD: string = APPLE_DEPTH_COLORS.cyan;
 const JACKET_COLOR_BLEND_SECONDS = 7.5;
 
 /**
- * Flow marks that travel continuously along the jacket pipe (~ instead of -).
+ * Simple dashes traveling left→right along the jacket pipe.
  */
-const JACKET_FLOW_MARKS = Array.from({ length: 48 }, () => "~").join("  ");
-const JACKET_FLOW_CYCLE = 100;
+const JACKET_FLOW_DASH = 28;
+const JACKET_FLOW_GAP = 72;
+const JACKET_FLOW_CYCLE = JACKET_FLOW_DASH + JACKET_FLOW_GAP;
 const JACKET_FLOW_CYCLE_SECONDS = 1.4;
-/** Pipe fill/clear speed — 2× mark travel. */
+/** Pipe fill/clear speed — 2× dash travel. */
 const JACKET_PIPE_WATER_SPEED =
   (JACKET_FLOW_CYCLE / JACKET_FLOW_CYCLE_SECONDS) * 2;
-const JACKET_FLOW_MARK_SIZE = 11;
+const JACKET_FLOW_LINE_WIDTH = 2.5;
 
 function hexToRgb(hex: string) {
   const h = hex.replace("#", "");
@@ -428,32 +429,18 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
               strokeDasharray={`${segLen} ${JACKET_FLOW_PATH_LENGTH}`}
               strokeDashoffset={-segStart}
             />
-            <defs>
-              <path
-                id={`${prefix}-flow-guide`}
-                d={pipePath}
-                pathLength={JACKET_FLOW_PATH_LENGTH}
-                fill="none"
-              />
-            </defs>
-            <text
-              className="thermal-jacket__flow-marks"
-              fill="rgba(255, 255, 255, 0.55)"
-              fontSize={JACKET_FLOW_MARK_SIZE}
-              dominantBaseline="middle"
+            <path
+              className="thermal-jacket__flow-dash"
+              d={pipePath}
+              pathLength={JACKET_FLOW_PATH_LENGTH}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth={JACKET_FLOW_LINE_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${JACKET_FLOW_DASH} ${JACKET_FLOW_GAP}`}
               mask={`url(#${prefix}-water-mask)`}
-            >
-              <textPath href={`#${prefix}-flow-guide`}>
-                {JACKET_FLOW_MARKS}
-                <animate
-                  attributeName="startOffset"
-                  from="0"
-                  to={`-${JACKET_FLOW_CYCLE}`}
-                  dur={`${JACKET_FLOW_CYCLE_SECONDS}s`}
-                  repeatCount="indefinite"
-                />
-              </textPath>
-            </text>
+            />
           </g>
         ) : null}
       </svg>
