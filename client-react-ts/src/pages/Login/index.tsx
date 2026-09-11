@@ -5,6 +5,7 @@ import Google from "../../img/google.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import SegmentedControl from "../../components/SegmentedControl";
 import { upsertStoredSession } from "../../lib/accountSessions";
+import { APP_HOME_PATH } from "../../lib/sharing";
 import { supabase } from "../../lib/supabase";
 import "./Login.css";
 
@@ -52,7 +53,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         if (addingAccount) {
-          navigate("/bioreactor", { replace: true });
+          navigate(APP_HOME_PATH, { replace: true });
           return;
         }
         if (nextPath) {
@@ -87,7 +88,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
         if (data.session) {
           upsertStoredSession(data.session, { resetSignedInAt: true });
         }
-        navigate(addingAccount ? "/bioreactor" : nextPath ?? "/bioreactor", {
+        navigate(addingAccount ? APP_HOME_PATH : nextPath ?? APP_HOME_PATH, {
           replace: true,
         });
       } else {
@@ -114,10 +115,10 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
       }
     }
     const redirectTo = addingAccount
-      ? `${window.location.origin}/bioreactor`
+      ? `${window.location.origin}${APP_HOME_PATH}`
       : nextPath
         ? `${window.location.origin}${nextPath}`
-        : `${window.location.origin}/bioreactor`;
+        : `${window.location.origin}${APP_HOME_PATH}`;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -214,7 +215,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           </button>
 
           {addingAccount && (
-            <Link className="auth-note auth-note--link" to="/bioreactor">
+            <Link className="auth-note auth-note--link" to={APP_HOME_PATH}>
               {t("auth.cancelStay")}
             </Link>
           )}

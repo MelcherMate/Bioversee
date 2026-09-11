@@ -10,12 +10,12 @@ import {
 } from "react-router-dom";
 import "./App.css";
 import DevDataPanel from "./components/DevDataPanel";
-import Footer from "./components/Footer";
 import MarketingHeader from "./components/MarketingHeader";
 import Navbar from "./components/Navbar";
 import OnboardingModal from "./components/OnboardingModal";
 import { AppStatusProvider } from "./lib/appStatus";
 import { syncAccountVaultFromSession, enforceSessionMaxAge } from "./lib/accountSessions";
+import { APP_HOME_PATH } from "./lib/sharing";
 import { supabase } from "./lib/supabase";
 import { type AppUser, toAppUser } from "./lib/user";
 import About from "./pages/About";
@@ -36,7 +36,15 @@ function safeNextPath(raw: string | null): string | null {
 function HomeRedirect() {
   const [searchParams] = useSearchParams();
   const nextPath = safeNextPath(searchParams.get("next"));
-  return <Navigate to={nextPath ?? "/bioreactor"} replace />;
+  return <Navigate to={nextPath ?? APP_HOME_PATH} replace />;
+}
+
+function LegacyBioreactorRedirect() {
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  return (
+    <Navigate to={qs ? `${APP_HOME_PATH}?${qs}` : APP_HOME_PATH} replace />
+  );
 }
 
 const App = () => {
@@ -157,7 +165,6 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
     pathname === "/about" || (pathname === "/" && !user);
   const showChrome = Boolean(user) && !addingAccount && !onIosAuth;
   const showMarketingHeader = onLanding && !user;
-  const showFooter = showChrome;
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
 
   const loginRedirect = (next: string) => (
@@ -185,11 +192,12 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
           />
           <Route path="/add-account" element={<Login mode="add-account" />} />
           <Route
-            path="/bioreactor"
+            path="/dashboard"
             element={
-              user ? <Bioreactor user={user} /> : loginRedirect("/bioreactor")
+              user ? <Bioreactor user={user} /> : loginRedirect(APP_HOME_PATH)
             }
           />
+          <Route path="/bioreactor" element={<LegacyBioreactorRedirect />} />
           <Route
             path="/pressure-vessel"
             element={
@@ -225,11 +233,10 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
           <Route path="/about" element={<About />} />
           <Route
             path="/settings"
-            element={<Navigate to="/bioreactor" replace />}
+            element={<Navigate to={APP_HOME_PATH} replace />}
           />
         </Routes>
       </div>
-      {showFooter && <Footer showSignIn={!user} />}
       {user && showOnboarding && <OnboardingModal user={user} />}
       {user && showChrome && (
         <DevDataPanel

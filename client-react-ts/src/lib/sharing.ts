@@ -37,11 +37,14 @@ export type ShareLinkRow = {
 };
 
 const PATH_BY_TYPE: Record<DeviceType, string> = {
-  bioreactor: "/bioreactor",
+  bioreactor: "/dashboard",
   pressure_vessel: "/pressure-vessel",
   membrane_bioreactor: "/membrane-bioreactor",
   water_purifier: "/waterpurifier",
 };
+
+/** Default authenticated home (bioreactor dashboard). */
+export const APP_HOME_PATH = PATH_BY_TYPE.bioreactor;
 
 export function pathForDeviceType(type: DeviceType): string {
   return PATH_BY_TYPE[type];
@@ -49,7 +52,8 @@ export function pathForDeviceType(type: DeviceType): string {
 
 export function deviceTypeFromPath(pathname: string): DeviceType | null {
   switch (pathname) {
-    case "/bioreactor":
+    case "/dashboard":
+    case "/bioreactor": // legacy alias
       return "bioreactor";
     case "/pressure-vessel":
       return "pressure_vessel";
@@ -86,7 +90,7 @@ export function fallbackPathAfterLostDevice(
   if (first) {
     return `${pathForDeviceType(first.type)}?device=${first.id}`;
   }
-  return routeType ? pathForDeviceType(routeType) : "/bioreactor";
+  return routeType ? pathForDeviceType(routeType) : APP_HOME_PATH;
 }
 
 /** Devices the caller can admin (owner/admin membership). */

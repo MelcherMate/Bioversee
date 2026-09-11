@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  APP_HOME_PATH,
   openSharedDeviceUrl,
   redeemShareLink,
   roleLabel,
@@ -50,7 +51,7 @@ function Invite({ user }: InviteProps) {
           );
         } else {
           window.setTimeout(
-            () => navigate("/bioreactor", { replace: true }),
+            () => navigate(APP_HOME_PATH, { replace: true }),
             1200
           );
         }
@@ -113,7 +114,7 @@ function Invite({ user }: InviteProps) {
           <>
             <h1 className="invite-card__title">{t("invite.unavailable")}</h1>
             <p className="invite-card__body">{error ?? t("invite.failedBody")}</p>
-            <Link className="invite-card__cta" to="/bioreactor">
+            <Link className="invite-card__cta" to={APP_HOME_PATH}>
               {t("invite.backToApp")}
             </Link>
           </>

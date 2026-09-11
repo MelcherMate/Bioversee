@@ -37,7 +37,7 @@ import {
 import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import { subscribeMyNotifications } from "../../lib/notificationsSync";
 import { subscribeMyDevices } from "../../lib/devicesSync";
-import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice } from "../../lib/sharing";
+import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice, APP_HOME_PATH } from "../../lib/sharing";
 import { DEVICES_CHANGED_EVENT, OPEN_ADD_DEVICE_EVENT } from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
@@ -335,7 +335,7 @@ const Navbar = ({ user }: NavbarProps) => {
       setSettingsAnchor(null);
       await refreshDevices();
       if (preferredDeviceId === device.id || activeDevice?.id === device.id) {
-        navigate("/bioreactor", { replace: true });
+        navigate(APP_HOME_PATH, { replace: true });
       }
     } catch (err) {
       window.alert(err instanceof Error ? err.message : t("nav.couldNotDelete"));
@@ -350,7 +350,7 @@ const Navbar = ({ user }: NavbarProps) => {
       setSettingsDevice(null);
       await refreshDevices();
       if (preferredDeviceId === device.id) {
-        navigate("/bioreactor", { replace: true });
+        navigate(APP_HOME_PATH, { replace: true });
       }
     } catch (err) {
       window.alert(err instanceof Error ? err.message : t("nav.couldNotLeave"));
@@ -373,7 +373,7 @@ const Navbar = ({ user }: NavbarProps) => {
     try {
       await switchToAccount(account.userId);
       setShowAccount(false);
-      navigate("/bioreactor", { replace: true });
+      navigate(APP_HOME_PATH, { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       if (message === "REAUTH_REQUIRED") {
@@ -408,7 +408,7 @@ const Navbar = ({ user }: NavbarProps) => {
       if (!listStoredAccounts().some(isAccountSignedIn)) {
         navigate("/", { replace: true });
       } else {
-        navigate("/bioreactor", { replace: true });
+        navigate(APP_HOME_PATH, { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("nav.couldNotLogOut"));
@@ -448,7 +448,7 @@ const Navbar = ({ user }: NavbarProps) => {
       if (!listStoredAccounts().some(isAccountSignedIn)) {
         navigate("/", { replace: true });
       } else {
-        navigate("/bioreactor", { replace: true });
+        navigate(APP_HOME_PATH, { replace: true });
       }
     } catch (err) {
       setError(
@@ -463,7 +463,7 @@ const Navbar = ({ user }: NavbarProps) => {
     <header className="topbar">
       <div className="topbar__inner">
         <div className="topbar__left">
-          <Link to="/bioreactor" className="topbar__brand" title={statusTitle}>
+          <Link to={APP_HOME_PATH} className="topbar__brand" title={statusTitle}>
             <span
               className={`topbar__mark topbar__mark--${connectivity}`}
               aria-hidden
