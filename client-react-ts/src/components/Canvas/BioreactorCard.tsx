@@ -44,7 +44,7 @@ function BioreactorCard(props: BioreactorCardProps) {
   }, [rotorVal]);
 
   const waveVelocity =
-    levelVelocity + (aeratorVal / 100) * 36 + (rotorVal / 100) * 8;
+    levelVelocity + (aeratorVal / 100) * 28 + (rotorVal / 100) * 20;
 
   return (
     <div
