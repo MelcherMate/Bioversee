@@ -24,33 +24,6 @@
   overflow: visible;
 }
 
-.thermal-jacket__water {
-  opacity: 0.92;
-}
-
-/* Moving highlight on solid water — not a dotted water stream */
-.thermal-jacket__flow-pulse {
-  stroke-dasharray: 28 72;
-  animation: thermal-jacket-flow 1.35s linear infinite;
-}
-
-@keyframes thermal-jacket-flow {
-  from {
-    stroke-dashoffset: 100;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .thermal-jacket__flow-pulse {
-    animation: none;
-    opacity: 0.35;
-    stroke-dasharray: none;
-  }
-}
-
 /* REACTOR BODY — sits inside the jacket U */
 .reaction_chamber {
   display: block;

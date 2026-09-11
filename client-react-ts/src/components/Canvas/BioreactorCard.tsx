@@ -1,5 +1,9 @@
-import { useEffect, useId, useState } from "react";
-import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
+import { useEffect, useId, useRef, useState } from "react";
+import { APPLE_DEPTH_COLORS } from "../pressure-vessel/apple-depth-style";
+import {
+  INLET_PIPE_WATER_SPEED,
+  VESSEL_MAX_FILL_UNITS,
+} from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
@@ -21,9 +25,10 @@ type BioreactorCardProps = {
 const CARD_WIDTH = 800;
 const CARD_HEIGHT = 750;
 
-/** Warm = reddish; cold = solid blue. */
-const FLOW_WARM = "#e11d48";
-const FLOW_COLD = "#0284c7";
+/** Same solid pipe-water stroke as pressure-vessel runs. */
+const JACKET_WATER_WIDTH = PIPE_OD - 6;
+/** Nominal centerline length for dash mapping (matches pathLength). */
+const JACKET_FLOW_PATH_LENGTH = 1280;
 
 /** Chamber outer box (matches .reaction_chamber, border-box). */
 const VESSEL = {
@@ -40,6 +45,96 @@ const JACKET_THICK = 18;
 const JACKET_TOP = 52;
 /** Horizontal run height of inlet/outlet L-pipes (above jacket top). */
 const JACKET_PIPE_Y = JACKET_TOP - 36;
+
+/**
+ * Pressure-vessel-style pipe water: solid slug with head advancing on pump-on
+ * and tail clearing on pump-off.
+ */
+function useJacketPipeWater(active: boolean) {
+  const [tail, setTail] = useState(0);
+  const [head, setHead] = useState(0);
+  const phaseRef = useRef<"idle" | "advance" | "steady" | "retreat">("idle");
+  const tailRef = useRef(0);
+  const headRef = useRef(0);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
+  useEffect(() => {
+    let frame = 0;
+    let lastTime = 0;
+
+    const tick = (now: number) => {
+      if (!lastTime) lastTime = now;
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      const on = activeRef.current;
+      let phase = phaseRef.current;
+      const pathEnd = JACKET_FLOW_PATH_LENGTH;
+
+      if (phase === "idle" && on) {
+        phase = "advance";
+        tailRef.current = 0;
+        headRef.current = 0;
+      }
+
+      switch (phase) {
+        case "advance": {
+          tailRef.current = 0;
+          if (on) {
+            headRef.current = Math.min(
+              pathEnd,
+              headRef.current + INLET_PIPE_WATER_SPEED * dt,
+            );
+            if (headRef.current >= pathEnd - 0.5) {
+              headRef.current = pathEnd;
+              phase = "steady";
+            }
+          } else {
+            phase = "retreat";
+          }
+          break;
+        }
+        case "steady": {
+          tailRef.current = 0;
+          headRef.current = pathEnd;
+          if (!on) phase = "retreat";
+          break;
+        }
+        case "retreat": {
+          headRef.current = pathEnd;
+          if (on) {
+            // Pump turned back on mid-drain — refill from current water body.
+            phase = "advance";
+            break;
+          }
+          tailRef.current = Math.min(
+            headRef.current,
+            tailRef.current + INLET_PIPE_WATER_SPEED * dt,
+          );
+          if (tailRef.current >= headRef.current - 0.5) {
+            tailRef.current = 0;
+            headRef.current = 0;
+            phase = "idle";
+          }
+          break;
+        }
+        default:
+          break;
+      }
+
+      phaseRef.current = phase;
+      setTail(tailRef.current);
+      setHead(headRef.current);
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return { tail, head };
+}
 
 function jacketRadii() {
   const inner = {
@@ -119,8 +214,11 @@ type ThermalJacketProps = {
 
 function ThermalJacket({ mode }: ThermalJacketProps) {
   const prefix = useId().replace(/:/g, "");
-  const flowing = mode !== "idle";
-  const flowColor = mode === "warm" ? FLOW_WARM : FLOW_COLD;
+  const active = mode !== "idle";
+  const waterColorRef = useRef(APPLE_DEPTH_COLORS.cyan);
+  if (mode === "warm") waterColorRef.current = "#f97316";
+  else if (mode === "cold") waterColorRef.current = APPLE_DEPTH_COLORS.cyan;
+  const waterColor = waterColorRef.current;
   const modeClass =
     mode === "warm"
       ? "thermal-jacket--warm"
@@ -135,6 +233,14 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
   const midRight = (outer.right + VESSEL.right) / 2;
   const pipeY = JACKET_PIPE_Y;
   const top = JACKET_TOP;
+
+  const { tail, head } = useJacketPipeWater(active);
+  const segStart = Math.max(0, tail);
+  const segEnd = Math.max(segStart, head);
+  const segLen = Math.max(
+    0,
+    Math.min(segEnd, JACKET_FLOW_PATH_LENGTH) - segStart,
+  );
 
   // L-turns like base/acid: horizontal then vertical into the jacket top.
   const supplyPath = `M -110 ${pipeY} L ${midLeft} ${pipeY} L ${midLeft} ${top}`;
@@ -197,7 +303,6 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
           </linearGradient>
         </defs>
 
-        {/* Inlet (left) + outlet (right) L-pipes — behind jacket at the joint */}
         <g filter={`url(#${prefix}-metal)`}>{paintPipe(supplyPath)}</g>
         <g filter={`url(#${prefix}-metal)`}>{paintPipe(dischargePath)}</g>
 
@@ -211,27 +316,19 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
           />
         </g>
 
-        {flowing ? (
-          <g className="thermal-jacket__flow-group">
-            <path
-              className="thermal-jacket__water"
-              d={flowPath}
-              fill="none"
-              stroke={flowColor}
-              strokeWidth={11}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              className="thermal-jacket__flow-pulse"
-              d={flowPath}
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.55)"
-              strokeWidth={4.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </g>
+        {/* Solid water slug — same technique as pressure-vessel pipe runs */}
+        {segLen > 0 ? (
+          <path
+            d={flowPath}
+            pathLength={JACKET_FLOW_PATH_LENGTH}
+            fill="none"
+            stroke={waterColor}
+            strokeWidth={JACKET_WATER_WIDTH}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+            strokeDasharray={`${segLen} ${JACKET_FLOW_PATH_LENGTH}`}
+            strokeDashoffset={-segStart}
+          />
         ) : null}
       </svg>
     </div>
