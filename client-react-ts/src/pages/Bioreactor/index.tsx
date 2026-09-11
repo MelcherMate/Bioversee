@@ -38,8 +38,8 @@ function Bioreactor({ user }: BioreactorProps) {
       {
         id: "bioreactor",
         coordinates: {
-          x: canvasSize.width / 2 - 690 / 2,
-          y: canvasSize.height / 2 - 670 / 2,
+          x: canvasSize.width / 2 - 800 / 2,
+          y: canvasSize.height / 2 - 750 / 2,
         },
         text: "",
       },

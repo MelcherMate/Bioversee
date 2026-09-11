@@ -1,5 +1,4 @@
 import { useEffect, useId, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
@@ -16,17 +15,20 @@ type BioreactorCardProps = {
   onMouseDown: (event: React.MouseEvent) => void;
 };
 
+const CARD_WIDTH = 800;
+const CARD_HEIGHT = 750;
+
 /** L-run matching pressure-vessel pipe stroke language (no flow fill). */
 function BaseAcidSupplyPipe() {
   const prefix = useId().replace(/:/g, "");
-  // Wrapper coords: open end (-92,-147) → elbow (120,-147) → tip (120, 110)
-  const centerline = "M 16 16 L 228 16 L 228 273";
+  // Wrapper coords: open end (-92,-147) → elbow (156,-147) → tip (156, 110)
+  const centerline = "M 16 16 L 264 16 L 264 273";
 
   return (
     <div className="base-acid-supply">
       <svg
         className="base-acid-pipe-run"
-        viewBox="0 0 244 289"
+        viewBox="0 0 280 289"
         aria-hidden
         overflow="visible"
       >
@@ -36,7 +38,7 @@ function BaseAcidSupplyPipe() {
             filterUnits="userSpaceOnUse"
             x="0"
             y="0"
-            width="244"
+            width="280"
             height="289"
           >
             <feDropShadow
@@ -67,14 +69,12 @@ function BaseAcidSupplyPipe() {
           />
         </g>
       </svg>
-      {/* Lid collar only — no stacked nozzle box that floats over the liquid */}
       <div className="base-acid-flange" />
     </div>
   );
 }
 
 function BioreactorCard(props: BioreactorCardProps) {
-  const { t } = useTranslation();
   const SLOWEST_ROTOR_SPEED = 4;
   const FASTEST_ROTOR_SPEED = 0.5;
   const rotorVal = props.rotorVal ?? 0;
@@ -108,8 +108,8 @@ function BioreactorCard(props: BioreactorCardProps) {
     <div
       style={{
         position: "absolute",
-        width: 690,
-        height: 670,
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
         transform: `translate(${props.translateX}px, ${props.translateY}px) scale(${props.scale})`,
         userSelect: "none",
       }}
@@ -122,12 +122,6 @@ function BioreactorCard(props: BioreactorCardProps) {
         <div className="cooling_water_discharge_pipe"></div>
         <div className="thermal_jacket"></div>
         <div className="thermal_jacket_lower_cap"></div>
-        <div className="cooling_water_supply_pipe-text">
-          {t("process.coolingSupply")}
-        </div>
-        <div className="cooling_water_discharge_pipe-text">
-          {t("process.coolingDischarge")}
-        </div>
 
         <div className="reaction_chamber"></div>
 
@@ -151,7 +145,6 @@ function BioreactorCard(props: BioreactorCardProps) {
             }}
           ></div>
         </div>
-        <div className="agitator-text">{t("process.agitator")}</div>
 
         <div className="br-water-clip">
           <VesselWaterBody
@@ -171,17 +164,12 @@ function BioreactorCard(props: BioreactorCardProps) {
           <div className="sensor_stem"></div>
           <div className="sensor_head"></div>
         </div>
-        <div className="sensor-text">{t("process.tempPhSensor")}</div>
 
         <BaseAcidSupplyPipe />
-        <div className="base_acid_supply_pipe-text">
-          {t("process.baseAcidSupply")}
-        </div>
 
         <div className="aerator_submerged"></div>
         <div className="aerator_supply_pipe_h"></div>
         <div className="aerator_supply_pipe_v"></div>
-        <div className="aerator_supply_pipe-text">{t("process.airSupply")}</div>
       </div>
     </div>
   );
@@ -189,3 +177,5 @@ function BioreactorCard(props: BioreactorCardProps) {
 
 BioreactorCard.displayName = "BioreactorCard";
 export default BioreactorCard;
+
+export { CARD_WIDTH, CARD_HEIGHT };
