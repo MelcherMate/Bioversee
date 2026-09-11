@@ -198,7 +198,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
 }
 
 .base-acid-pipe-run {
@@ -206,21 +206,49 @@
   left: -108px;
   top: -163px;
   width: 280px;
-  height: 289px;
+  height: 140px;
   overflow: visible;
 }
 
-.base-acid-ferrule {
-  position: absolute;
-  left: 148px;
-  top: -120px;
-  width: 10px;
-  height: 4px;
-  border-radius: 999px;
-  background: linear-gradient(to bottom, #f8fafc, #cbd5e1);
-  border: 1px solid #94a3b8;
-  opacity: 0.9;
-  z-index: 1;
+.base-acid-flow-dash {
+  animation: base-acid-flow-dash 0.9s linear infinite;
+}
+
+@keyframes base-acid-flow-dash {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+.base-acid-drip {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: base-acid-drip 1.15s ease-in infinite;
+}
+
+@keyframes base-acid-drip {
+  0% {
+    transform: translateY(0) scale(0.7);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(72px) scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .base-acid-flow-dash,
+  .base-acid-drip {
+    animation: none;
+  }
+
+  .base-acid-drip {
+    opacity: 0.5;
+  }
 }
 
 /* AERATOR SUPPLY PIPE */

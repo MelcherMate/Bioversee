@@ -69,6 +69,7 @@ function Bioreactor({ user }: BioreactorProps) {
 
   const readOnly = !canOperateDevice(device.role);
   const jacketMode = warmWVal ? "warm" : coldWVal ? "cold" : "idle";
+  const doseMode = acidVal ? "acid" : baseVal ? "base" : "idle";
 
   const setWarmExclusive = (next: boolean) => {
     setWarmWVal(next);
@@ -90,6 +91,32 @@ function Bioreactor({ user }: BioreactorProps) {
       insertSwitchState(
         device.id,
         "switchWarmWaterPump",
+        false,
+        user.id,
+      ).catch((error) => console.log(error));
+    }
+  };
+
+  const setAcidExclusive = (next: boolean) => {
+    setAcidVal(next);
+    if (next && baseVal) {
+      setBaseVal(false);
+      insertSwitchState(
+        device.id,
+        "switchBasePump",
+        false,
+        user.id,
+      ).catch((error) => console.log(error));
+    }
+  };
+
+  const setBaseExclusive = (next: boolean) => {
+    setBaseVal(next);
+    if (next && acidVal) {
+      setAcidVal(false);
+      insertSwitchState(
+        device.id,
+        "switchAcidPump",
         false,
         user.id,
       ).catch((error) => console.log(error));
@@ -123,7 +150,7 @@ function Bioreactor({ user }: BioreactorProps) {
             <Switch
               deviceId={device.id}
               name="switchAcidPump"
-              setVal={setAcidVal}
+              setVal={setAcidExclusive}
               val={acidVal}
               label={t("process.acid")}
               user={user}
@@ -132,7 +159,7 @@ function Bioreactor({ user }: BioreactorProps) {
             <Switch
               deviceId={device.id}
               name="switchBasePump"
-              setVal={setBaseVal}
+              setVal={setBaseExclusive}
               val={baseVal}
               label={t("process.base")}
               user={user}
@@ -178,6 +205,7 @@ function Bioreactor({ user }: BioreactorProps) {
           aeratorVal={aeratorVal}
           waterLevelVal={waterLevelVal}
           jacketMode={jacketMode}
+          doseMode={doseMode}
         />
       </main>
       <aside id="sensorSide">

@@ -7,12 +7,14 @@ import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
 import "./Bioreactor.css";
 
 export type JacketMode = "idle" | "warm" | "cold";
+export type DoseMode = "idle" | "acid" | "base";
 
 type BioreactorCardProps = {
   rotorVal?: number;
   aeratorVal?: number;
   waterLevelVal?: number;
   jacketMode?: JacketMode;
+  doseMode?: DoseMode;
   translateX: number;
   translateY: number;
   scale: number;
@@ -167,14 +169,18 @@ const JACKET_PIPE_Y = 120;
  * Pressure-vessel-style pipe water: solid slug with head advancing on pump-on
  * and tail clearing on pump-off.
  */
-function useJacketPipeWater(active: boolean) {
+function usePipeSlug(active: boolean, pathLength: number, speed: number) {
   const [tail, setTail] = useState(0);
   const [head, setHead] = useState(0);
   const phaseRef = useRef<"idle" | "advance" | "steady" | "retreat">("idle");
   const tailRef = useRef(0);
   const headRef = useRef(0);
   const activeRef = useRef(active);
+  const pathLenRef = useRef(pathLength);
+  const speedRef = useRef(speed);
   activeRef.current = active;
+  pathLenRef.current = pathLength;
+  speedRef.current = speed;
 
   useEffect(() => {
     let frame = 0;
@@ -187,7 +193,8 @@ function useJacketPipeWater(active: boolean) {
 
       const on = activeRef.current;
       let phase = phaseRef.current;
-      const pathEnd = JACKET_FLOW_PATH_LENGTH;
+      const pathEnd = pathLenRef.current;
+      const spd = speedRef.current;
 
       if (phase === "idle" && on) {
         phase = "advance";
@@ -199,10 +206,7 @@ function useJacketPipeWater(active: boolean) {
         case "advance": {
           tailRef.current = 0;
           if (on) {
-            headRef.current = Math.min(
-              pathEnd,
-              headRef.current + JACKET_PIPE_WATER_SPEED * dt,
-            );
+            headRef.current = Math.min(pathEnd, headRef.current + spd * dt);
             if (headRef.current >= pathEnd - 0.5) {
               headRef.current = pathEnd;
               phase = "steady";
@@ -221,13 +225,12 @@ function useJacketPipeWater(active: boolean) {
         case "retreat": {
           headRef.current = pathEnd;
           if (on) {
-            // Pump turned back on mid-drain — refill from current water body.
             phase = "advance";
             break;
           }
           tailRef.current = Math.min(
             headRef.current,
-            tailRef.current + JACKET_PIPE_WATER_SPEED * dt,
+            tailRef.current + spd * dt,
           );
           if (tailRef.current >= headRef.current - 0.5) {
             tailRef.current = 0;
@@ -317,7 +320,11 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         : "thermal-jacket--idle";
 
   const pipePath = buildJacketPipePath();
-  const { tail, head } = useJacketPipeWater(active);
+  const { tail, head } = usePipeSlug(
+    active,
+    JACKET_FLOW_PATH_LENGTH,
+    JACKET_PIPE_WATER_SPEED,
+  );
   const segStart = Math.max(0, tail);
   const segEnd = Math.max(segStart, head);
   const segLen = Math.max(
@@ -448,17 +455,44 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
   );
 }
 
-function BaseAcidSupplyPipe() {
+/** Litmus-style acid (red) / base (blue) dosing colors. */
+const DOSE_ACID = "#e11d48";
+const DOSE_BASE = "#2563eb";
+/** Tip just past vessel rim (SVG y; chamber top ≈ 43 in this viewBox). */
+const DOSE_TIP_Y = 58;
+const DOSE_PATH = `M 16 16 L 264 16 L 264 ${DOSE_TIP_Y}`;
+const DOSE_PATH_LENGTH = 300;
+const DOSE_TUBE_OD = 4;
+const DOSE_WATER_WIDTH = 2.5;
+const DOSE_FLOW_DASH = 10;
+const DOSE_FLOW_GAP = 22;
+const DOSE_FLOW_CYCLE = DOSE_FLOW_DASH + DOSE_FLOW_GAP;
+const DOSE_FLOW_CYCLE_SECONDS = 0.9;
+const DOSE_PIPE_SPEED =
+  (DOSE_FLOW_CYCLE / DOSE_FLOW_CYCLE_SECONDS) * 2;
+
+type BaseAcidSupplyPipeProps = {
+  mode: DoseMode;
+};
+
+function BaseAcidSupplyPipe({ mode }: BaseAcidSupplyPipeProps) {
   const prefix = useId().replace(/:/g, "");
-  const centerline = "M 16 16 L 264 16 L 264 273";
-  /** Thin dosing tubing — acid/base rates are small; plastic, not steel. */
-  const tubeOd = 4;
+  const active = mode !== "idle";
+  const colorRef = useRef(DOSE_ACID);
+  if (mode === "acid") colorRef.current = DOSE_ACID;
+  if (mode === "base") colorRef.current = DOSE_BASE;
+  const liquidColor = colorRef.current;
+  const { tail, head } = usePipeSlug(active, DOSE_PATH_LENGTH, DOSE_PIPE_SPEED);
+  const segStart = Math.max(0, tail);
+  const segEnd = Math.max(segStart, head);
+  const segLen = Math.max(0, Math.min(segEnd, DOSE_PATH_LENGTH) - segStart);
+  const showLiquid = segLen > 0;
 
   return (
     <div className="base-acid-supply">
       <svg
         className="base-acid-pipe-run"
-        viewBox="0 0 280 289"
+        viewBox="0 0 280 140"
         aria-hidden
         overflow="visible"
       >
@@ -469,32 +503,98 @@ function BaseAcidSupplyPipe() {
             x1="0"
             y1="0"
             x2="0"
-            y2="289"
+            y2="140"
           >
             <stop offset="0%" stopColor="#f8fafc" />
             <stop offset="45%" stopColor="#e2e8f0" />
             <stop offset="100%" stopColor="#cbd5e1" />
           </linearGradient>
+          {showLiquid ? (
+            <mask
+              id={`${prefix}-dose-mask`}
+              maskUnits="userSpaceOnUse"
+              x="0"
+              y="0"
+              width="280"
+              height="140"
+            >
+              <path
+                d={DOSE_PATH}
+                pathLength={DOSE_PATH_LENGTH}
+                fill="none"
+                stroke="#fff"
+                strokeWidth={DOSE_WATER_WIDTH + 1}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray={`${segLen} ${DOSE_PATH_LENGTH}`}
+                strokeDashoffset={-segStart}
+              />
+            </mask>
+          ) : null}
         </defs>
+
         <path
-          d={centerline}
+          d={DOSE_PATH}
           fill="none"
           stroke="#94a3b8"
-          strokeWidth={tubeOd + 1.5}
+          strokeWidth={DOSE_TUBE_OD + 1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
           opacity={0.55}
         />
         <path
-          d={centerline}
+          d={DOSE_PATH}
           fill="none"
           stroke={`url(#${prefix}-plastic)`}
-          strokeWidth={tubeOd}
+          strokeWidth={DOSE_TUBE_OD}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
+        {showLiquid ? (
+          <g>
+            <path
+              d={DOSE_PATH}
+              pathLength={DOSE_PATH_LENGTH}
+              fill="none"
+              stroke={liquidColor}
+              strokeWidth={DOSE_WATER_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${segLen} ${DOSE_PATH_LENGTH}`}
+              strokeDashoffset={-segStart}
+            />
+            <path
+              className="base-acid-flow-dash"
+              d={DOSE_PATH}
+              pathLength={DOSE_PATH_LENGTH}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.65)"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${DOSE_FLOW_DASH} ${DOSE_FLOW_GAP}`}
+              mask={`url(#${prefix}-dose-mask)`}
+            />
+          </g>
+        ) : null}
+
+        {active && showLiquid && head >= DOSE_PATH_LENGTH - 1 ? (
+          <g className="base-acid-drips">
+            {[0, 1, 2].map((i) => (
+              <circle
+                key={i}
+                className="base-acid-drip"
+                cx={264}
+                cy={DOSE_TIP_Y}
+                r={2.1}
+                fill={liquidColor}
+                style={{ animationDelay: `${i * 0.4}s` }}
+              />
+            ))}
+          </g>
+        ) : null}
       </svg>
-      <div className="base-acid-ferrule" />
     </div>
   );
 }
@@ -505,6 +605,7 @@ function BioreactorCard(props: BioreactorCardProps) {
   const rotorVal = props.rotorVal ?? 0;
   const aeratorVal = props.aeratorVal ?? 0;
   const jacketMode = props.jacketMode ?? "idle";
+  const doseMode = props.doseMode ?? "idle";
   const waterLevelVal = Math.min(100, Math.max(0, props.waterLevelVal ?? 92));
   const targetFillUnits = (waterLevelVal / 100) * VESSEL_MAX_FILL_UNITS;
 
@@ -588,7 +689,7 @@ function BioreactorCard(props: BioreactorCardProps) {
           <div className="sensor_head" />
         </div>
 
-        <BaseAcidSupplyPipe />
+        <BaseAcidSupplyPipe mode={doseMode} />
 
         <div className="aerator_submerged" />
         <div className="aerator_supply_pipe_h" />

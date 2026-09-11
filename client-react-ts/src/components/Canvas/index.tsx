@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import BioreactorCard, { type JacketMode } from "./BioreactorCard";
+import BioreactorCard, {
+  type DoseMode,
+  type JacketMode,
+} from "./BioreactorCard";
 import "./Canvas.css";
 
 interface Card {
@@ -14,6 +17,7 @@ type CanvasProps = {
   aeratorVal?: number;
   waterLevelVal?: number;
   jacketMode?: JacketMode;
+  doseMode?: DoseMode;
 };
 
 function Canvas(props: CanvasProps) {
@@ -80,6 +84,7 @@ function Canvas(props: CanvasProps) {
             aeratorVal={props.aeratorVal}
             waterLevelVal={props.waterLevelVal}
             jacketMode={props.jacketMode}
+            doseMode={props.doseMode}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}
             scale={zoomLevel}
