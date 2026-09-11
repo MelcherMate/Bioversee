@@ -451,6 +451,8 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
 function BaseAcidSupplyPipe() {
   const prefix = useId().replace(/:/g, "");
   const centerline = "M 16 16 L 264 16 L 264 273";
+  /** Thin dosing tubing — acid/base rates are small; plastic, not steel. */
+  const tubeOd = 4;
 
   return (
     <div className="base-acid-supply">
@@ -461,43 +463,38 @@ function BaseAcidSupplyPipe() {
         overflow="visible"
       >
         <defs>
-          <filter
-            id={`${prefix}-shadow`}
-            filterUnits="userSpaceOnUse"
-            x="0"
-            y="0"
-            width="280"
-            height="289"
+          <linearGradient
+            id={`${prefix}-plastic`}
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="289"
           >
-            <feDropShadow
-              dx="1"
-              dy="2"
-              stdDeviation="1.5"
-              floodColor="#000"
-              floodOpacity="0.2"
-            />
-          </filter>
+            <stop offset="0%" stopColor="#f8fafc" />
+            <stop offset="45%" stopColor="#e2e8f0" />
+            <stop offset="100%" stopColor="#cbd5e1" />
+          </linearGradient>
         </defs>
-        <g filter={`url(#${prefix}-shadow)`}>
-          <path
-            d={centerline}
-            fill="none"
-            stroke={PIPE_METAL.stroke}
-            strokeWidth={PIPE_OD + 3}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={centerline}
-            fill="none"
-            stroke={PIPE_FILL}
-            strokeWidth={PIPE_OD}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-        </g>
+        <path
+          d={centerline}
+          fill="none"
+          stroke="#94a3b8"
+          strokeWidth={tubeOd + 1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.55}
+        />
+        <path
+          d={centerline}
+          fill="none"
+          stroke={`url(#${prefix}-plastic)`}
+          strokeWidth={tubeOd}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
-      <div className="base-acid-flange" />
+      <div className="base-acid-ferrule" />
     </div>
   );
 }
