@@ -257,6 +257,7 @@
   position: relative;
   width: min(240px, 100%);
   height: 230px;
+  overflow: visible;
 }
 
 .web-preview__tank {
@@ -269,7 +270,7 @@
   border: 3px solid #c7c7cc;
   border-radius: 18px 18px 54px 54px;
   background: rgba(255, 255, 255, 0.35);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .web-preview__liquid {
@@ -280,53 +281,51 @@
   height: 68%;
   background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 55%, #0ea5e9 100%);
   opacity: 0.85;
+  border-radius: 0 0 50px 50px;
+  overflow: hidden;
 }
 
 .web-preview__agitator {
   position: absolute;
   left: 50%;
-  top: 8px;
+  top: -14px;
   width: 4px;
-  height: 132px;
+  height: 168px;
   margin-left: -2px;
   border-radius: 999px;
-  background: #3a3a3c;
+  background: #1d1d1f;
   z-index: 2;
 }
 
 .web-preview__paddle {
   position: absolute;
   left: 50%;
-  top: 118px;
-  width: 54px;
-  height: 10px;
-  margin-left: -27px;
-  border-radius: 4px;
+  width: 48px;
+  height: 5px;
+  margin-left: -24px;
+  border-radius: 999px;
   background: #1d1d1f;
   z-index: 2;
+}
+
+.web-preview__paddle--top {
+  top: 108px;
+}
+
+.web-preview__paddle--bottom {
+  top: 138px;
 }
 
 .web-preview__probe {
   position: absolute;
   right: 28px;
-  top: 42px;
+  top: -14px;
   width: 3px;
-  height: 78px;
+  height: 106px;
   border-radius: 999px;
   background: #1d1d1f;
   z-index: 2;
   box-shadow: 8px 0 0 #1d1d1f;
-}
-
-.web-preview__sparger {
-  position: absolute;
-  left: 18px;
-  bottom: 28px;
-  width: 52px;
-  height: 4px;
-  border-radius: 999px;
-  background: #8e8e93;
-  z-index: 2;
 }
 
 .web-preview__chart-value {

@@ -71,9 +71,9 @@ function WebAppPreview() {
             <span className="web-preview__tank">
               <span className="web-preview__liquid" />
               <span className="web-preview__agitator" />
-              <span className="web-preview__paddle" />
+              <span className="web-preview__paddle web-preview__paddle--top" />
+              <span className="web-preview__paddle web-preview__paddle--bottom" />
               <span className="web-preview__probe" />
-              <span className="web-preview__sparger" />
             </span>
           </div>
         </div>
