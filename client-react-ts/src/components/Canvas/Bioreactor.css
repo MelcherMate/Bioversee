@@ -221,33 +221,17 @@
 }
 
 .base-acid-drip {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: base-acid-drip 1.15s ease-in infinite;
-}
-
-@keyframes base-acid-drip {
-  0% {
-    transform: translateY(0) scale(0.7);
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(72px) scale(1);
-    opacity: 0;
-  }
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .base-acid-flow-dash,
-  .base-acid-drip {
+  .base-acid-flow-dash {
     animation: none;
   }
 
-  .base-acid-drip {
-    opacity: 0.5;
+  .base-acid-drip animate,
+  .base-acid-drip animateTransform {
+    display: none;
   }
 }
 

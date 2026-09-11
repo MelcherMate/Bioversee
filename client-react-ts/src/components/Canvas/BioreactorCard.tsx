@@ -470,9 +470,17 @@ const DOSE_FLOW_CYCLE = DOSE_FLOW_DASH + DOSE_FLOW_GAP;
 const DOSE_FLOW_CYCLE_SECONDS = 0.9;
 const DOSE_PIPE_SPEED =
   (DOSE_FLOW_CYCLE / DOSE_FLOW_CYCLE_SECONDS) * 2;
+/** Matches .base-acid-pipe-run { top }. */
+const DOSE_SVG_TOP = -163;
+/** Matches .br-water-clip { top, height }. */
+const WATER_CLIP_TOP = -100;
+const WATER_CLIP_HEIGHT = 510;
+/** Drop fall speed toward the water surface (px / s). */
+const DOSE_DRIP_SPEED = 320;
 
 type BaseAcidSupplyPipeProps = {
   mode: DoseMode;
+  fillUnits: number;
 };
 
 function doseColor(mode: DoseMode) {
@@ -481,11 +489,18 @@ function doseColor(mode: DoseMode) {
   return null;
 }
 
+function doseDripFallPx(fillUnits: number) {
+  const fillRatio = Math.min(1, Math.max(0, fillUnits / VESSEL_MAX_FILL_UNITS));
+  const tipAbsY = DOSE_SVG_TOP + DOSE_TIP_Y;
+  const surfaceAbsY = WATER_CLIP_TOP + WATER_CLIP_HEIGHT * (1 - fillRatio);
+  return Math.max(0, surfaceAbsY - tipAbsY);
+}
+
 /**
  * Dose tube sequencer: on acid↔base switch, finish draining the current
  * fluid (and drips) before the new fluid starts filling.
  */
-function BaseAcidSupplyPipe({ mode }: BaseAcidSupplyPipeProps) {
+function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   const prefix = useId().replace(/:/g, "");
   const [liquidColor, setLiquidColor] = useState(DOSE_ACID);
   const [feeding, setFeeding] = useState(false);
@@ -547,6 +562,9 @@ function BaseAcidSupplyPipe({ mode }: BaseAcidSupplyPipeProps) {
   const segEnd = Math.max(segStart, head);
   const segLen = Math.max(0, Math.min(segEnd, DOSE_PATH_LENGTH) - segStart);
   const showLiquid = segLen > 0;
+  const dripFallPx = doseDripFallPx(fillUnits);
+  const dripDuration = Math.max(0.45, dripFallPx / DOSE_DRIP_SPEED);
+  const showDrips = showLiquid && head >= DOSE_PATH_LENGTH - 1 && dripFallPx > 4;
 
   return (
     <div className="base-acid-supply">
@@ -639,18 +657,38 @@ function BaseAcidSupplyPipe({ mode }: BaseAcidSupplyPipeProps) {
           </g>
         ) : null}
 
-        {showLiquid && head >= DOSE_PATH_LENGTH - 1 ? (
-          <g className="base-acid-drips">
+        {showDrips ? (
+          <g
+            className="base-acid-drips"
+            transform={`translate(264 ${DOSE_TIP_Y})`}
+          >
             {[0, 1, 2].map((i) => (
               <circle
-                key={i}
+                key={`${i}-${Math.round(dripFallPx)}`}
                 className="base-acid-drip"
-                cx={264}
-                cy={DOSE_TIP_Y}
+                cx={0}
+                cy={0}
                 r={2.1}
                 fill={liquidColor}
-                style={{ animationDelay: `${i * 0.4}s` }}
-              />
+              >
+                <animate
+                  attributeName="opacity"
+                  values="0;1;1;0"
+                  keyTimes="0;0.12;0.85;1"
+                  dur={`${dripDuration}s`}
+                  begin={`${i * 0.4}s`}
+                  repeatCount="indefinite"
+                />
+                <animateTransform
+                  attributeName="transform"
+                  type="translate"
+                  from="0 0"
+                  to={`0 ${dripFallPx}`}
+                  dur={`${dripDuration}s`}
+                  begin={`${i * 0.4}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
             ))}
           </g>
         ) : null}
@@ -749,7 +787,7 @@ function BioreactorCard(props: BioreactorCardProps) {
           <div className="sensor_head" />
         </div>
 
-        <BaseAcidSupplyPipe mode={doseMode} />
+        <BaseAcidSupplyPipe mode={doseMode} fillUnits={displayFillUnits} />
 
         <div className="aerator_submerged" />
         <div className="aerator_supply_pipe_h" />
