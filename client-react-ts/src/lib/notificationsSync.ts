@@ -37,7 +37,7 @@ export function subscribeMyNotifications(
     .subscribe();
 
   // Backup if Realtime isn't enabled yet / brief disconnects.
-  const interval = window.setInterval(notify, 5000);
+  const interval = window.setInterval(notify, 2000);
 
   return () => {
     disposed = true;

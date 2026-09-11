@@ -53,7 +53,7 @@ supabase secrets set APNS_KEY_ID=... APNS_TEAM_ID=... APNS_BUNDLE_ID=com.biovers
 
 5. Supabase Dashboard → Database → Webhooks → create webhook on `public.notifications` **INSERT** → HTTPS → your `push-notify` function URL.
 
-Until the webhook is live, the app still polls every 5s and shows local banners for new unread items across all accounts. Run `supabase/notifications_realtime.sql` so web + iOS also get live inbox updates via Realtime.
+Until the webhook is live, the app still polls every 2s and shows local banners for new unread items across all accounts. Run `supabase/notifications_realtime.sql` so web + iOS also get live inbox updates via Realtime.
 
 ## Open / run
 
