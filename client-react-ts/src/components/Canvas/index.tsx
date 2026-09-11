@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import BioreactorCard from "./BioreactorCard";
+import BioreactorCard, { type JacketMode } from "./BioreactorCard";
 import "./Canvas.css";
 
 interface Card {
@@ -8,7 +8,15 @@ interface Card {
   text: string;
 }
 
-function Canvas(props) {
+type CanvasProps = {
+  cards: Card[];
+  rotorVal?: number;
+  aeratorVal?: number;
+  waterLevelVal?: number;
+  jacketMode?: JacketMode;
+};
+
+function Canvas(props: CanvasProps) {
   const [dragging, setDragging] = useState<boolean>(false);
   const [offset, setOffset] = useState<{ x: number; y: number }>({
     x: 0,
@@ -17,10 +25,8 @@ function Canvas(props) {
   const [currentCard, setCurrentCard] = useState<Card | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
 
-  // Mouse down event handler
   const handleMouseDown = (event: React.MouseEvent, card: Card) => {
     setCurrentCard(card);
-    // console.log(card);
     setOffset({
       x: event.clientX - card.coordinates.x,
       y: event.clientY - card.coordinates.y,
@@ -28,7 +34,6 @@ function Canvas(props) {
     setDragging(true);
   };
 
-  // Mouse move event handler
   const handleMouseMove = (event: React.MouseEvent) => {
     if (dragging && currentCard) {
       currentCard.coordinates.x = event.clientX - offset.x;
@@ -37,30 +42,24 @@ function Canvas(props) {
     }
   };
 
-  // Mouse up event handler
   const handleMouseUp = () => {
     setDragging(false);
     setCurrentCard(null);
   };
 
-  // Wheel event handler
   const handleWheel = (event: React.WheelEvent) => {
-    const delta = Math.sign(event.deltaY); // Positive or negative value depending on the direction of the scroll
+    const delta = Math.sign(event.deltaY);
     if (delta === -1) {
-      // Scroll up: zoom in
-      setZoomLevel((prevZoom) => prevZoom * 1.05); // zoom in
+      setZoomLevel((prevZoom) => prevZoom * 1.05);
     } else if (delta === 1) {
-      // Scroll down: zoom out
-      setZoomLevel((prevZoom) => prevZoom / 1.05); // zoom out
+      setZoomLevel((prevZoom) => prevZoom / 1.05);
     }
   };
 
-  // Zoom in button handler
   const handleZoomIn = () => {
     setZoomLevel((prevZoom) => prevZoom * 1.15);
   };
 
-  // Zoom out button handler
   const handleZoomOut = () => {
     setZoomLevel((prevZoom) => prevZoom / 1.15);
   };
@@ -80,6 +79,7 @@ function Canvas(props) {
             rotorVal={props.rotorVal}
             aeratorVal={props.aeratorVal}
             waterLevelVal={props.waterLevelVal}
+            jacketMode={props.jacketMode}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}
             scale={zoomLevel}

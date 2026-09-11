@@ -4,71 +4,61 @@
   margin-top: 200px;
   margin-left: 175px;
   width: 442px;
-  height: 521px;
+  height: 450px;
 }
 
-/* TEMPERATURE CONTROL WATER SYSTEM */
-.cooling_water_supply_pipe {
-  display: block;
+/* THERMAL JACKET — spiral coil around lower 60% */
+.thermal-jacket {
   position: absolute;
-  top: 40px;
-  left: -100px;
-  height: 20px;
-  width: 100px;
-  background: grey;
-}
-
-.cooling_water_discharge_pipe {
-  display: block;
-  position: absolute;
-  bottom: 180px;
-  right: -100px;
-  height: 20px;
-  width: 100px;
-  background: grey;
-}
-
-.thermal_jacket {
-  display: block;
-  position: relative;
-  border-left: 20px solid grey;
-  border-right: 20px solid grey;
-  height: 300px;
-  width: 442px;
-  z-index: 0;
-}
-
-/* Patch the straight-to-curve join so page white cannot show through */
-.thermal_jacket::before,
-.thermal_jacket::after {
-  content: "";
-  position: absolute;
-  bottom: -3px;
-  width: 20px;
-  height: 6px;
-  background: grey;
+  inset: 0;
   pointer-events: none;
 }
 
-.thermal_jacket::before {
-  left: -20px;
+.thermal-jacket__svg {
+  position: absolute;
+  left: -120px;
+  top: -140px;
+  width: 682px;
+  height: 620px;
+  overflow: visible;
 }
 
-.thermal_jacket::after {
-  right: -20px;
-}
-
-.thermal_jacket_lower_cap {
-  display: block;
-  position: relative;
-  width: 442px;
-  height: 221px;
-  border-bottom-left-radius: 221px;
-  border-bottom-right-radius: 221px;
-  border: 20px solid grey;
-  border-top: 0;
-  margin-top: -2px;
+.thermal-jacket__svg--back {
   z-index: 0;
+}
+
+.thermal-jacket__svg--front {
+  z-index: 2;
+}
+
+.thermal-jacket__flow {
+  stroke-dasharray: 8 14;
+  animation: thermal-jacket-flow 1.1s linear infinite;
+}
+
+.thermal-jacket--warm .thermal-jacket__flow {
+  filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.45));
+}
+
+.thermal-jacket--cold .thermal-jacket__flow {
+  filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.45));
+}
+
+@keyframes thermal-jacket-flow {
+  from {
+    stroke-dashoffset: 44;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thermal-jacket__flow {
+    animation: none;
+    stroke-dasharray: none;
+    opacity: 0.85;
+  }
 }
 
 /* REACTOR BODY */
@@ -81,6 +71,7 @@
   height: 550px;
   border: 20px solid #9a9a9a;
   border-radius: 169px;
+  z-index: 1;
 }
 
 /* Full inner chamber — capsule clip so fill can reach the dome */
@@ -88,7 +79,7 @@
   position: absolute;
   top: -100px;
   left: 40px;
-  z-index: 2;
+  z-index: 3;
   width: 362px;
   height: 510px;
   overflow: hidden;
@@ -105,6 +96,7 @@
   top: -160px;
   width: 10px;
   height: 300px;
+  z-index: 4;
 }
 
 .sensor1 {
@@ -152,7 +144,7 @@
   width: 195px;
   height: 500px;
   /* Behind the water so blades look submerged as the level rises */
-  z-index: 1;
+  z-index: 2;
 }
 
 .agitator_stem {
@@ -224,7 +216,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
 }
 
 .base-acid-pipe-run {
@@ -259,7 +251,7 @@
   width: 195px;
   border-radius: 16px;
   background: silver;
-  z-index: 1;
+  z-index: 2;
 }
 
 .aerator_supply_pipe_v {
@@ -270,6 +262,7 @@
   background: silver;
   top: -50px;
   left: 94px;
+  z-index: 2;
 }
 
 .aerator_supply_pipe_h {
@@ -280,4 +273,5 @@
   top: -50px;
   left: -100px;
   background: silver;
+  z-index: 2;
 }

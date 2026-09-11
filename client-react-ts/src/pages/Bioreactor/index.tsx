@@ -5,6 +5,7 @@ import Chart from "../../components/Chart/index";
 import Slider from "../../components/Slider";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
+import { insertSwitchState } from "../../lib/actuators";
 import { canOperateDevice } from "../../lib/devices";
 import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
@@ -67,6 +68,33 @@ function Bioreactor({ user }: BioreactorProps) {
   }
 
   const readOnly = !canOperateDevice(device.role);
+  const jacketMode = warmWVal ? "warm" : coldWVal ? "cold" : "idle";
+
+  const setWarmExclusive = (next: boolean) => {
+    setWarmWVal(next);
+    if (next && coldWVal) {
+      setColdWVal(false);
+      insertSwitchState(
+        device.id,
+        "switchColdWaterPump",
+        false,
+        user.id,
+      ).catch((error) => console.log(error));
+    }
+  };
+
+  const setColdExclusive = (next: boolean) => {
+    setColdWVal(next);
+    if (next && warmWVal) {
+      setWarmWVal(false);
+      insertSwitchState(
+        device.id,
+        "switchWarmWaterPump",
+        false,
+        user.id,
+      ).catch((error) => console.log(error));
+    }
+  };
 
   return (
     <div className="container">
@@ -77,7 +105,7 @@ function Bioreactor({ user }: BioreactorProps) {
             <Switch
               deviceId={device.id}
               name="switchWarmWaterPump"
-              setVal={setWarmWVal}
+              setVal={setWarmExclusive}
               val={warmWVal}
               label={t("process.warmWater")}
               user={user}
@@ -86,7 +114,7 @@ function Bioreactor({ user }: BioreactorProps) {
             <Switch
               deviceId={device.id}
               name="switchColdWaterPump"
-              setVal={setColdWVal}
+              setVal={setColdExclusive}
               val={coldWVal}
               label={t("process.coldWater")}
               user={user}
@@ -149,6 +177,7 @@ function Bioreactor({ user }: BioreactorProps) {
           rotorVal={rotorVal}
           aeratorVal={aeratorVal}
           waterLevelVal={waterLevelVal}
+          jacketMode={jacketMode}
         />
       </main>
       <aside id="sensorSide">
