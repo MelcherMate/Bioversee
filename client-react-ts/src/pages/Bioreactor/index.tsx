@@ -52,6 +52,7 @@ function Bioreactor({ user }: BioreactorProps) {
   const [baseVal, setBaseVal] = useState(false);
   const [rotorVal, setRotorVal] = useState(0);
   const [aeratorVal, setAeratorVal] = useState(0);
+  const [waterLevelVal, setWaterLevelVal] = useState(92);
 
   if (!ready) {
     return (
@@ -123,6 +124,15 @@ function Bioreactor({ user }: BioreactorProps) {
             />
             <Slider
               deviceId={device.id}
+              name="water_level"
+              setVal={setWaterLevelVal}
+              val={waterLevelVal}
+              label={t("process.waterLevel")}
+              user={user}
+              disabled={readOnly}
+            />
+            <Slider
+              deviceId={device.id}
               name="aerator"
               setVal={setAeratorVal}
               val={aeratorVal}
@@ -134,7 +144,12 @@ function Bioreactor({ user }: BioreactorProps) {
         </div>
       </aside>
       <main id="reactorBox" ref={canvasRef}>
-        <Canvas cards={cards} rotorVal={rotorVal} aeratorVal={aeratorVal} />
+        <Canvas
+          cards={cards}
+          rotorVal={rotorVal}
+          aeratorVal={aeratorVal}
+          waterLevelVal={waterLevelVal}
+        />
       </main>
       <aside id="sensorSide">
         <div className="chartBox">

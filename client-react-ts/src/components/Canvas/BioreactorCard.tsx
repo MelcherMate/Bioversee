@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
+import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
 import "./Bioreactor.css";
-
-/** Fixed fill matching the old chamber liquid footprint. */
-const BIOREACTOR_FILL_UNITS = VESSEL_MAX_FILL_UNITS * 0.92;
 
 type BioreactorCardProps = {
   rotorVal?: number;
   aeratorVal?: number;
+  waterLevelVal?: number;
   translateX: number;
   translateY: number;
   scale: number;
@@ -22,8 +21,14 @@ function BioreactorCard(props: BioreactorCardProps) {
   const FASTEST_ROTOR_SPEED = 0.5;
   const rotorVal = props.rotorVal ?? 0;
   const aeratorVal = props.aeratorVal ?? 0;
+  const waterLevelVal = Math.min(100, Math.max(0, props.waterLevelVal ?? 92));
+  const targetFillUnits = (waterLevelVal / 100) * VESSEL_MAX_FILL_UNITS;
 
   const [rotorSpeed, setRotorSpeed] = useState(0);
+  const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
+    targetFillUnits,
+    { stiffness: 120, damping: 0.68 }
+  );
 
   useEffect(() => {
     if (rotorVal == 100) {
@@ -38,9 +43,8 @@ function BioreactorCard(props: BioreactorCardProps) {
     }
   }, [rotorVal]);
 
-  // Same scale as pressure-vessel wave intensity (~0–40).
   const waveVelocity =
-    (aeratorVal / 100) * 36 + (rotorVal / 100) * 8;
+    levelVelocity + (aeratorVal / 100) * 36 + (rotorVal / 100) * 8;
 
   return (
     <div
@@ -71,7 +75,7 @@ function BioreactorCard(props: BioreactorCardProps) {
 
         <div className="br-water-clip">
           <VesselWaterBody
-            fillUnits={BIOREACTOR_FILL_UNITS}
+            fillUnits={displayFillUnits}
             fillVelocity={waveVelocity}
           />
         </div>

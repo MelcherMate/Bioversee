@@ -79,6 +79,7 @@ function Canvas(props) {
             key={card.id}
             rotorVal={props.rotorVal}
             aeratorVal={props.aeratorVal}
+            waterLevelVal={props.waterLevelVal}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}
             scale={zoomLevel}
