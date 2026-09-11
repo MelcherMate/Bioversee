@@ -25,20 +25,18 @@
 }
 
 /* Thin dashes that travel continuously along the jacket flow */
-.thermal-jacket__flow-streak {
-  stroke-dasharray: var(--streak-dash, 28 72);
-  animation: thermal-jacket-streak var(--streak-duration, 1.4s) linear
-    var(--streak-delay, 0s) infinite;
+.thermal-jacket__flow-dash {
+  animation: thermal-jacket-flow-dash 1.4s linear infinite;
 }
 
-@keyframes thermal-jacket-streak {
+@keyframes thermal-jacket-flow-dash {
   to {
-    stroke-dashoffset: calc(-1 * var(--streak-cycle, 100));
+    stroke-dashoffset: -100;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thermal-jacket__flow-streak {
+  .thermal-jacket__flow-dash {
     animation: none;
     opacity: 0.35;
     stroke-dasharray: none;

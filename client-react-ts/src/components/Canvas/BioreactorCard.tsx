@@ -33,22 +33,17 @@ const JACKET_WATER_COLD: string = APPLE_DEPTH_COLORS.cyan;
 const JACKET_COLOR_BLEND_SECONDS = 7.5;
 
 /**
- * Flow streaks inside jacket water — thin dashes that travel continuously
- * along the pipe (sieve pipe dash motion, sparse like channel streaks).
+ * Flow dashes that travel continuously along the jacket pipe
+ * (same stroke-dashoffset motion as mates_garage sieve-dash).
  */
-const JACKET_FLOW_STREAKS = [
-  { dash: 28, gap: 72, duration: 1.4, delay: 0 },
-  { dash: 36, gap: 84, duration: 1.6, delay: 0.35 },
-  { dash: 22, gap: 78, duration: 1.5, delay: 0.7 },
-] as const;
-
-/** Representative streak travel speed (pathLength units / sec). */
-const JACKET_STREAK_SPEED =
-  (JACKET_FLOW_STREAKS[0].dash + JACKET_FLOW_STREAKS[0].gap) /
-  JACKET_FLOW_STREAKS[0].duration;
-/** Pipe fill/clear speed — 2× streak travel. */
-const JACKET_PIPE_WATER_SPEED = JACKET_STREAK_SPEED * 2;
-/** Thin streak strokes. */
+const JACKET_FLOW_DASH = 28;
+const JACKET_FLOW_GAP = 72;
+const JACKET_FLOW_CYCLE = JACKET_FLOW_DASH + JACKET_FLOW_GAP;
+const JACKET_FLOW_CYCLE_SECONDS = 1.4;
+/** Pipe fill/clear speed — 2× dash travel. */
+const JACKET_PIPE_WATER_SPEED =
+  (JACKET_FLOW_CYCLE / JACKET_FLOW_CYCLE_SECONDS) * 2;
+/** Thin dash strokes. */
 const JACKET_FLOW_LINE_WIDTH = 2.5;
 
 function hexToRgb(hex: string) {
@@ -436,30 +431,18 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
               strokeDasharray={`${segLen} ${JACKET_FLOW_PATH_LENGTH}`}
               strokeDashoffset={-segStart}
             />
-            {JACKET_FLOW_STREAKS.map((streak, i) => (
-              <path
-                key={i}
-                className="thermal-jacket__flow-streak"
-                d={pipePath}
-                pathLength={JACKET_FLOW_PATH_LENGTH}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.55)"
-                strokeWidth={JACKET_FLOW_LINE_WIDTH}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                mask={`url(#${prefix}-water-mask)`}
-                style={
-                  {
-                    ["--streak-dash" as string]: `${streak.dash} ${streak.gap}`,
-                    ["--streak-cycle" as string]: String(
-                      streak.dash + streak.gap,
-                    ),
-                    ["--streak-duration" as string]: `${streak.duration}s`,
-                    ["--streak-delay" as string]: `${streak.delay}s`,
-                  } as React.CSSProperties
-                }
-              />
-            ))}
+            <path
+              className="thermal-jacket__flow-dash"
+              d={pipePath}
+              pathLength={JACKET_FLOW_PATH_LENGTH}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth={JACKET_FLOW_LINE_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${JACKET_FLOW_DASH} ${JACKET_FLOW_GAP}`}
+              mask={`url(#${prefix}-water-mask)`}
+            />
           </g>
         ) : null}
       </svg>
