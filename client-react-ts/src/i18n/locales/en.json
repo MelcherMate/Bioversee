@@ -120,6 +120,8 @@
     "accepted": "Accepted",
     "declined": "Declined",
     "markRead": "Mark read",
+    "delete": "Delete",
+    "couldNotDelete": "Could not delete",
     "justNow": "Just now",
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",

@@ -395,6 +395,10 @@ export type Database = {
         Args: { p_notification_id: string };
         Returns: undefined;
       };
+      delete_my_notification: {
+        Args: { p_notification_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       device_type: DeviceType;

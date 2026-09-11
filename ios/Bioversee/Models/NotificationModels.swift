@@ -11,12 +11,25 @@ struct AppNotification: Identifiable, Hashable {
     let inviteStatus: String?
 
     var inviteId: UUID? {
-        guard let raw = data["invite_id"]?.stringValue else { return nil }
+        guard let raw = data["invite_id"]?.stringValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !raw.isEmpty
+        else { return nil }
         return UUID(uuidString: raw)
     }
 
+    var isPendingInvite: Bool {
+        guard kind == "device_invite" else { return false }
+        if inviteStatus == "pending" { return true }
+        // Fallback when join miss / status null but invite not resolved yet.
+        if inviteStatus == nil, data["resolved"] == nil, inviteId != nil {
+            return true
+        }
+        return false
+    }
+
     var isUnread: Bool {
-        if kind == "device_invite", inviteStatus == "pending" { return true }
+        if isPendingInvite { return true }
         return readAt == nil
     }
 }

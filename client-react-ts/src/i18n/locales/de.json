@@ -120,6 +120,8 @@
     "accepted": "Angenommen",
     "declined": "Abgelehnt",
     "markRead": "Als gelesen markieren",
+    "delete": "Löschen",
+    "couldNotDelete": "Löschen fehlgeschlagen",
     "justNow": "Gerade eben",
     "minutesAgo": "vor {{count}} Min.",
     "hoursAgo": "vor {{count}} Std.",

@@ -120,6 +120,8 @@
     "accepted": "Elfogadva",
     "declined": "Elutasítva",
     "markRead": "Olvasottnak jelölés",
+    "delete": "Törlés",
+    "couldNotDelete": "Nem sikerült törölni",
     "justNow": "Épp most",
     "minutesAgo": "{{count}} p. ezelőtt",
     "hoursAgo": "{{count}} ó. ezelőtt",

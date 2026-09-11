@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   acceptDeviceInvite,
   declineDeviceInvite,
+  deleteNotification,
   listMyNotifications,
   markNotificationRead,
   unreadCount,
@@ -130,24 +131,42 @@ function NotificationsPanel({
     if (notification.read_at) return;
     try {
       await markNotificationRead(notification.id);
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === notification.id
-            ? { ...item, read_at: new Date().toISOString() }
-            : item
-        )
+      const next = items.map((item) =>
+        item.id === notification.id
+          ? { ...item, read_at: new Date().toISOString() }
+          : item
       );
-      onUnreadChange?.(
-        unreadCount(
-          items.map((item) =>
-            item.id === notification.id
-              ? { ...item, read_at: new Date().toISOString() }
-              : item
-          )
-        )
-      );
+      setItems(next);
+      onUnreadChange?.(unreadCount(next));
     } catch {
       /* ignore */
+    }
+  };
+
+  const onDelete = async (notification: AppNotification) => {
+    if (busyId) return;
+    if (
+      notification.kind === "device_invite" &&
+      notification.invite_status === "pending"
+    ) {
+      return;
+    }
+    setBusyId(notification.id);
+    setError(null);
+    const previous = items;
+    const next = items.filter((item) => item.id !== notification.id);
+    setItems(next);
+    onUnreadChange?.(unreadCount(next));
+    try {
+      await deleteNotification(notification.id);
+    } catch (err) {
+      setItems(previous);
+      onUnreadChange?.(unreadCount(previous));
+      setError(
+        err instanceof Error ? err.message : t("notifications.couldNotDelete")
+      );
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -197,9 +216,23 @@ function NotificationsPanel({
               >
                 <div className="notif-panel__item-top">
                   <p className="notif-panel__item-title">{notification.title}</p>
-                  <span className="notif-panel__time">
-                    {timeAgo(notification.created_at, t)}
-                  </span>
+                  <div className="notif-panel__item-meta">
+                    <span className="notif-panel__time">
+                      {timeAgo(notification.created_at, t)}
+                    </span>
+                    {!pendingInvite && (
+                      <button
+                        type="button"
+                        className="notif-panel__delete"
+                        disabled={busyId === notification.id}
+                        onClick={() => onDelete(notification)}
+                        aria-label={t("notifications.delete")}
+                        title={t("notifications.delete")}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {notification.body && (
                   <p className="notif-panel__item-body">{notification.body}</p>
@@ -233,15 +266,25 @@ function NotificationsPanel({
                           : t("notifications.declined")}
                       </span>
                     )}
-                    {!notification.read_at && !pendingInvite && (
+                    <div className="notif-panel__footer-actions">
+                      {!notification.read_at && (
+                        <button
+                          type="button"
+                          className="notif-panel__text-btn"
+                          onClick={() => onMarkRead(notification)}
+                        >
+                          {t("notifications.markRead")}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className="notif-panel__text-btn"
-                        onClick={() => onMarkRead(notification)}
+                        className="notif-panel__text-btn notif-panel__text-btn--danger"
+                        disabled={busyId === notification.id}
+                        onClick={() => onDelete(notification)}
                       >
-                        {t("notifications.markRead")}
+                        {t("notifications.delete")}
                       </button>
-                    )}
+                    </div>
                   </div>
                 )}
               </li>

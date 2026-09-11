@@ -62,10 +62,12 @@ struct NotificationsView: View {
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        Task { await inbox.delete(item) }
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    if !item.notification.isPendingInvite {
+                                        Button(role: .destructive) {
+                                            Task { await inbox.delete(item) }
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }
@@ -96,9 +98,14 @@ struct NotificationsView: View {
     }
 
     private func accept(_ item: InboxItem) async {
-        guard let inviteId = item.notification.inviteId,
-              let account = account(for: item)
-        else { return }
+        guard let account = account(for: item) else {
+            inbox.errorMessage = "Account not found for this invite."
+            return
+        }
+        guard let inviteId = item.notification.inviteId else {
+            inbox.errorMessage = "This invite is missing an ID. Open it on the website or ask for a new invite."
+            return
+        }
         busyId = item.id
         defer { busyId = nil }
         do {
@@ -110,9 +117,14 @@ struct NotificationsView: View {
     }
 
     private func decline(_ item: InboxItem) async {
-        guard let inviteId = item.notification.inviteId,
-              let account = account(for: item)
-        else { return }
+        guard let account = account(for: item) else {
+            inbox.errorMessage = "Account not found for this invite."
+            return
+        }
+        guard let inviteId = item.notification.inviteId else {
+            inbox.errorMessage = "This invite is missing an ID. Open it on the website or ask for a new invite."
+            return
+        }
         busyId = item.id
         defer { busyId = nil }
         do {
@@ -124,7 +136,8 @@ struct NotificationsView: View {
     }
 
     private func markRead(_ item: InboxItem) async {
-        guard item.notification.readAt == nil,
+        guard !item.notification.isPendingInvite,
+              item.notification.readAt == nil,
               let account = account(for: item)
         else { return }
         do {
@@ -176,33 +189,43 @@ private struct NotificationCard: View {
                 }
             }
 
-            HStack(alignment: .top) {
-                Text(note.title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(BVTheme.text)
-                Spacer()
-                if item.isUnread {
-                    Circle()
-                        .fill(BVTheme.accent)
-                        .frame(width: 8, height: 8)
-                        .padding(.top, 5)
+            Button(action: onOpen) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top) {
+                        Text(note.title)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(BVTheme.text)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                        if item.isUnread {
+                            Circle()
+                                .fill(BVTheme.accent)
+                                .frame(width: 8, height: 8)
+                                .padding(.top, 5)
+                        }
+                    }
+
+                    if let body = note.body, !body.isEmpty {
+                        Text(body)
+                            .font(.system(size: 13))
+                            .foregroundStyle(BVTheme.textSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Text(note.createdAt)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(BVTheme.textTertiary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .disabled(note.isPendingInvite)
 
-            if let body = note.body, !body.isEmpty {
-                Text(body)
-                    .font(.system(size: 13))
-                    .foregroundStyle(BVTheme.textSecondary)
-            }
-
-            Text(note.createdAt)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(BVTheme.textTertiary)
-
-            if note.kind == "device_invite", note.inviteStatus == "pending" {
+            if note.isPendingInvite {
                 HStack(spacing: 8) {
                     Button(action: onAccept) {
-                        Text("Accept")
+                        Text(busy ? "Working…" : "Accept")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 14)
@@ -210,6 +233,7 @@ private struct NotificationCard: View {
                             .background(BVTheme.accent)
                             .clipShape(Capsule())
                     }
+                    .buttonStyle(.borderless)
                     .disabled(busy)
 
                     Button(action: onDecline) {
@@ -221,13 +245,12 @@ private struct NotificationCard: View {
                             .background(BVTheme.danger.opacity(0.10))
                             .clipShape(Capsule())
                     }
+                    .buttonStyle(.borderless)
                     .disabled(busy)
                 }
             }
         }
         .padding(16)
         .bvCard()
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onOpen)
     }
 }

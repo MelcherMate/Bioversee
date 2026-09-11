@@ -89,10 +89,10 @@ enum NotificationService {
 
     static func acceptInvite(inviteId: UUID, asAccount account: VaultAccount) async throws {
         try await withAccount(account) {
-            let _: AcceptInviteResult = try await SupabaseManager.client
+            // Don't depend on decoding the jsonb payload — membership write is what matters.
+            try await SupabaseManager.client
                 .rpc("accept_device_invite", params: InviteIdParams(pInviteId: inviteId))
                 .execute()
-                .value
         }
     }
 

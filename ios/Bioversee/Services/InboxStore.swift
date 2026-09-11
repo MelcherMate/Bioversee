@@ -72,7 +72,11 @@ final class InboxStore: ObservableObject {
     }
 
     /// Optimistic remove + server delete (no confirmation).
+    /// Pending device invites must be accepted or declined first.
     func delete(_ item: InboxItem) async {
+        if item.notification.isPendingInvite {
+            return
+        }
         guard let session,
               let account = session.accounts.first(where: { $0.id == item.accountId })
         else { return }
