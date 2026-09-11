@@ -458,8 +458,8 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
 /** Litmus-style acid (red) / base (blue) dosing colors. */
 const DOSE_ACID = "#e11d48";
 const DOSE_BASE = "#2563eb";
-/** Tip just past vessel rim (SVG y; chamber top ≈ 43 in this viewBox). */
-const DOSE_TIP_Y = 58;
+/** Tip past the vessel wall into the headspace (SVG y; outer rim ≈ 43). */
+const DOSE_TIP_Y = 88;
 const DOSE_PATH = `M 16 16 L 264 16 L 264 ${DOSE_TIP_Y}`;
 const DOSE_PATH_LENGTH = 300;
 const DOSE_TUBE_OD = 4;
