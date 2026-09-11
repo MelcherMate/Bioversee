@@ -29,6 +29,116 @@ const CARD_HEIGHT = 750;
 const JACKET_WATER_WIDTH = PIPE_OD - 6;
 /** Nominal centerline length for dash mapping (matches pathLength). */
 const JACKET_FLOW_PATH_LENGTH = 1280;
+/** Warm jacket water — previous red that read better than orange. */
+const JACKET_WATER_WARM = "#e11d48";
+const JACKET_WATER_COLD: string = APPLE_DEPTH_COLORS.cyan;
+/** Left→right color sweep duration when switching warm ↔ cold. */
+const JACKET_COLOR_BLEND_SECONDS = 7.5;
+
+function hexToRgb(hex: string) {
+  const h = hex.replace("#", "");
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+function lerpHex(from: string, to: string, t: number) {
+  const a = hexToRgb(from);
+  const b = hexToRgb(to);
+  const u = Math.min(1, Math.max(0, t));
+  const r = Math.round(a.r + (b.r - a.r) * u);
+  const g = Math.round(a.g + (b.g - a.g) * u);
+  const bl = Math.round(a.b + (b.b - a.b) * u);
+  return `#${[r, g, bl].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Soft band width as a fraction of jacket width for the L→R color front. */
+const JACKET_COLOR_SWEEP_BAND = 0.16;
+/** Jacket SVG viewBox x-range (matches thermal-jacket__svg). */
+const JACKET_GRAD_X0 = -130;
+const JACKET_GRAD_X1 = 572;
+
+type JacketWaterBlend = {
+  fromColor: string;
+  toColor: string;
+  /** 0 → 1 left-to-right sweep; 1 means settled on toColor. */
+  progress: number;
+};
+
+/**
+ * First pump-on snaps to target color. Warm ↔ cold sweeps new color
+ * left → right over 7.5s with a soft red↔blue fade at the front.
+ */
+function useJacketWaterBlend(mode: JacketMode): JacketWaterBlend {
+  const [blend, setBlend] = useState<JacketWaterBlend>({
+    fromColor: JACKET_WATER_COLD,
+    toColor: JACKET_WATER_COLD,
+    progress: 1,
+  });
+  const fromRef = useRef<string>(JACKET_WATER_COLD);
+  const toRef = useRef<string>(JACKET_WATER_COLD);
+  const progressRef = useRef(1);
+  const prevActiveRef = useRef<"warm" | "cold" | null>(null);
+
+  useEffect(() => {
+    if (mode !== "warm" && mode !== "cold") return;
+
+    const next = mode === "warm" ? JACKET_WATER_WARM : JACKET_WATER_COLD;
+    const prev = prevActiveRef.current;
+    prevActiveRef.current = mode;
+
+    if (prev && prev !== mode) {
+      const mid =
+        progressRef.current < 1
+          ? lerpHex(fromRef.current, toRef.current, progressRef.current)
+          : toRef.current;
+      fromRef.current = mid;
+      toRef.current = next;
+      progressRef.current = 0;
+      setBlend({ fromColor: mid, toColor: next, progress: 0 });
+      return;
+    }
+
+    if (!prev) {
+      fromRef.current = next;
+      toRef.current = next;
+      progressRef.current = 1;
+      setBlend({ fromColor: next, toColor: next, progress: 1 });
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    let frame = 0;
+    let lastTime = 0;
+
+    const tick = (now: number) => {
+      if (!lastTime) lastTime = now;
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (progressRef.current < 1) {
+        progressRef.current = Math.min(
+          1,
+          progressRef.current + dt / JACKET_COLOR_BLEND_SECONDS,
+        );
+        setBlend({
+          fromColor: fromRef.current,
+          toColor: toRef.current,
+          progress: progressRef.current,
+        });
+      }
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return blend;
+}
 
 /** Chamber outer box (matches .reaction_chamber, border-box). */
 const VESSEL = {
@@ -189,12 +299,7 @@ type ThermalJacketProps = {
 function ThermalJacket({ mode }: ThermalJacketProps) {
   const prefix = useId().replace(/:/g, "");
   const active = mode !== "idle";
-  const lastActiveMode = useRef<"warm" | "cold">("cold");
-  if (mode === "warm" || mode === "cold") {
-    lastActiveMode.current = mode;
-  }
-  const waterColor =
-    lastActiveMode.current === "warm" ? "#f97316" : APPLE_DEPTH_COLORS.cyan;
+  const { fromColor, toColor, progress } = useJacketWaterBlend(mode);
   const modeClass =
     mode === "warm"
       ? "thermal-jacket--warm"
@@ -210,6 +315,14 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
     0,
     Math.min(segEnd, JACKET_FLOW_PATH_LENGTH) - segStart,
   );
+
+  const sweeping = progress < 1 && fromColor !== toColor;
+  const settledColor = progress >= 1 ? toColor : fromColor;
+  const waterStroke = sweeping ? `url(#${prefix}-color-sweep)` : settledColor;
+
+  // Soft L→R front: new color on the left, old on the right.
+  const softStart = Math.max(0, progress - JACKET_COLOR_SWEEP_BAND / 2);
+  const softEnd = Math.min(1, progress + JACKET_COLOR_SWEEP_BAND / 2);
 
   return (
     <div className={`thermal-jacket ${modeClass}`}>
@@ -234,6 +347,21 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
               floodOpacity="0.18"
             />
           </filter>
+          {sweeping ? (
+            <linearGradient
+              id={`${prefix}-color-sweep`}
+              gradientUnits="userSpaceOnUse"
+              x1={JACKET_GRAD_X0}
+              y1={0}
+              x2={JACKET_GRAD_X1}
+              y2={0}
+            >
+              <stop offset={0} stopColor={toColor} />
+              <stop offset={softStart} stopColor={toColor} />
+              <stop offset={softEnd} stopColor={fromColor} />
+              <stop offset={1} stopColor={fromColor} />
+            </linearGradient>
+          ) : null}
         </defs>
 
         {/* Single continuous white-gray pipe (inlet + jacket + outlet) */}
@@ -256,19 +384,53 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
           />
         </g>
 
-        {/* Solid water slug — same technique as pressure-vessel pipe runs */}
+        {/* Solid water slug + moving flow lines (masked to the water body) */}
         {segLen > 0 ? (
-          <path
-            d={pipePath}
-            pathLength={JACKET_FLOW_PATH_LENGTH}
-            fill="none"
-            stroke={waterColor}
-            strokeWidth={JACKET_WATER_WIDTH}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-            strokeDasharray={`${segLen} ${JACKET_FLOW_PATH_LENGTH}`}
-            strokeDashoffset={-segStart}
-          />
+          <g>
+            <defs>
+              <mask
+                id={`${prefix}-water-mask`}
+                maskUnits="userSpaceOnUse"
+                x="-130"
+                y="-140"
+                width="702"
+                height="620"
+              >
+                <path
+                  d={pipePath}
+                  pathLength={JACKET_FLOW_PATH_LENGTH}
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={JACKET_WATER_WIDTH + 2}
+                  strokeLinecap="butt"
+                  strokeLinejoin="round"
+                  strokeDasharray={`${segLen} ${JACKET_FLOW_PATH_LENGTH}`}
+                  strokeDashoffset={-segStart}
+                />
+              </mask>
+            </defs>
+            <path
+              d={pipePath}
+              pathLength={JACKET_FLOW_PATH_LENGTH}
+              fill="none"
+              stroke={waterStroke}
+              strokeWidth={JACKET_WATER_WIDTH}
+              strokeLinecap="butt"
+              strokeLinejoin="round"
+              strokeDasharray={`${segLen} ${JACKET_FLOW_PATH_LENGTH}`}
+              strokeDashoffset={-segStart}
+            />
+            <path
+              className="thermal-jacket__flow-pulse"
+              d={pipePath}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth={Math.max(3, JACKET_WATER_WIDTH - 4)}
+              strokeLinecap="butt"
+              strokeLinejoin="round"
+              mask={`url(#${prefix}-water-mask)`}
+            />
+          </g>
         ) : null}
       </svg>
     </div>

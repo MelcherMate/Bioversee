@@ -24,6 +24,29 @@
   overflow: visible;
 }
 
+/* Flow lines traveling along the solid water slug */
+.thermal-jacket__flow-pulse {
+  stroke-dasharray: 18 52;
+  animation: thermal-jacket-flow 1.25s linear infinite;
+}
+
+@keyframes thermal-jacket-flow {
+  from {
+    stroke-dashoffset: 70;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thermal-jacket__flow-pulse {
+    animation: none;
+    opacity: 0.35;
+    stroke-dasharray: none;
+  }
+}
+
 /* REACTOR BODY — sits inside the jacket U */
 .reaction_chamber {
   display: block;
