@@ -84,8 +84,7 @@
   flex-shrink: 0;
 }
 
-.topbar__round-btn,
-.topbar__device-icon {
+.topbar__round-btn {
   display: grid;
   place-items: center;
   width: 36px;
@@ -101,9 +100,9 @@
 }
 
 .topbar__round-btn:hover,
-.topbar__device-icon:hover,
 .topbar__round-btn.is-active,
-.topbar__device-icon.is-active {
+.topbar__device-chip:hover,
+.topbar__device-chip.is-active {
   background: var(--bv-accent-soft);
   box-shadow: inset 0 0 0 1px var(--bv-accent-border);
 }
@@ -119,24 +118,53 @@
   box-shadow: inset 0 0 0 1px var(--bv-accent-border);
 }
 
-.topbar__device-icon {
+.topbar__device-chip {
   position: relative;
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
-  overflow: visible;
+  max-width: 140px;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--bv-fill);
+  color: var(--bv-text);
+  cursor: pointer;
+  transition:
+    background 0.2s var(--bv-ease),
+    box-shadow 0.2s var(--bv-ease),
+    color 0.2s var(--bv-ease);
 }
 
-.topbar__device-icon.is-shared {
+.topbar__device-chip.is-active {
+  color: var(--bv-accent-hover);
+}
+
+.topbar__device-chip.is-shared {
+  padding-right: 18px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-.topbar__device-icon.is-shared.is-active {
+.topbar__device-chip.is-shared.is-active {
   box-shadow: inset 0 0 0 1px var(--bv-accent-border);
+}
+
+.topbar__device-chip-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .topbar__device-owner {
   position: absolute;
-  right: -3px;
-  bottom: -3px;
+  right: -2px;
+  top: 50%;
   z-index: 1;
   display: block;
   width: 14px;
@@ -147,6 +175,7 @@
   box-sizing: content-box;
   background: var(--bv-fill);
   pointer-events: none;
+  transform: translateY(-50%);
 }
 
 .topbar__device-owner img {

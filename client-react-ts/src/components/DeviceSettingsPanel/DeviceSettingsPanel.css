@@ -29,15 +29,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.device-settings__icon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--bv-accent-soft);
+  min-width: 0;
 }
 
 .device-settings__eyebrow {

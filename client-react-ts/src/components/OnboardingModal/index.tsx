@@ -164,7 +164,6 @@ function OnboardingModal({ user }: OnboardingModalProps) {
             >
               {DEVICE_TYPE_ORDER.map((deviceType) => {
                 const meta = DEVICE_TYPE_META[deviceType];
-                const Icon = meta.Icon;
                 const active = type === deviceType;
                 return (
                   <button
@@ -175,9 +174,6 @@ function OnboardingModal({ user }: OnboardingModalProps) {
                     className={`onboarding__type ${active ? "is-active" : ""}`}
                     onClick={() => setType(deviceType)}
                   >
-                    <span className="onboarding__type-icon" aria-hidden="true">
-                      <Icon color="currentColor" height="18px" width="18px" />
-                    </span>
                     <span className="onboarding__type-text">
                       <span className="onboarding__type-label">
                         {t(meta.labelKey)}

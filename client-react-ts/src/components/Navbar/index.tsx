@@ -24,7 +24,6 @@ import {
   type StoredAccount,
 } from "../../lib/accountSessions";
 import { connectivityLabel, useAppStatus } from "../../lib/appStatus";
-import { DEVICE_TYPE_META } from "../../lib/deviceIcons";
 import {
   deleteMyDevice,
   leaveDevice,
@@ -454,15 +453,13 @@ const Navbar = ({ user }: NavbarProps) => {
 
           <div className="topbar__devices" ref={devicesRef} role="toolbar" aria-label={t("nav.devices")}>
             {devices.map((device) => {
-              const meta = DEVICE_TYPE_META[device.type];
-              const Icon = meta.Icon;
               const active = activeDevice?.id === device.id;
               return (
                 <button
                   key={device.id}
                   type="button"
                   data-device-id={device.id}
-                  className={`topbar__device-icon ${active ? "is-active" : ""} ${
+                  className={`topbar__device-chip ${active ? "is-active" : ""} ${
                     device.isOwner ? "" : "is-shared"
                   }`}
                   title={device.name}
@@ -471,14 +468,7 @@ const Navbar = ({ user }: NavbarProps) => {
                   onClick={() => onSelectDevice(device)}
                   onContextMenu={(event) => onDeviceContextMenu(event, device)}
                 >
-                  <Icon
-                    color={
-                      active ? "var(--bv-accent-hover)" : "var(--bv-text)"
-                    }
-                    height="18px"
-                    width="18px"
-                    title={device.name}
-                  />
+                  <span className="topbar__device-chip-label">{device.name}</span>
                   {!device.isOwner && (
                     <span
                       className="topbar__device-owner"

@@ -140,7 +140,6 @@ function AddDevicePanel({
         <div className="add-device__types" role="listbox" aria-label={t("addDevice.type")}>
           {DEVICE_TYPE_ORDER.map((deviceType) => {
             const item = DEVICE_TYPE_META[deviceType];
-            const Icon = item.Icon;
             const active = type === deviceType;
             const itemLabel = t(item.labelKey);
             return (
@@ -160,13 +159,6 @@ function AddDevicePanel({
                   });
                 }}
               >
-                <span className="add-device__type-icon">
-                  <Icon
-                    color={active ? "var(--bv-accent-hover)" : "var(--bv-text)"}
-                    height="18px"
-                    width="18px"
-                  />
-                </span>
                 <span className="add-device__type-label">{itemLabel}</span>
                 {isLegacyDeviceType(deviceType) ? (
                   <span className="add-device__legacy">{t("common.legacy")}</span>

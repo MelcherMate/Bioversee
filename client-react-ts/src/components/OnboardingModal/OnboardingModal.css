@@ -89,17 +89,6 @@
   background: var(--bv-accent-muted);
 }
 
-.onboarding__type-icon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  background: var(--bv-card);
-  color: var(--bv-accent-hover, var(--bv-accent));
-}
-
 .onboarding__type-text {
   display: flex;
   flex-direction: column;

@@ -92,16 +92,6 @@
   box-shadow: inset 0 0 0 1px var(--bv-accent-border);
 }
 
-.add-device__type-icon {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--bv-card);
-  flex-shrink: 0;
-}
-
 .add-device__type-label {
   font-size: 12px;
   font-weight: 650;

@@ -66,7 +66,6 @@ function DeviceSettingsPanel({
   if (!open || !device) return null;
 
   const meta = DEVICE_TYPE_META[device.type];
-  const Icon = meta.Icon;
   const canRename = canAdminDevice(device.role);
   const panelWidth = Math.min(320, typeof window !== "undefined" ? window.innerWidth - 28 : 320);
   const left = anchor
@@ -108,9 +107,6 @@ function DeviceSettingsPanel({
     >
       <div className="device-settings__head">
         <div className="device-settings__title-row">
-          <span className="device-settings__icon">
-            <Icon color="var(--bv-accent-hover)" height="18px" width="18px" />
-          </span>
           <div>
             <p className="device-settings__eyebrow">{t("deviceSettings.eyebrow")}</p>
             <h2 className="device-settings__title">{t(meta.labelKey)}</h2>
