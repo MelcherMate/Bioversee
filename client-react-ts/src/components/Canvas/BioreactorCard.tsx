@@ -1,9 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { APPLE_DEPTH_COLORS } from "../pressure-vessel/apple-depth-style";
-import {
-  INLET_PIPE_WATER_SPEED,
-  VESSEL_MAX_FILL_UNITS,
-} from "../pressure-vessel/constants";
+import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
@@ -34,6 +31,16 @@ const JACKET_WATER_WARM = "#e11d48";
 const JACKET_WATER_COLD: string = APPLE_DEPTH_COLORS.cyan;
 /** Left→right color sweep duration when switching warm ↔ cold. */
 const JACKET_COLOR_BLEND_SECONDS = 7.5;
+
+/** White flow-line dash pattern (shared with CSS animation). */
+const JACKET_FLOW_DASH = 12;
+const JACKET_FLOW_GAP = 48;
+const JACKET_FLOW_CYCLE = JACKET_FLOW_DASH + JACKET_FLOW_GAP;
+const JACKET_FLOW_CYCLE_SECONDS = 1.25;
+/** Pipe fill/clear speed — matches white flow-line travel. */
+const JACKET_PIPE_WATER_SPEED = JACKET_FLOW_CYCLE / JACKET_FLOW_CYCLE_SECONDS;
+/** Thin motion dashes inside the water slug. */
+const JACKET_FLOW_LINE_WIDTH = 2;
 
 function hexToRgb(hex: string) {
   const h = hex.replace("#", "");
@@ -192,7 +199,7 @@ function useJacketPipeWater(active: boolean) {
           if (on) {
             headRef.current = Math.min(
               pathEnd,
-              headRef.current + INLET_PIPE_WATER_SPEED * dt,
+              headRef.current + JACKET_PIPE_WATER_SPEED * dt,
             );
             if (headRef.current >= pathEnd - 0.5) {
               headRef.current = pathEnd;
@@ -218,7 +225,7 @@ function useJacketPipeWater(active: boolean) {
           }
           tailRef.current = Math.min(
             headRef.current,
-            tailRef.current + INLET_PIPE_WATER_SPEED * dt,
+            tailRef.current + JACKET_PIPE_WATER_SPEED * dt,
           );
           if (tailRef.current >= headRef.current - 0.5) {
             tailRef.current = 0;
@@ -423,12 +430,20 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
             <path
               className="thermal-jacket__flow-pulse"
               d={pipePath}
+              pathLength={JACKET_FLOW_PATH_LENGTH}
               fill="none"
               stroke="rgba(255, 255, 255, 0.55)"
-              strokeWidth={Math.max(3, JACKET_WATER_WIDTH - 4)}
+              strokeWidth={JACKET_FLOW_LINE_WIDTH}
               strokeLinecap="butt"
               strokeLinejoin="round"
               mask={`url(#${prefix}-water-mask)`}
+              style={
+                {
+                  ["--jacket-flow-dash" as string]: `${JACKET_FLOW_DASH} ${JACKET_FLOW_GAP}`,
+                  ["--jacket-flow-cycle" as string]: String(JACKET_FLOW_CYCLE),
+                  ["--jacket-flow-duration" as string]: `${JACKET_FLOW_CYCLE_SECONDS}s`,
+                } as React.CSSProperties
+              }
             />
           </g>
         ) : null}

@@ -26,16 +26,14 @@
 
 /* Flow lines traveling along the solid water slug */
 .thermal-jacket__flow-pulse {
-  stroke-dasharray: 18 52;
-  animation: thermal-jacket-flow 1.25s linear infinite;
+  stroke-dasharray: var(--jacket-flow-dash, 12 48);
+  animation: thermal-jacket-flow var(--jacket-flow-duration, 1.25s) linear
+    infinite;
 }
 
 @keyframes thermal-jacket-flow {
-  from {
-    stroke-dashoffset: 70;
-  }
   to {
-    stroke-dashoffset: 0;
+    stroke-dashoffset: calc(-1 * var(--jacket-flow-cycle, 60));
   }
 }
 
