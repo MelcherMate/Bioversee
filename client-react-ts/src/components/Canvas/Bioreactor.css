@@ -235,7 +235,7 @@
   }
 }
 
-/* AERATOR — metal supply pipe + MBR-style submerged diffuser */
+/* AERATOR — metal supply pipe + MBR-style sparger (single SVG) */
 .aerator-supply {
   position: absolute;
   inset: 0;
@@ -258,43 +258,8 @@
 
 @keyframes aerator-supply-flow {
   to {
-    stroke-dashoffset: -42;
+    stroke-dashoffset: -36;
   }
-}
-
-.aerator-diffuser {
-  position: absolute;
-  top: 378px;
-  left: 121px;
-  width: 200px;
-  height: 8px;
-  border-radius: 4px;
-  background: repeating-linear-gradient(
-    to right,
-    #71717a 0,
-    #71717a 4px,
-    #a1a1aa 4px,
-    #a1a1aa 10px
-  );
-  border: 1.5px solid #52525b;
-  z-index: 1;
-  transition: box-shadow 0.25s ease;
-}
-
-.aerator-diffuser--level-25 {
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
-}
-
-.aerator-diffuser--level-50 {
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
-}
-
-.aerator-diffuser--level-75 {
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
-}
-
-.aerator-diffuser--level-100 {
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
 }
 
 @media (prefers-reduced-motion: reduce) {

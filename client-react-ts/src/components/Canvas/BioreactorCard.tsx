@@ -718,31 +718,32 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
 }
 
 /**
- * Sparger centered under the impeller; riser stays left of the blade sweep
- * (agitator left ≈ 124) so rotating blades clear the supply pipe.
+ * Sparger centered under the impeller; riser left of the blade sweep
+ * (agitator left ≈ 124). Drawn in one SVG so the pipe→bar joint aligns.
  */
-const AERATOR_SPARGER_TOP = 378;
+const AERATOR_PIPE_OD = Math.round(PIPE_OD * 0.75); // ~25% thinner
 const AERATOR_SPARGER_WIDTH = 200;
 const AERATOR_SPARGER_LEFT = 221 - AERATOR_SPARGER_WIDTH / 2;
-const AERATOR_SPARGER_HEIGHT = 8;
-/** ~25% thinner than jacket/process pipe OD. */
-const AERATOR_PIPE_OD = Math.round(PIPE_OD * 0.75);
-/** Outside impeller sweep (blade left edge ≈ 124). */
-const AERATOR_PIPE_DROP_X = 56;
-const AERATOR_SPARGER_Y = AERATOR_SPARGER_TOP + AERATOR_SPARGER_HEIGHT / 2;
-/** Inlet → drop outside blades → across to sparger. */
+const AERATOR_SPARGER_HEIGHT = AERATOR_PIPE_OD;
+/** Midway under blade hub / above dish floor. */
+const AERATOR_SPARGER_Y = 368;
+const AERATOR_SPARGER_TOP = AERATOR_SPARGER_Y - AERATOR_SPARGER_HEIGHT / 2;
+/** Clear left wall (~40) and blade sweep (~124). */
+const AERATOR_PIPE_DROP_X = 70;
+/** Pipe runs into the coupling so the joint reads continuous. */
+const AERATOR_PIPE_END_X = AERATOR_SPARGER_LEFT + 10;
 const AERATOR_SUPPLY_PATH = [
   `M -100 -42`,
   `L ${AERATOR_PIPE_DROP_X} -42`,
   `L ${AERATOR_PIPE_DROP_X} ${AERATOR_SPARGER_Y}`,
-  `L ${AERATOR_SPARGER_LEFT} ${AERATOR_SPARGER_Y}`,
+  `L ${AERATOR_PIPE_END_X} ${AERATOR_SPARGER_Y}`,
 ].join(" ");
-const AERATOR_SUPPLY_PATH_LENGTH = 620;
+const AERATOR_SUPPLY_PATH_LENGTH = 640;
 const AERATOR_FLOW_DASH = 12;
 const AERATOR_FLOW_GAP = 24;
-/** Whitish air / steam in the supply pipe. */
 const AERATOR_AIR = "#f8fafc";
 const AERATOR_AIR_DASH = "rgba(255, 255, 255, 0.92)";
+const AERATOR_COUPLING_W = 16;
 
 function aeratorDiffuserLevel(val: number) {
   if (val <= 0) return 0;
@@ -761,6 +762,16 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
   const active = aeratorVal > 0;
   const level = aeratorDiffuserLevel(aeratorVal);
   const airWidth = Math.max(3, AERATOR_PIPE_OD - 5);
+  const glow =
+    level === 0
+      ? 0
+      : level === 25
+        ? 0.25
+        : level === 50
+          ? 0.35
+          : level === 75
+            ? 0.45
+            : 0.55;
 
   return (
     <div className="aerator-supply">
@@ -786,7 +797,27 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
               floodOpacity="0.18"
             />
           </filter>
+          <pattern
+            id={`${prefix}-diffuser`}
+            width="10"
+            height={AERATOR_SPARGER_HEIGHT}
+            patternUnits="userSpaceOnUse"
+          >
+            <rect
+              width="4"
+              height={AERATOR_SPARGER_HEIGHT}
+              fill={PIPE_METAL.mid}
+            />
+            <rect
+              x="4"
+              width="6"
+              height={AERATOR_SPARGER_HEIGHT}
+              fill={PIPE_FILL}
+            />
+          </pattern>
         </defs>
+
+        {/* Supply riser */}
         <g filter={`url(#${prefix}-metal)`}>
           <path
             d={AERATOR_SUPPLY_PATH}
@@ -805,6 +836,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
             strokeLinejoin="round"
           />
         </g>
+
         {active ? (
           <g>
             <path
@@ -829,16 +861,39 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
             />
           </g>
         ) : null}
-      </svg>
 
-      <div
-        className={[
-          "aerator-diffuser",
-          active ? `aerator-diffuser--level-${level}` : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      />
+        {/* Sparger bar — same OD as pipe for a flush joint */}
+        <g filter={`url(#${prefix}-metal)`}>
+          <rect
+            x={AERATOR_SPARGER_LEFT}
+            y={AERATOR_SPARGER_TOP}
+            width={AERATOR_SPARGER_WIDTH}
+            height={AERATOR_SPARGER_HEIGHT}
+            rx={3}
+            fill={`url(#${prefix}-diffuser)`}
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={1.5}
+            style={
+              active
+                ? {
+                    filter: `drop-shadow(0 0 ${4 + level / 20}px rgba(56, 189, 248, ${glow}))`,
+                  }
+                : undefined
+            }
+          />
+          {/* Coupling sleeve: bridges pipe OD into the perforated bar */}
+          <rect
+            x={AERATOR_SPARGER_LEFT - 3}
+            y={AERATOR_SPARGER_Y - (AERATOR_PIPE_OD + 2) / 2}
+            width={AERATOR_COUPLING_W}
+            height={AERATOR_PIPE_OD + 2}
+            rx={2}
+            fill={PIPE_FILL}
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={1.5}
+          />
+        </g>
+      </svg>
     </div>
   );
 }
