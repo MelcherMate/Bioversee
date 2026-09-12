@@ -235,37 +235,70 @@
   }
 }
 
-/* AERATOR SUPPLY PIPE */
-.aerator_submerged {
-  display: block;
+/* AERATOR — metal supply pipe + MBR-style submerged diffuser */
+.aerator-supply {
   position: absolute;
-  top: 370px;
-  left: 91px;
-  height: 12px;
-  width: 195px;
-  border-radius: 16px;
-  background: silver;
+  inset: 0;
+  pointer-events: none;
   z-index: 1;
 }
 
-.aerator_supply_pipe_v {
-  display: block;
+.aerator-supply__pipe {
   position: absolute;
-  height: 425px;
-  width: 7px;
-  background: silver;
-  top: -50px;
-  left: 94px;
-  z-index: 1;
+  left: -110px;
+  top: -55px;
+  width: 340px;
+  height: 400px;
+  overflow: visible;
 }
 
-.aerator_supply_pipe_h {
-  display: block;
+.aerator-supply__flow-dash {
+  animation: aerator-supply-flow 0.9s linear infinite;
+}
+
+@keyframes aerator-supply-flow {
+  to {
+    stroke-dashoffset: -42;
+  }
+}
+
+.aerator-diffuser {
   position: absolute;
-  height: 7px;
-  width: 194px;
-  top: -50px;
-  left: -100px;
-  background: silver;
-  z-index: 1;
+  top: 318px;
+  left: 88px;
+  width: 200px;
+  height: 8px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    to right,
+    #71717a 0,
+    #71717a 4px,
+    #a1a1aa 4px,
+    #a1a1aa 10px
+  );
+  border: 1.5px solid #52525b;
+  z-index: 2;
+  transition: box-shadow 0.25s ease;
+}
+
+.aerator-diffuser--level-25 {
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
+}
+
+.aerator-diffuser--level-50 {
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+}
+
+.aerator-diffuser--level-75 {
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+}
+
+.aerator-diffuser--level-100 {
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aerator-supply__flow-dash {
+    animation: none;
+  }
 }

@@ -717,6 +717,117 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   );
 }
 
+/** Raised sparger (was 370) — MBR-style diffuser + metal supply pipe. */
+const AERATOR_SPARGER_TOP = 318;
+const AERATOR_SPARGER_LEFT = 88;
+const AERATOR_SPARGER_WIDTH = 200;
+const AERATOR_SPARGER_HEIGHT = 8;
+const AERATOR_PIPE_DROP_X = AERATOR_SPARGER_LEFT + 10;
+const AERATOR_SUPPLY_PATH = `M -100 -42 L ${AERATOR_PIPE_DROP_X} -42 L ${AERATOR_PIPE_DROP_X} ${AERATOR_SPARGER_TOP + AERATOR_SPARGER_HEIGHT / 2}`;
+const AERATOR_SUPPLY_PATH_LENGTH = 520;
+const AERATOR_FLOW_DASH = 14;
+const AERATOR_FLOW_GAP = 28;
+const AERATOR_AIR = APPLE_DEPTH_COLORS.cyan;
+
+function aeratorDiffuserLevel(val: number) {
+  if (val <= 0) return 0;
+  if (val <= 25) return 25;
+  if (val <= 50) return 50;
+  if (val <= 75) return 75;
+  return 100;
+}
+
+type AeratorSupplyProps = {
+  aeratorVal: number;
+};
+
+function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
+  const prefix = useId().replace(/:/g, "");
+  const active = aeratorVal > 0;
+  const level = aeratorDiffuserLevel(aeratorVal);
+  const airWidth = Math.max(3, PIPE_OD - 8);
+
+  return (
+    <div className="aerator-supply">
+      <svg
+        className="aerator-supply__pipe"
+        viewBox="-110 -55 340 400"
+        aria-hidden
+        overflow="visible"
+      >
+        <defs>
+          <filter
+            id={`${prefix}-metal`}
+            x="-20%"
+            y="-20%"
+            width="140%"
+            height="140%"
+          >
+            <feDropShadow
+              dx="1"
+              dy="2"
+              stdDeviation="1.2"
+              floodColor="#000"
+              floodOpacity="0.18"
+            />
+          </filter>
+        </defs>
+        <g filter={`url(#${prefix}-metal)`}>
+          <path
+            d={AERATOR_SUPPLY_PATH}
+            fill="none"
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={PIPE_OD + 3}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={AERATOR_SUPPLY_PATH}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={PIPE_OD}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+        </g>
+        {active ? (
+          <g>
+            <path
+              d={AERATOR_SUPPLY_PATH}
+              pathLength={AERATOR_SUPPLY_PATH_LENGTH}
+              fill="none"
+              stroke={AERATOR_AIR}
+              strokeWidth={airWidth}
+              strokeLinecap="butt"
+              strokeLinejoin="round"
+            />
+            <path
+              className="aerator-supply__flow-dash"
+              d={AERATOR_SUPPLY_PATH}
+              pathLength={AERATOR_SUPPLY_PATH_LENGTH}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth={Math.max(2, airWidth - 2)}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${AERATOR_FLOW_DASH} ${AERATOR_FLOW_GAP}`}
+            />
+          </g>
+        ) : null}
+      </svg>
+
+      <div
+        className={[
+          "aerator-diffuser",
+          active ? `aerator-diffuser--level-${level}` : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      />
+    </div>
+  );
+}
+
 function BioreactorCard(props: BioreactorCardProps) {
   const SLOWEST_ROTOR_SPEED = 4;
   const FASTEST_ROTOR_SPEED = 0.5;
@@ -809,9 +920,7 @@ function BioreactorCard(props: BioreactorCardProps) {
 
         <BaseAcidSupplyPipe mode={doseMode} fillUnits={displayFillUnits} />
 
-        <div className="aerator_submerged" />
-        <div className="aerator_supply_pipe_h" />
-        <div className="aerator_supply_pipe_v" />
+        <AeratorSupply aeratorVal={aeratorVal} />
       </div>
     </div>
   );
