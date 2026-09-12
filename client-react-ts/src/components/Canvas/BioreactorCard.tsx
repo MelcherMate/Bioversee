@@ -717,9 +717,12 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   );
 }
 
-/** Centered under the impeller, between dish floor and lower blade (~400). */
-const AERATOR_SPARGER_TOP = 388;
-const AERATOR_SPARGER_WIDTH = 280;
+/**
+ * Centered under the impeller, above the dish floor and below the blades.
+ * Width kept inside the curved bottom so ends clear the vessel wall.
+ */
+const AERATOR_SPARGER_TOP = 352;
+const AERATOR_SPARGER_WIDTH = 210;
 const AERATOR_SPARGER_LEFT = 221 - AERATOR_SPARGER_WIDTH / 2;
 const AERATOR_SPARGER_HEIGHT = 8;
 /** Drop outside the blade sweep so the riser clears the impeller. */
