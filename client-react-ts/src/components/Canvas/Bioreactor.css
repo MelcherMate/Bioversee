@@ -247,8 +247,8 @@
   position: absolute;
   left: -110px;
   top: -55px;
-  width: 340px;
-  height: 400px;
+  width: 360px;
+  height: 500px;
   overflow: visible;
 }
 
@@ -264,8 +264,8 @@
 
 .aerator-diffuser {
   position: absolute;
-  top: 318px;
-  left: 88px;
+  top: 412px;
+  left: 121px;
   width: 200px;
   height: 8px;
   border-radius: 4px;
@@ -277,7 +277,7 @@
     #a1a1aa 10px
   );
   border: 1.5px solid #52525b;
-  z-index: 2;
+  z-index: 1;
   transition: box-shadow 0.25s ease;
 }
 

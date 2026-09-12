@@ -51,106 +51,62 @@
   opacity: 0;
   animation: vessel-bubble-rise 3.8s ease-in infinite;
   pointer-events: none;
+  will-change: transform, bottom, opacity;
 }
 
-.vessel-water .bubble-1 {
-  --bubble-bottom: 12%;
-  left: 22%;
-  bottom: var(--bubble-bottom);
-  width: 6px;
-  height: 6px;
-  animation-delay: 0.8s;
+/* Phase-shifted horizontal swirl — amplitude from --bubble-swirl (rotor-driven). */
+.vessel-water .bubble-phase-0 {
+  --swirl-sign: 1;
 }
-
-.vessel-water .bubble-2 {
-  --bubble-bottom: 22%;
-  left: 48%;
-  bottom: var(--bubble-bottom);
-  width: 4px;
-  height: 4px;
-  animation-delay: 2.1s;
-  animation-duration: 4.2s;
+.vessel-water .bubble-phase-1 {
+  --swirl-sign: -1;
 }
-
-.vessel-water .bubble-3 {
-  --bubble-bottom: 16%;
-  left: 71%;
-  bottom: var(--bubble-bottom);
-  width: 5px;
-  height: 5px;
-  animation-delay: 0.2s;
-  animation-duration: 3.4s;
+.vessel-water .bubble-phase-2 {
+  --swirl-sign: 1;
 }
-
-.vessel-water .bubble-4 {
-  --bubble-bottom: 38%;
-  left: 36%;
-  bottom: var(--bubble-bottom);
-  width: 3px;
-  height: 3px;
-  animation-delay: 3.3s;
-  animation-duration: 4.6s;
+.vessel-water .bubble-phase-3 {
+  --swirl-sign: -1;
 }
-
-.vessel-water .bubble-5 {
-  --bubble-bottom: 52%;
-  left: 58%;
-  bottom: var(--bubble-bottom);
-  width: 4px;
-  height: 4px;
-  animation-delay: 1.4s;
-  animation-duration: 3.6s;
+.vessel-water .bubble-phase-4 {
+  --swirl-sign: 1;
 }
-
-.vessel-water .bubble-6 {
-  --bubble-bottom: 68%;
-  left: 34%;
-  bottom: var(--bubble-bottom);
-  width: 4px;
-  height: 4px;
-  animation-delay: 0.6s;
-  animation-duration: 3s;
-}
-
-.vessel-water .bubble-7 {
-  --bubble-bottom: 74%;
-  left: 68%;
-  bottom: var(--bubble-bottom);
-  width: 5px;
-  height: 5px;
-  animation-delay: 2.4s;
-  animation-duration: 3.5s;
-}
-
-@keyframes vessel-water-shimmer {
-  0%,
-  100% {
-    background-position: 0% 0%;
-  }
-  50% {
-    background-position: 0% 18%;
-  }
+.vessel-water .bubble-phase-5 {
+  --swirl-sign: -1;
 }
 
 @keyframes vessel-bubble-rise {
   0% {
-    bottom: var(--bubble-bottom);
-    transform: scale(0.6);
+    bottom: var(--bubble-bottom, 8%);
+    transform: translateX(0) scale(0.6);
     opacity: 0;
   }
   12% {
     opacity: 0.75;
+    transform: translateX(
+      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * 0.45)
+    ) scale(0.75);
+  }
+  35% {
+    transform: translateX(
+      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * -0.85)
+    ) scale(0.9);
   }
   62% {
     opacity: 0.5;
+    transform: translateX(
+      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * 1)
+    ) scale(0.95);
   }
   88% {
     bottom: calc(100% - 10px);
     opacity: 0.2;
+    transform: translateX(
+      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * -0.35)
+    ) scale(1);
   }
   100% {
     bottom: calc(100% - 2px);
-    transform: scale(1);
+    transform: translateX(0) scale(1);
     opacity: 0;
   }
 }
@@ -178,4 +134,14 @@
   background-size: 100% 220%;
   animation: vessel-water-shimmer 6s ease-in-out infinite;
   pointer-events: none;
+}
+
+@keyframes vessel-water-shimmer {
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 0% 18%;
+  }
 }

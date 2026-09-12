@@ -717,14 +717,14 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   );
 }
 
-/** Raised sparger (was 370) — MBR-style diffuser + metal supply pipe. */
-const AERATOR_SPARGER_TOP = 318;
-const AERATOR_SPARGER_LEFT = 88;
+/** Centered under the impeller (chamber center ≈ 221; blades end ~400). */
+const AERATOR_SPARGER_TOP = 412;
 const AERATOR_SPARGER_WIDTH = 200;
+const AERATOR_SPARGER_LEFT = 221 - AERATOR_SPARGER_WIDTH / 2;
 const AERATOR_SPARGER_HEIGHT = 8;
-const AERATOR_PIPE_DROP_X = AERATOR_SPARGER_LEFT + 10;
+const AERATOR_PIPE_DROP_X = AERATOR_SPARGER_LEFT + 8;
 const AERATOR_SUPPLY_PATH = `M -100 -42 L ${AERATOR_PIPE_DROP_X} -42 L ${AERATOR_PIPE_DROP_X} ${AERATOR_SPARGER_TOP + AERATOR_SPARGER_HEIGHT / 2}`;
-const AERATOR_SUPPLY_PATH_LENGTH = 520;
+const AERATOR_SUPPLY_PATH_LENGTH = 560;
 const AERATOR_FLOW_DASH = 14;
 const AERATOR_FLOW_GAP = 28;
 const AERATOR_AIR = APPLE_DEPTH_COLORS.cyan;
@@ -751,7 +751,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
     <div className="aerator-supply">
       <svg
         className="aerator-supply__pipe"
-        viewBox="-110 -55 340 400"
+        viewBox="-110 -55 360 500"
         aria-hidden
         overflow="visible"
       >
@@ -904,6 +904,10 @@ function BioreactorCard(props: BioreactorCardProps) {
             fillUnits={displayFillUnits}
             fillVelocity={waveVelocity}
             showSurface={displayFillUnits / VESSEL_MAX_FILL_UNITS < 0.98}
+            bubbleCount={
+              aeratorVal <= 0 ? 0 : Math.max(1, Math.round((aeratorVal / 100) * 54))
+            }
+            bubbleSwirl={rotorVal / 100}
           />
         </div>
 
