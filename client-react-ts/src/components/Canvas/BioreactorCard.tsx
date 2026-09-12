@@ -718,19 +718,28 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
 }
 
 /**
- * Centered under the impeller, above the dish floor and below the blades.
- * Width kept inside the curved bottom so ends clear the vessel wall.
+ * Sparger centered under the impeller; riser stays left of the blade sweep
+ * (agitator left ≈ 124) so rotating blades clear the supply pipe.
  */
-const AERATOR_SPARGER_TOP = 352;
-const AERATOR_SPARGER_WIDTH = 210;
+const AERATOR_SPARGER_TOP = 378;
+const AERATOR_SPARGER_WIDTH = 200;
 const AERATOR_SPARGER_LEFT = 221 - AERATOR_SPARGER_WIDTH / 2;
 const AERATOR_SPARGER_HEIGHT = 8;
-/** Drop outside the blade sweep so the riser clears the impeller. */
-const AERATOR_PIPE_DROP_X = AERATOR_SPARGER_LEFT + 6;
-const AERATOR_SUPPLY_PATH = `M -100 -42 L ${AERATOR_PIPE_DROP_X} -42 L ${AERATOR_PIPE_DROP_X} ${AERATOR_SPARGER_TOP + AERATOR_SPARGER_HEIGHT / 2}`;
-const AERATOR_SUPPLY_PATH_LENGTH = 560;
-const AERATOR_FLOW_DASH = 14;
-const AERATOR_FLOW_GAP = 28;
+/** ~25% thinner than jacket/process pipe OD. */
+const AERATOR_PIPE_OD = Math.round(PIPE_OD * 0.75);
+/** Outside impeller sweep (blade left edge ≈ 124). */
+const AERATOR_PIPE_DROP_X = 56;
+const AERATOR_SPARGER_Y = AERATOR_SPARGER_TOP + AERATOR_SPARGER_HEIGHT / 2;
+/** Inlet → drop outside blades → across to sparger. */
+const AERATOR_SUPPLY_PATH = [
+  `M -100 -42`,
+  `L ${AERATOR_PIPE_DROP_X} -42`,
+  `L ${AERATOR_PIPE_DROP_X} ${AERATOR_SPARGER_Y}`,
+  `L ${AERATOR_SPARGER_LEFT} ${AERATOR_SPARGER_Y}`,
+].join(" ");
+const AERATOR_SUPPLY_PATH_LENGTH = 620;
+const AERATOR_FLOW_DASH = 12;
+const AERATOR_FLOW_GAP = 24;
 /** Whitish air / steam in the supply pipe. */
 const AERATOR_AIR = "#f8fafc";
 const AERATOR_AIR_DASH = "rgba(255, 255, 255, 0.92)";
@@ -751,7 +760,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
   const prefix = useId().replace(/:/g, "");
   const active = aeratorVal > 0;
   const level = aeratorDiffuserLevel(aeratorVal);
-  const airWidth = Math.max(4, PIPE_OD - 6);
+  const airWidth = Math.max(3, AERATOR_PIPE_OD - 5);
 
   return (
     <div className="aerator-supply">
@@ -783,7 +792,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
             d={AERATOR_SUPPLY_PATH}
             fill="none"
             stroke={PIPE_METAL.stroke}
-            strokeWidth={PIPE_OD + 3}
+            strokeWidth={AERATOR_PIPE_OD + 2}
             strokeLinecap="butt"
             strokeLinejoin="round"
           />
@@ -791,7 +800,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
             d={AERATOR_SUPPLY_PATH}
             fill="none"
             stroke={PIPE_FILL}
-            strokeWidth={PIPE_OD}
+            strokeWidth={AERATOR_PIPE_OD}
             strokeLinecap="butt"
             strokeLinejoin="round"
           />
