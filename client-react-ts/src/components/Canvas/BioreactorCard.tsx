@@ -719,17 +719,17 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
 
 /**
  * Sparger centered under the impeller; riser left of the blade sweep
- * (agitator left ≈ 124). Drawn in one SVG so the pipe→bar joint aligns.
+ * (agitator left ≈ 124) and clear of the curved dish wall (~x 58 at sparger Y).
  */
 const AERATOR_PIPE_OD = Math.round(PIPE_OD * 0.75); // ~25% thinner
 const AERATOR_SPARGER_WIDTH = 200;
 const AERATOR_SPARGER_LEFT = 221 - AERATOR_SPARGER_WIDTH / 2;
 const AERATOR_SPARGER_HEIGHT = AERATOR_PIPE_OD;
-/** Midway under blade hub / above dish floor. */
-const AERATOR_SPARGER_Y = 368;
+/** Higher in the dish = more wall clearance at the elbow. */
+const AERATOR_SPARGER_Y = 358;
 const AERATOR_SPARGER_TOP = AERATOR_SPARGER_Y - AERATOR_SPARGER_HEIGHT / 2;
-/** Clear left wall (~40) and blade sweep (~124). */
-const AERATOR_PIPE_DROP_X = 70;
+/** Between curved wall and blade sweep. */
+const AERATOR_PIPE_DROP_X = 96;
 /** Pipe runs into the coupling so the joint reads continuous. */
 const AERATOR_PIPE_END_X = AERATOR_SPARGER_LEFT + 10;
 const AERATOR_SUPPLY_PATH = [
