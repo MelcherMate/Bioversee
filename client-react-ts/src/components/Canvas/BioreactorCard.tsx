@@ -717,17 +717,20 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   );
 }
 
-/** Centered under the impeller (chamber center ≈ 221; blades end ~400). */
-const AERATOR_SPARGER_TOP = 412;
-const AERATOR_SPARGER_WIDTH = 200;
+/** Centered under the impeller, between dish floor and lower blade (~400). */
+const AERATOR_SPARGER_TOP = 388;
+const AERATOR_SPARGER_WIDTH = 280;
 const AERATOR_SPARGER_LEFT = 221 - AERATOR_SPARGER_WIDTH / 2;
 const AERATOR_SPARGER_HEIGHT = 8;
-const AERATOR_PIPE_DROP_X = AERATOR_SPARGER_LEFT + 8;
+/** Drop outside the blade sweep so the riser clears the impeller. */
+const AERATOR_PIPE_DROP_X = AERATOR_SPARGER_LEFT + 6;
 const AERATOR_SUPPLY_PATH = `M -100 -42 L ${AERATOR_PIPE_DROP_X} -42 L ${AERATOR_PIPE_DROP_X} ${AERATOR_SPARGER_TOP + AERATOR_SPARGER_HEIGHT / 2}`;
 const AERATOR_SUPPLY_PATH_LENGTH = 560;
 const AERATOR_FLOW_DASH = 14;
 const AERATOR_FLOW_GAP = 28;
-const AERATOR_AIR = APPLE_DEPTH_COLORS.cyan;
+/** Whitish air / steam in the supply pipe. */
+const AERATOR_AIR = "#f8fafc";
+const AERATOR_AIR_DASH = "rgba(255, 255, 255, 0.92)";
 
 function aeratorDiffuserLevel(val: number) {
   if (val <= 0) return 0;
@@ -745,7 +748,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
   const prefix = useId().replace(/:/g, "");
   const active = aeratorVal > 0;
   const level = aeratorDiffuserLevel(aeratorVal);
-  const airWidth = Math.max(3, PIPE_OD - 8);
+  const airWidth = Math.max(4, PIPE_OD - 6);
 
   return (
     <div className="aerator-supply">
@@ -806,7 +809,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
               d={AERATOR_SUPPLY_PATH}
               pathLength={AERATOR_SUPPLY_PATH_LENGTH}
               fill="none"
-              stroke="rgba(255, 255, 255, 0.55)"
+              stroke={AERATOR_AIR_DASH}
               strokeWidth={Math.max(2, airWidth - 2)}
               strokeLinecap="round"
               strokeLinejoin="round"
