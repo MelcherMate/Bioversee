@@ -897,9 +897,12 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
   );
 }
 
+/** Side-view blade width from spin angle — never collapses to a line. */
+function impellerScaleX(angleRad: number, phaseRad = 0): number {
+  return Math.max(0.18, Math.abs(Math.cos(angleRad + phaseRad)));
+}
+
 function BioreactorCard(props: BioreactorCardProps) {
-  const SLOWEST_ROTOR_SPEED = 4;
-  const FASTEST_ROTOR_SPEED = 0.5;
   const rotorVal = props.rotorVal ?? 0;
   const aeratorVal = props.aeratorVal ?? 0;
   const jacketMode = props.jacketMode ?? "idle";
@@ -907,24 +910,37 @@ function BioreactorCard(props: BioreactorCardProps) {
   const waterLevelVal = Math.min(100, Math.max(0, props.waterLevelVal ?? 92));
   const targetFillUnits = (waterLevelVal / 100) * VESSEL_MAX_FILL_UNITS;
 
-  const [rotorSpeed, setRotorSpeed] = useState(0);
+  // Rest pose keeps both discs readable (not edge-on).
+  const spinAngleRef = useRef(0.55);
+  const [spinAngle, setSpinAngle] = useState(0.55);
+
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
     targetFillUnits,
     { stiffness: 120, damping: 0.68 },
   );
 
   useEffect(() => {
-    if (rotorVal == 100) {
-      setRotorSpeed(0.5);
-    } else if (rotorVal == 0) {
-      setRotorSpeed(0);
-    } else {
-      setRotorSpeed(
-        SLOWEST_ROTOR_SPEED -
-          ((SLOWEST_ROTOR_SPEED - FASTEST_ROTOR_SPEED) / 99) * (rotorVal - 1),
-      );
-    }
+    if (rotorVal <= 0) return;
+
+    let frame = 0;
+    let last = performance.now();
+    const radPerSec = 0.8 + (rotorVal / 100) * 13.2;
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      // Accumulate angle so changing speed never snaps back to a rest keyframe.
+      spinAngleRef.current += radPerSec * dt;
+      setSpinAngle(spinAngleRef.current);
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   }, [rotorVal]);
+
+  const upperScale = impellerScaleX(spinAngle, 0);
+  const lowerScale = impellerScaleX(spinAngle, Math.PI / 2);
 
   const waveVelocity =
     levelVelocity + (aeratorVal / 100) * 28 + (rotorVal / 100) * 20;
@@ -947,25 +963,22 @@ function BioreactorCard(props: BioreactorCardProps) {
 
         <div className="reaction_chamber" />
 
-        <div className="agitator">
-          <div className="agitator_stem" />
-          <div
-            className="agitator_blade0"
-            style={{
-              transform: "rotateY(0deg)",
-              animation: `rotateProp0 ${rotorSpeed}s infinite`,
-              animationTimingFunction: "linear",
-            }}
-          />
-          <div className="agitator_stem2" />
-          <div
-            className="agitator_blade90"
-            style={{
-              transform: "rotateY(90deg)",
-              animation: `rotateProp90 ${rotorSpeed}s infinite`,
-              animationTimingFunction: "linear",
-            }}
-          />
+        <div className="agitator" aria-hidden>
+          <div className="agitator__shaft" />
+          <div className="agitator__disc agitator__disc--upper">
+            <div
+              className="agitator__blade"
+              style={{ transform: `scaleX(${upperScale})` }}
+            />
+            <div className="agitator__hub" />
+          </div>
+          <div className="agitator__disc agitator__disc--lower">
+            <div
+              className="agitator__blade"
+              style={{ transform: `scaleX(${lowerScale})` }}
+            />
+            <div className="agitator__hub" />
+          </div>
         </div>
 
         {/* Under the water layer so tips read as submerged */}

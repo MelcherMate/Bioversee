@@ -203,81 +203,86 @@
     0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-/* AGIGATOR */
+/* AGITATOR — side-view foreshortening (never edge-on / invisible) */
 .agitator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   position: absolute;
   top: -160px;
   left: 124px;
   width: 195px;
-  height: 500px;
+  height: 600px;
   z-index: 1;
+  pointer-events: none;
 }
 
-.agitator_stem {
-  display: block;
-  position: relative;
-  height: 500px;
+.agitator__shaft {
+  position: absolute;
+  left: 50%;
+  top: 0;
   width: 6px;
-  background-color: black;
-}
-
-.agitator_blade0 {
-  display: block;
-  position: relative;
-  width: 195px;
-  height: 40px;
-  border: 2px solid black;
-  background-image: linear-gradient(
-    100deg,
-    hsl(0deg 0% 31%) 0%,
-    hsl(360deg 4% 17%) 50%,
-    hsl(0deg 73% 3%) 100%
+  height: 580px;
+  margin-left: -3px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    #4a4a4a 0%,
+    #1a1a1a 40%,
+    #2c2c2c 70%,
+    #0e0e0e 100%
   );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  z-index: 2;
 }
 
-.agitator_stem2 {
-  display: block;
-  position: relative;
-  height: 20px;
-  width: 6px;
-  background-color: black;
+.agitator__disc {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 38px;
+  z-index: 3;
 }
 
-.agitator_blade90 {
-  display: block;
-  position: relative;
-  width: 195px;
-  height: 40px;
-  border: 2px solid black;
-  background-image: linear-gradient(
+.agitator__disc--upper {
+  top: 500px;
+}
+
+.agitator__disc--lower {
+  top: 560px;
+}
+
+.agitator__blade {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 19px;
+  transform-origin: center center;
+  will-change: transform;
+  background: linear-gradient(
     100deg,
-    hsl(0deg 0% 31%) 0%,
-    hsl(360deg 4% 17%) 50%,
-    hsl(0deg 73% 3%) 100%
+    #5a5a5a 0%,
+    #2a2a2a 35%,
+    #121212 55%,
+    #3a3a3a 100%
   );
+  border: 1.5px solid #0a0a0a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.35);
 }
 
-@keyframes rotateProp0 {
-  from {
-    transform: rotateY(0deg);
-    animation-timing-function: linear;
-  }
-  to {
-    transform: rotateY(360deg);
-  }
-}
-
-@keyframes rotateProp90 {
-  from {
-    transform: rotateY(90deg);
-    animation-timing-function: linear;
-  }
-  to {
-    transform: rotateY(450deg);
-  }
+.agitator__hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #5a5a5a, #111 70%);
+  border: 1px solid #050505;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  z-index: 4;
 }
 
 /* BASE-ACID SUPPLY — thin plastic dosing tube */
