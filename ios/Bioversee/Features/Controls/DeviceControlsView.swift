@@ -77,9 +77,7 @@ struct DeviceControlsView: View {
                                 )
                             }
 
-                            ForEach(controls) { control in
-                                controlCard(control)
-                            }
+                            controlPanel
 
                             if let errorMessage {
                                 Text(errorMessage)
@@ -113,55 +111,178 @@ struct DeviceControlsView: View {
         }
     }
 
+    private var switchControls: [DeviceControl] {
+        controls.filter { $0.kind == .switchControl }
+    }
+
+    private var sliderControls: [DeviceControl] {
+        controls.filter { $0.kind == .slider }
+    }
+
+    private var controlsDisabled: Bool {
+        !device.canOperate || busyName != nil
+    }
+
     @ViewBuilder
-    private func controlCard(_ control: DeviceControl) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            switch control.kind {
-            case .switchControl:
-                Toggle(isOn: Binding(
+    private var controlPanel: some View {
+        if switchControls.isEmpty, sliderControls.isEmpty {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Controls")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(BVTheme.textSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+
+                if !switchControls.isEmpty {
+                    panelSection(title: switchSectionTitle) {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: 8),
+                                GridItem(.flexible(), spacing: 8),
+                            ],
+                            spacing: 8
+                        ) {
+                            ForEach(switchControls) { control in
+                                switchCell(control)
+                            }
+                        }
+                    }
+                }
+
+                if !sliderControls.isEmpty {
+                    if !switchControls.isEmpty {
+                        Rectangle()
+                            .fill(BVTheme.line)
+                            .frame(height: 1)
+                    }
+                    panelSection(title: sliderSectionTitle) {
+                        VStack(spacing: 10) {
+                            ForEach(sliderControls) { control in
+                                sliderRow(control)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .bvCard()
+        }
+    }
+
+    private var switchSectionTitle: String {
+        switch device.type {
+        case .bioreactor: return "Pumps"
+        case .membraneBioreactor: return "Flow"
+        case .waterPurifier: return "Pumps"
+        default: return "Switches"
+        }
+    }
+
+    private var sliderSectionTitle: String {
+        switch device.type {
+        case .bioreactor: return "Motion"
+        case .pressureVessel: return "Level"
+        case .membraneBioreactor: return "Intensity"
+        case .waterPurifier: return "Agitation"
+        }
+    }
+
+    @ViewBuilder
+    private func panelSection<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(BVTheme.textTertiary)
+            content()
+        }
+    }
+
+    private func switchCell(_ control: DeviceControl) -> some View {
+        let isOn = switchStates[control.name] ?? false
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(control.label)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(BVTheme.text)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(isOn ? BVTheme.accent : BVTheme.line)
+                    .frame(width: 7, height: 7)
+                Text(isOn ? "On" : "Off")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isOn ? BVTheme.accent : BVTheme.textTertiary)
+                Spacer(minLength: 4)
+                Toggle("", isOn: Binding(
                     get: { switchStates[control.name] ?? false },
                     set: { newValue in
                         Task { await setSwitch(control, to: newValue) }
                     }
-                )) {
-                    Text(control.label)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(BVTheme.text)
-                }
+                ))
+                .labelsHidden()
                 .tint(BVTheme.accent)
-                .disabled(!device.canOperate || busyName != nil)
-
-            case .slider:
-                HStack {
-                    Text(control.label)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(BVTheme.text)
-                    Spacer()
-                    Text("\(Int(sliderStates[control.name] ?? 0))")
-                        .font(.system(size: 15, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(BVTheme.textSecondary)
-                }
-                Slider(
-                    value: Binding(
-                        get: { sliderStates[control.name] ?? 0 },
-                        set: { sliderStates[control.name] = $0 }
-                    ),
-                    in: control.min...control.max,
-                    step: 1
-                ) { editing in
-                    if editing {
-                        editingSliderName = control.name
-                    } else {
-                        editingSliderName = nil
-                        Task { await commitSlider(control) }
-                    }
-                }
-                .tint(BVTheme.accent)
-                .disabled(!device.canOperate || busyName != nil)
+                .disabled(controlsDisabled)
+                .scaleEffect(0.88)
+                .fixedSize()
             }
         }
-        .padding(16)
-        .bvCard()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+        .background(isOn ? BVTheme.accentSoft : BVTheme.fill)
+        .overlay(
+            RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous)
+                .stroke(isOn ? BVTheme.accentBorder : BVTheme.line, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+        .opacity(controlsDisabled ? 0.55 : 1)
+    }
+
+    private func sliderRow(_ control: DeviceControl) -> some View {
+        let value = sliderStates[control.name] ?? control.min
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(control.label)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(BVTheme.text)
+                Spacer(minLength: 8)
+                Text("\(Int(value))")
+                    .font(.system(size: 13, weight: .bold).monospacedDigit())
+                    .foregroundStyle(BVTheme.accent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(BVTheme.accentSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+
+            Slider(
+                value: Binding(
+                    get: { sliderStates[control.name] ?? control.min },
+                    set: { sliderStates[control.name] = $0 }
+                ),
+                in: control.min...control.max,
+                step: 1
+            ) { editing in
+                if editing {
+                    editingSliderName = control.name
+                } else {
+                    editingSliderName = nil
+                    Task { await commitSlider(control) }
+                }
+            }
+            .tint(BVTheme.accent)
+            .disabled(controlsDisabled)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(BVTheme.fill)
+        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
     }
 
     private func listenForActuatorChanges() async {
