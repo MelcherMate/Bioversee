@@ -270,8 +270,17 @@ struct DeviceControlsView: View {
 
     private func setSwitch(_ control: DeviceControl, to value: Bool) async {
         guard device.canOperate, let userId = session.userId else { return }
+
         let previous = switchStates[control.name] ?? false
+        let partner = value ? Self.exclusivePartner(of: control.name) : nil
+        let partnerWasOn = partner.map { switchStates[$0] == true } ?? false
+
+        // Optimistic UI — same exclusivity as the website.
         switchStates[control.name] = value
+        if let partner, partnerWasOn {
+            switchStates[partner] = false
+        }
+
         busyName = control.name
         defer { busyName = nil }
 
@@ -282,9 +291,31 @@ struct DeviceControlsView: View {
                 state: value,
                 userId: userId
             )
+            if let partner, partnerWasOn {
+                try await ActuatorService.setSwitch(
+                    deviceId: device.id,
+                    name: partner,
+                    state: false,
+                    userId: userId
+                )
+            }
         } catch {
             switchStates[control.name] = previous
+            if let partner, partnerWasOn {
+                switchStates[partner] = true
+            }
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Warm↔cold and acid↔base cannot both be on (matches web Bioreactor).
+    private static func exclusivePartner(of name: String) -> String? {
+        switch name {
+        case "switchWarmWaterPump": return "switchColdWaterPump"
+        case "switchColdWaterPump": return "switchWarmWaterPump"
+        case "switchAcidPump": return "switchBasePump"
+        case "switchBasePump": return "switchAcidPump"
+        default: return nil
         }
     }
 
