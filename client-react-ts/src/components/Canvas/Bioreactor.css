@@ -78,7 +78,8 @@
   position: absolute;
   top: -160px;
   width: 16px;
-  height: 496px;
+  /* Tip ≈ top of the upper Rushton */
+  height: 390px;
   z-index: 2;
   pointer-events: none;
 }
@@ -203,7 +204,7 @@
     0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-/* AGITATOR — side-view foreshortening (never edge-on / invisible) */
+/* AGITATOR — side-view Rushton turbines (disc + vertical blades) */
 .agitator {
   position: absolute;
   top: -160px;
@@ -219,7 +220,8 @@
   left: 50%;
   top: 0;
   width: 6px;
-  height: 580px;
+  /* Ends just under the lower rotor hub */
+  height: 500px;
   margin-left: -3px;
   border-radius: 3px;
   background: linear-gradient(
@@ -233,56 +235,29 @@
   z-index: 2;
 }
 
-.agitator__disc {
+.agitator__stage {
   position: absolute;
-  left: 0;
-  width: 100%;
-  height: 38px;
+  left: 50%;
+  width: 190px;
+  height: 64px;
+  margin-left: -95px;
   z-index: 3;
 }
 
-.agitator__disc--upper {
-  top: 500px;
+/* Wrapper Y centers ≈ 230 and 320 — lower one sits just above the sparger */
+.agitator__stage--upper {
+  top: 362px;
 }
 
-.agitator__disc--lower {
-  top: 560px;
+.agitator__stage--lower {
+  top: 452px;
 }
 
-.agitator__blade {
-  position: absolute;
-  left: 0;
-  top: 0;
+.agitator__rotor {
+  display: block;
   width: 100%;
   height: 100%;
-  border-radius: 19px;
-  transform-origin: center center;
-  will-change: transform;
-  background: linear-gradient(
-    100deg,
-    #5a5a5a 0%,
-    #2a2a2a 35%,
-    #121212 55%,
-    #3a3a3a 100%
-  );
-  border: 1.5px solid #0a0a0a;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.35);
-}
-
-.agitator__hub {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #5a5a5a, #111 70%);
-  border: 1px solid #050505;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
-  z-index: 4;
+  overflow: visible;
 }
 
 /* BASE-ACID SUPPLY — thin plastic dosing tube */

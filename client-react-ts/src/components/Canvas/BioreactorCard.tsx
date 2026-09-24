@@ -897,9 +897,76 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
   );
 }
 
-/** Side-view blade width from spin angle — never collapses to a line. */
-function impellerScaleX(angleRad: number, phaseRad = 0): number {
-  return Math.max(0.18, Math.abs(Math.cos(angleRad + phaseRad)));
+const IMPELLER_BLADES = 6;
+
+/**
+ * Side-view Rushton: thin disc, rectangular blades standing on the rim.
+ * Blades orbit the shaft; width foreshortens but never collapses.
+ */
+function ImpellerRotor({
+  angleRad,
+  phaseRad = 0,
+}: {
+  angleRad: number;
+  phaseRad?: number;
+}) {
+  const cx = 100;
+  const cy = 32;
+  const discRx = 34;
+  /** Inner edge sits inside the disc so every blade reads as mounted on it. */
+  const innerR = discRx - 10;
+  const outerR = 82;
+  const bladeH = 50;
+
+  const blades = Array.from({ length: IMPELLER_BLADES }, (_, i) => {
+    const a = angleRad + phaseRad + (i * Math.PI * 2) / IMPELLER_BLADES;
+    const cos = Math.cos(a);
+    const span = Math.abs(cos) * (outerR - innerR);
+    const width = Math.max(8, span);
+    // Center on the projected midpoint so the box never snaps when it faces us.
+    const mid = cx + cos * ((innerR + outerR) / 2);
+    return {
+      i,
+      depth: Math.sin(a),
+      x: mid - width / 2,
+      width,
+    };
+  }).sort((a, b) => a.depth - b.depth);
+
+  return (
+    <svg
+      className="agitator__rotor"
+      viewBox="0 0 200 64"
+      width="190"
+      height="64"
+      aria-hidden
+    >
+      {blades.map((blade) => (
+        <rect
+          key={blade.i}
+          x={blade.x}
+          y={cy - bladeH / 2}
+          width={blade.width}
+          height={bladeH}
+          rx={1.5}
+          fill="#2c2c2c"
+          stroke="#0a0a0a"
+          strokeWidth={1}
+        />
+      ))}
+      <ellipse
+        cx={cx}
+        cy={cy}
+        rx={discRx}
+        ry={4.5}
+        fill="#1c1c1c"
+        stroke="#0a0a0a"
+        strokeWidth={1}
+      />
+      <ellipse cx={cx} cy={cy - 1} rx={discRx - 5} ry={1.6} fill="#3a3a3a" opacity={0.55} />
+      <circle cx={cx} cy={cy} r={7} fill="#3a3a3a" stroke="#0a0a0a" strokeWidth={1} />
+    </svg>
+  );
 }
 
 function BioreactorCard(props: BioreactorCardProps) {
@@ -910,9 +977,11 @@ function BioreactorCard(props: BioreactorCardProps) {
   const waterLevelVal = Math.min(100, Math.max(0, props.waterLevelVal ?? 92));
   const targetFillUnits = (waterLevelVal / 100) * VESSEL_MAX_FILL_UNITS;
 
-  // Rest pose keeps both discs readable (not edge-on).
-  const spinAngleRef = useRef(0.55);
-  const [spinAngle, setSpinAngle] = useState(0.55);
+  // Slight offset rest pose so blades aren’t axis-aligned when stopped.
+  const spinAngleRef = useRef(0.35);
+  const [spinAngle, setSpinAngle] = useState(0.35);
+  const rotorValRef = useRef(rotorVal);
+  rotorValRef.current = rotorVal;
 
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
     targetFillUnits,
@@ -920,27 +989,24 @@ function BioreactorCard(props: BioreactorCardProps) {
   );
 
   useEffect(() => {
-    if (rotorVal <= 0) return;
-
     let frame = 0;
     let last = performance.now();
-    const radPerSec = 0.8 + (rotorVal / 100) * 13.2;
 
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      // Accumulate angle so changing speed never snaps back to a rest keyframe.
-      spinAngleRef.current += radPerSec * dt;
-      setSpinAngle(spinAngleRef.current);
+      const speed = rotorValRef.current;
+      if (speed > 0) {
+        const radPerSec = 0.7 + (speed / 100) * 11;
+        spinAngleRef.current += radPerSec * dt;
+        setSpinAngle(spinAngleRef.current);
+      }
       frame = requestAnimationFrame(tick);
     };
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [rotorVal]);
-
-  const upperScale = impellerScaleX(spinAngle, 0);
-  const lowerScale = impellerScaleX(spinAngle, Math.PI / 2);
+  }, []);
 
   const waveVelocity =
     levelVelocity + (aeratorVal / 100) * 28 + (rotorVal / 100) * 20;
@@ -965,19 +1031,11 @@ function BioreactorCard(props: BioreactorCardProps) {
 
         <div className="agitator" aria-hidden>
           <div className="agitator__shaft" />
-          <div className="agitator__disc agitator__disc--upper">
-            <div
-              className="agitator__blade"
-              style={{ transform: `scaleX(${upperScale})` }}
-            />
-            <div className="agitator__hub" />
+          <div className="agitator__stage agitator__stage--upper">
+            <ImpellerRotor angleRad={spinAngle} />
           </div>
-          <div className="agitator__disc agitator__disc--lower">
-            <div
-              className="agitator__blade"
-              style={{ transform: `scaleX(${lowerScale})` }}
-            />
-            <div className="agitator__hub" />
+          <div className="agitator__stage agitator__stage--lower">
+            <ImpellerRotor angleRad={spinAngle} phaseRad={Math.PI / IMPELLER_BLADES} />
           </div>
         </div>
 
