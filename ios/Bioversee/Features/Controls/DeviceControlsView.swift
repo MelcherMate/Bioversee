@@ -15,6 +15,9 @@ struct DeviceControlsView: View {
     @State private var busyName: String?
     @State private var editingSliderName: String?
     @State private var errorMessage: String?
+    /// Ignore remote refreshes briefly after a local write (echo / race).
+    @State private var ignoreRemoteUntil: Date = .distantPast
+
 
     private var controls: [DeviceControl] {
         ControlCatalog.controls(for: device.type)
@@ -102,8 +105,7 @@ struct DeviceControlsView: View {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
                 guard !Task.isCancelled else { break }
-                // Keep charts + controls in sync even if Realtime is offline.
-                if busyName == nil, editingSliderName == nil {
+                if shouldApplyRemoteRefresh {
                     await loadStates()
                 }
                 await loadCharts()
@@ -119,8 +121,12 @@ struct DeviceControlsView: View {
         controls.filter { $0.kind == .slider }
     }
 
-    private var controlsDisabled: Bool {
-        !device.canOperate || busyName != nil
+    private var readOnly: Bool { !device.canOperate }
+
+    private var shouldApplyRemoteRefresh: Bool {
+        busyName == nil
+            && editingSliderName == nil
+            && Date() >= ignoreRemoteUntil
     }
 
     @ViewBuilder
@@ -227,9 +233,9 @@ struct DeviceControlsView: View {
                 ))
                 .labelsHidden()
                 .tint(BVTheme.accent)
-                .disabled(controlsDisabled)
+                .disabled(readOnly)
+                .frame(width: 51, height: 31)
                 .scaleEffect(0.88)
-                .fixedSize()
             }
         }
         .padding(.horizontal, 12)
@@ -241,7 +247,9 @@ struct DeviceControlsView: View {
                 .stroke(isOn ? BVTheme.accentBorder : BVTheme.line, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
-        .opacity(controlsDisabled ? 0.55 : 1)
+        // Avoid implicit layout/opacity animations that make the panel pulse.
+        .transaction { $0.animation = nil }
+        .opacity(readOnly ? 0.55 : 1)
     }
 
     private func sliderRow(_ control: DeviceControl) -> some View {
@@ -259,6 +267,7 @@ struct DeviceControlsView: View {
                     .padding(.vertical, 3)
                     .background(BVTheme.accentSoft)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .contentTransition(.identity)
             }
 
             Slider(
@@ -277,12 +286,14 @@ struct DeviceControlsView: View {
                 }
             }
             .tint(BVTheme.accent)
-            .disabled(controlsDisabled)
+            .disabled(readOnly)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(BVTheme.fill)
         .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+        .transaction { $0.animation = nil }
+        .opacity(readOnly ? 0.55 : 1)
     }
 
     private func listenForActuatorChanges() async {
@@ -309,12 +320,11 @@ struct DeviceControlsView: View {
             return
         }
 
-        // Separate Tasks so each captures view state safely on MainActor (Swift 6).
         await withTaskGroup(of: Void.self) { group in
             group.addTask { @MainActor in
                 for await _ in switchChanges {
                     guard !Task.isCancelled else { break }
-                    if busyName == nil, editingSliderName == nil {
+                    if shouldApplyRemoteRefresh {
                         await loadStates()
                     }
                 }
@@ -322,7 +332,7 @@ struct DeviceControlsView: View {
             group.addTask { @MainActor in
                 for await _ in sliderChanges {
                     guard !Task.isCancelled else { break }
-                    if busyName == nil, editingSliderName == nil {
+                    if shouldApplyRemoteRefresh {
                         await loadStates()
                     }
                 }
@@ -361,8 +371,13 @@ struct DeviceControlsView: View {
                     )
                 }
             }
-            switchStates = nextSwitches
-            sliderStates = nextSliders
+            // Skip no-op updates so toggles/backgrounds don't re-animate.
+            if nextSwitches != switchStates {
+                switchStates = nextSwitches
+            }
+            if nextSliders != sliderStates {
+                sliderStates = nextSliders
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -370,7 +385,7 @@ struct DeviceControlsView: View {
 
     private func loadCharts() async {
         guard !chartSpecs.isEmpty else {
-            chartPoints = [:]
+            if !chartPoints.isEmpty { chartPoints = [:] }
             return
         }
 
@@ -380,9 +395,10 @@ struct DeviceControlsView: View {
                 let rows = try await SensorService.readings(deviceId: device.id, name: spec.name)
                 next[spec.name] = SensorService.chartPoints(from: rows)
             }
-            chartPoints = next
+            if next != chartPoints {
+                chartPoints = next
+            }
         } catch {
-            // Keep last good chart data; surface error lightly.
             if chartPoints.isEmpty {
                 errorMessage = error.localizedDescription
             }
@@ -396,7 +412,7 @@ struct DeviceControlsView: View {
         let partner = value ? Self.exclusivePartner(of: control.name) : nil
         let partnerWasOn = partner.map { switchStates[$0] == true } ?? false
 
-        // Optimistic UI — same exclusivity as the website.
+        ignoreRemoteUntil = Date().addingTimeInterval(1.6)
         switchStates[control.name] = value
         if let partner, partnerWasOn {
             switchStates[partner] = false
@@ -443,6 +459,7 @@ struct DeviceControlsView: View {
     private func commitSlider(_ control: DeviceControl) async {
         guard device.canOperate, let userId = session.userId else { return }
         let value = sliderStates[control.name] ?? 0
+        ignoreRemoteUntil = Date().addingTimeInterval(1.6)
         busyName = control.name
         defer { busyName = nil }
 
