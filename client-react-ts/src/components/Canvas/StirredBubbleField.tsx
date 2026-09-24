@@ -9,6 +9,8 @@ type Particle = {
   r: number;
   age: number;
   life: number;
+  /** Per-bubble phase so wander isn't identical across the plume. */
+  phase: number;
 };
 
 type StirredBubbleFieldProps = {
@@ -89,56 +91,56 @@ function stirredVelocity(
   let vx = 0;
   let vy = 0;
 
-  const lo = planeKernel(y, yLo, 0.08);
-  const hi = planeKernel(y, yHi, 0.08);
+  const lo = planeKernel(y, yLo, 0.11);
+  const hi = planeKernel(y, yHi, 0.11);
 
   // Mild blade nudge even at low speed — not a full loop yet
-  const tipBoost = Math.max(0, 1 - Math.abs(r - 0.2) * 5);
+  const tipBoost = Math.max(0, 1 - Math.abs(r - 0.22) * 3.2);
   const soft = rpmNorm * (1 - stir) * 0.22;
   vx += side * lo * soft * (0.4 + tipBoost * 0.3);
   vx += side * hi * soft * (0.35 + tipBoost * 0.25);
 
   // --- Full recirculation (ramps in with stir) ---
   if (stir > 0.01) {
-    // 1) Radial discharge
-    vx += side * lo * stir * (0.85 + tipBoost * 0.7);
-    vx += side * hi * stir * (0.75 + tipBoost * 0.65);
+    // 1) Radial discharge — broader blade sweep band
+    vx += side * lo * stir * (0.75 + tipBoost * 0.55);
+    vx += side * hi * stir * (0.65 + tipBoost * 0.5);
 
-    // 2) Wall riser
-    const wall = clamp01((r - 0.26) / 0.2);
+    // 2) Wall riser — wider corridor along each side
+    const wall = clamp01((r - 0.16) / 0.28);
     if (wall > 0) {
       if (y >= yLo - 0.04) {
-        vy += wall * stir * (0.55 + 0.45 * clamp01((y - yLo) / 0.55));
+        vy += wall * stir * (0.5 + 0.4 * clamp01((y - yLo) / 0.55));
       } else {
-        vy -= wall * stir * 0.2;
-        vx += -side * wall * stir * 0.15;
+        vy -= wall * stir * 0.18;
+        vx += -side * wall * stir * 0.12;
       }
     }
 
-    // 3) Surface inward
-    const surface = clamp01((y - 0.72) / 0.22);
+    // 3) Surface inward — thicker free-surface layer
+    const surface = clamp01((y - 0.65) / 0.28);
     if (surface > 0) {
-      vx += -side * surface * stir * (0.7 + r * 0.5);
-      vy += surface * stir * (r > 0.12 ? 0.05 : -0.12);
+      vx += -side * surface * stir * (0.55 + r * 0.45);
+      vy += surface * stir * (r > 0.14 ? 0.04 : -0.1);
     }
 
-    // 4) Center downwelling — only when stirring is clearly on
-    const core = clamp01(1 - r / 0.18);
+    // 4) Center downwelling — wider shaft core
+    const core = clamp01(1 - r / 0.28);
     if (core > 0) {
       if (y > yHi) {
-        vy -= core * stir * (0.55 + surface * 0.55);
+        vy -= core * stir * (0.45 + surface * 0.45);
       }
       if (y > yLo && y <= yHi) {
-        vy -= core * stir * 0.35;
+        vy -= core * stir * 0.28;
       }
       if (y < yLo) {
-        vy += core * stir * 0.25;
+        vy += core * stir * 0.2;
       }
     }
 
     // 5) Split at mid disc height
-    const split = planeKernel(y, yMid, 0.1) * clamp01(1 - r / 0.22);
-    vx += side * split * stir * 0.45;
+    const split = planeKernel(y, yMid, 0.14) * clamp01(1 - r / 0.3);
+    vx += side * split * stir * 0.4;
   }
 
   // Buoyancy owns the low-rpm plume; fades as the loop takes over
@@ -146,19 +148,24 @@ function stirredVelocity(
 
   // Gentle sparger plume sway at low speed
   if (stir < 0.35) {
-    const sway = (1 - stir / 0.35) * 0.04;
+    const sway = (1 - stir / 0.35) * 0.05;
     vx += Math.sin(tSec * 1.6 + y * 6) * sway * (0.5 + r);
   }
 
-  if (stir2 > 0.05) {
-    const phase = tSec * (1.4 + stir * 2.6);
-    const eddy =
-      Math.sin((x * 7.2 + y * 5.5) * Math.PI + phase) *
-      Math.cos((y * 6.1 - x * 3.8) * Math.PI + phase * 0.6);
-    vx += eddy * stir2 * 0.35;
-    vy += eddy * stir2 * 0.28;
-    vx += (Math.random() - 0.5) * stir2 * 0.18;
-    vy += (Math.random() - 0.5) * stir2 * 0.14;
+  // Broader coherent eddies + fine jitter so paths fill out
+  if (stir > 0.05) {
+    const phase = tSec * (1.2 + stir * 2.2);
+    const eddyX =
+      Math.sin((x * 5.2 + y * 4.1) * Math.PI + phase) *
+      Math.cos((y * 4.6 - x * 2.8) * Math.PI + phase * 0.7);
+    const eddyY =
+      Math.cos((x * 4.8 - y * 3.6) * Math.PI + phase * 1.05) *
+      Math.sin((y * 5.5 + x * 2.2) * Math.PI - phase * 0.5);
+    const mix = 0.25 + stir2 * 0.75;
+    vx += eddyX * mix * 0.55;
+    vy += eddyY * mix * 0.48;
+    vx += (Math.random() - 0.5) * mix * 0.42;
+    vy += (Math.random() - 0.5) * mix * 0.32;
   }
 
   if (x < 0.06) vx += 0.45;
@@ -235,11 +242,12 @@ export function StirredBubbleField({
       list.push({
         x: Math.min(0.95, Math.max(0.05, x)),
         y: Math.min(0.35, Math.max(0.02, y)),
-        vx: (Math.random() - 0.5) * 0.04,
+        vx: (Math.random() - 0.5) * 0.06,
         vy: 0.03 + Math.random() * 0.03,
         r: 1.35 + Math.random() * 2.35,
         age: 0,
         life: MEAN_LIFE_S * (0.75 + Math.random() * 0.5),
+        phase: Math.random() * Math.PI * 2,
       });
     };
 
@@ -269,15 +277,16 @@ export function StirredBubbleField({
       );
       if (Math.abs(wantH - h) > 2) resize();
 
-      // Follow the mean field harder once the recirculation loop engages
+      // Slightly looser lock so bubbles wander within the wider bands
       const stir = Math.min(
         1,
         Math.max(0, (rpm - 0.12) / (0.62 - 0.12)),
       );
       const stirSmooth = stir * stir * (3 - 2 * stir);
-      const follow = 1.6 + stirSmooth * 3.2;
-      const dampX = 1.35 - stirSmooth * 0.35;
-      const dampY = 1.2 - stirSmooth * 0.35;
+      const follow = 1.35 + stirSmooth * 2.6;
+      const dampX = 1.15 - stirSmooth * 0.25;
+      const dampY = 1.05 - stirSmooth * 0.25;
+      const wanderAmp = 0.06 + stirSmooth * 0.14;
 
       const next: Particle[] = [];
       for (const p of particlesRef.current) {
@@ -286,8 +295,14 @@ export function StirredBubbleField({
         if (p.age > p.life || p.y > 1.08) continue;
 
         const { vx: fx, vy: fy } = stirredVelocity(p.x, p.y, rpm, fill, tSec);
-        p.vx = p.vx * (1 - dampX * dt) + fx * dt * follow;
-        p.vy = p.vy * (1 - dampY * dt) + fy * dt * follow;
+        // Per-bubble wander so neighbors don't share the same track
+        const wx =
+          Math.sin(tSec * 2.1 + p.phase + p.y * 8) * wanderAmp;
+        const wy =
+          Math.cos(tSec * 1.7 + p.phase * 1.3 - p.x * 6) * wanderAmp * 0.7;
+
+        p.vx = p.vx * (1 - dampX * dt) + (fx + wx) * dt * follow;
+        p.vy = p.vy * (1 - dampY * dt) + (fy + wy) * dt * follow;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
 
