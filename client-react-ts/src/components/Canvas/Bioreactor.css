@@ -78,8 +78,8 @@
   position: absolute;
   top: -160px;
   width: 16px;
-  /* Tip ≈ top of the upper Rushton */
-  height: 390px;
+  /* Tip sits about level with the bottom of the lower rotor */
+  height: 500px;
   z-index: 2;
   pointer-events: none;
 }
@@ -221,7 +221,7 @@
   top: 0;
   width: 6px;
   /* Ends just under the lower rotor hub */
-  height: 500px;
+  height: 485px;
   margin-left: -3px;
   border-radius: 3px;
   background: linear-gradient(
@@ -250,7 +250,7 @@
 }
 
 .agitator__stage--lower {
-  top: 452px;
+  top: 435px;
 }
 
 .agitator__rotor {
