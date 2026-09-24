@@ -970,13 +970,17 @@ function BioreactorCard(props: BioreactorCardProps) {
 
         {/* Under the water layer so tips read as submerged */}
         <div className="sensor sensor1 sensor--temp" aria-hidden>
-          <div className="sensor__port" />
+          <div className="sensor__port">
+            <span className="sensor__lamp sensor__lamp--ok" />
+          </div>
           <div className="sensor__collar" />
           <div className="sensor__shaft" />
           <div className="sensor__tip" />
         </div>
         <div className="sensor sensor2 sensor--ph" aria-hidden>
-          <div className="sensor__port" />
+          <div className="sensor__port">
+            <span className="sensor__lamp sensor__lamp--ok" />
+          </div>
           <div className="sensor__collar" />
           <div className="sensor__shaft" />
           <div className="sensor__tip" />
