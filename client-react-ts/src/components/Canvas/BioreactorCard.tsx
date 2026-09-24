@@ -468,8 +468,7 @@ const DOSE_FLOW_DASH = 10;
 const DOSE_FLOW_GAP = 22;
 const DOSE_FLOW_CYCLE = DOSE_FLOW_DASH + DOSE_FLOW_GAP;
 const DOSE_FLOW_CYCLE_SECONDS = 0.9;
-const DOSE_PIPE_SPEED =
-  (DOSE_FLOW_CYCLE / DOSE_FLOW_CYCLE_SECONDS) * 2;
+const DOSE_PIPE_SPEED = (DOSE_FLOW_CYCLE / DOSE_FLOW_CYCLE_SECONDS) * 2;
 /** Matches .base-acid-pipe-run { top }. */
 const DOSE_SVG_TOP = -163;
 /** Matches .br-water-clip { top, height }. */
@@ -911,7 +910,7 @@ function BioreactorCard(props: BioreactorCardProps) {
   const [rotorSpeed, setRotorSpeed] = useState(0);
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
     targetFillUnits,
-    { stiffness: 120, damping: 0.68 }
+    { stiffness: 120, damping: 0.68 },
   );
 
   useEffect(() => {
@@ -922,7 +921,7 @@ function BioreactorCard(props: BioreactorCardProps) {
     } else {
       setRotorSpeed(
         SLOWEST_ROTOR_SPEED -
-          ((SLOWEST_ROTOR_SPEED - FASTEST_ROTOR_SPEED) / 99) * (rotorVal - 1)
+          ((SLOWEST_ROTOR_SPEED - FASTEST_ROTOR_SPEED) / 99) * (rotorVal - 1),
       );
     }
   }, [rotorVal]);
@@ -975,7 +974,9 @@ function BioreactorCard(props: BioreactorCardProps) {
             fillVelocity={waveVelocity}
             showSurface={displayFillUnits / VESSEL_MAX_FILL_UNITS < 0.98}
             bubbleCount={
-              aeratorVal <= 0 ? 0 : Math.max(1, Math.round((aeratorVal / 100) * 54))
+              aeratorVal <= 0
+                ? 0
+                : Math.max(1, Math.round((aeratorVal / 100) * 54))
             }
             bubbleSwirl={rotorVal / 100}
           />
@@ -1003,4 +1004,4 @@ function BioreactorCard(props: BioreactorCardProps) {
 BioreactorCard.displayName = "BioreactorCard";
 export default BioreactorCard;
 
-export { CARD_WIDTH, CARD_HEIGHT };
+export { CARD_HEIGHT, CARD_WIDTH };

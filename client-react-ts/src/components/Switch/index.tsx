@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   getLatestSwitchState,
   insertSwitchState,
 } from "../../lib/actuators";
+import { subscribeDeviceActuators } from "../../lib/actuatorsSync";
 import type { AppUser } from "../../lib/user";
 import "./Switch.css";
 
@@ -20,16 +21,51 @@ type SwitchProps = {
 function Switch(props: SwitchProps) {
   const { t } = useTranslation();
   const disabled = Boolean(props.disabled);
+  const setValRef = useRef(props.setVal);
+  setValRef.current = props.setVal;
+  /** Skip applying our own echo / remote updates briefly after a local toggle. */
+  const localWriteUntilRef = useRef(0);
 
   useEffect(() => {
     if (!props.deviceId) return;
-    getLatestSwitchState(props.deviceId, props.name)
-      .then((state) => props.setVal(Boolean(state)))
-      .catch((error) => console.log(error));
+
+    let cancelled = false;
+
+    const pull = () => {
+      getLatestSwitchState(props.deviceId, props.name)
+        .then((state) => {
+          if (cancelled) return;
+          if (Date.now() < localWriteUntilRef.current) return;
+          setValRef.current(Boolean(state));
+        })
+        .catch((error) => console.log(error));
+    };
+
+    pull();
+
+    const unsubscribe = subscribeDeviceActuators(props.deviceId, (change) => {
+      if (cancelled) return;
+      if (Date.now() < localWriteUntilRef.current) return;
+
+      if (change) {
+        if (change.kind !== "switch" || change.name !== props.name) return;
+        setValRef.current(Boolean(change.state));
+        return;
+      }
+
+      // Poll / incomplete realtime payload — refetch this control.
+      pull();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [props.deviceId, props.name, props.user.id]);
 
   const sendSwitchStateToDatabase = (newValue: boolean) => {
     if (disabled) return;
+    localWriteUntilRef.current = Date.now() + 1500;
     insertSwitchState(
       props.deviceId,
       props.name,

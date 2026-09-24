@@ -1,3 +1,5 @@
+import Realtime
+import Supabase
 import SwiftUI
 
 struct DeviceControlsView: View {
@@ -11,6 +13,7 @@ struct DeviceControlsView: View {
     @State private var chartPoints: [String: [SensorReading]] = [:]
     @State private var loading = true
     @State private var busyName: String?
+    @State private var editingSliderName: String?
     @State private var errorMessage: String?
 
     private var controls: [DeviceControl] {
@@ -95,9 +98,16 @@ struct DeviceControlsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task {
             await reloadAll()
+            await listenForActuatorChanges()
+        }
+        .task {
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
                 guard !Task.isCancelled else { break }
+                // Keep charts + controls in sync even if Realtime is offline.
+                if busyName == nil, editingSliderName == nil {
+                    await loadStates()
+                }
                 await loadCharts()
             }
         }
@@ -139,7 +149,10 @@ struct DeviceControlsView: View {
                     in: control.min...control.max,
                     step: 1
                 ) { editing in
-                    if !editing {
+                    if editing {
+                        editingSliderName = control.name
+                    } else {
+                        editingSliderName = nil
                         Task { await commitSlider(control) }
                     }
                 }
@@ -149,6 +162,53 @@ struct DeviceControlsView: View {
         }
         .padding(16)
         .bvCard()
+    }
+
+    private func listenForActuatorChanges() async {
+        let client = SupabaseManager.client
+        let channel = client.channel("actuators:\(device.id.uuidString)")
+
+        let switchChanges = channel.postgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "actuator_switches",
+            filter: .eq("device_id", value: device.id.uuidString)
+        )
+        let sliderChanges = channel.postgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "actuator_sliders",
+            filter: .eq("device_id", value: device.id.uuidString)
+        )
+
+        do {
+            try await channel.subscribeWithError()
+        } catch {
+            print("[actuators] realtime subscribe failed:", error.localizedDescription)
+            return
+        }
+
+        // Separate Tasks so each captures view state safely on MainActor (Swift 6).
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { @MainActor in
+                for await _ in switchChanges {
+                    guard !Task.isCancelled else { break }
+                    if busyName == nil, editingSliderName == nil {
+                        await loadStates()
+                    }
+                }
+            }
+            group.addTask { @MainActor in
+                for await _ in sliderChanges {
+                    guard !Task.isCancelled else { break }
+                    if busyName == nil, editingSliderName == nil {
+                        await loadStates()
+                    }
+                }
+            }
+        }
+
+        await client.removeChannel(channel)
     }
 
     private func reloadAll() async {

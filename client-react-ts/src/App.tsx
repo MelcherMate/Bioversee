@@ -62,6 +62,11 @@ const App = () => {
       await enforceSessionMaxAge();
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
+      // Realtime WebSocket often connects as anon unless JWT is set explicitly;
+      // without this, RLS silently drops postgres_changes from other clients.
+      if (data.session?.access_token) {
+        await supabase.realtime.setAuth(data.session.access_token);
+      }
       syncAccountVaultFromSession(data.session, "INITIAL_SESSION");
       setUser(data.session?.user ? toAppUser(data.session.user) : null);
       setLoading(false);
@@ -70,6 +75,7 @@ const App = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      void supabase.realtime.setAuth(session?.access_token ?? null);
       syncAccountVaultFromSession(session, event);
       setUser(session?.user ? toAppUser(session.user) : null);
       setLoading(false);

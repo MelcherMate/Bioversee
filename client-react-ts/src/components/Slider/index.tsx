@@ -10,6 +10,7 @@ import {
   getLatestSliderState,
   insertSliderState,
 } from "../../lib/actuators";
+import { subscribeDeviceActuators } from "../../lib/actuatorsSync";
 import type { AppUser } from "../../lib/user";
 import AnimatedNumber from "../AnimatedNumber";
 import "./Slider.css";
@@ -36,32 +37,52 @@ function Slider(props: SliderProps) {
 
   const setValRef = useRef(props.setVal);
   setValRef.current = props.setVal;
-  /** Ignore stale getLatest results after the user has taken control. */
-  const touchedRef = useRef(false);
   const slidingRef = useRef(false);
+  /** Skip remote updates briefly after a local commit so we don't snap back. */
+  const localWriteUntilRef = useRef(0);
 
   useEffect(() => {
     if (!props.deviceId) return;
 
     let cancelled = false;
-    touchedRef.current = false;
 
-    getLatestSliderState(props.deviceId, props.name)
-      .then((state) => {
-        if (cancelled || touchedRef.current || slidingRef.current) return;
-        setValRef.current(Number(state));
-      })
-      .catch((error) => console.log(error));
+    const pull = () => {
+      if (slidingRef.current || Date.now() < localWriteUntilRef.current) return;
+      getLatestSliderState(props.deviceId, props.name)
+        .then((state) => {
+          if (cancelled) return;
+          if (slidingRef.current || Date.now() < localWriteUntilRef.current) {
+            return;
+          }
+          setValRef.current(Number(state));
+        })
+        .catch((error) => console.log(error));
+    };
+
+    pull();
+
+    const unsubscribe = subscribeDeviceActuators(props.deviceId, (change) => {
+      if (cancelled) return;
+      if (slidingRef.current || Date.now() < localWriteUntilRef.current) return;
+
+      if (change) {
+        if (change.kind !== "slider" || change.name !== props.name) return;
+        setValRef.current(Number(change.state));
+        return;
+      }
+
+      pull();
+    });
 
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [props.deviceId, props.name, props.user.id]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (disabled) return;
     const newValue = parseInt(event.target.value, 10);
-    touchedRef.current = true;
     slidingRef.current = true;
     setIsSliding(true);
     props.setVal(newValue);
@@ -75,7 +96,7 @@ function Slider(props: SliderProps) {
     const newValue = parseInt(raw, 10);
     if (!Number.isFinite(newValue)) return;
 
-    touchedRef.current = true;
+    localWriteUntilRef.current = Date.now() + 1500;
     props.setVal(newValue);
     insertSliderState(
       props.deviceId,
@@ -87,7 +108,6 @@ function Slider(props: SliderProps) {
 
   const handlePointerDown = (event: PointerEvent<HTMLInputElement>) => {
     if (disabled) return;
-    touchedRef.current = true;
     slidingRef.current = true;
     setIsSliding(true);
     event.currentTarget.setPointerCapture(event.pointerId);

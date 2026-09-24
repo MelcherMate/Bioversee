@@ -78,20 +78,21 @@ final class DeviceStore: ObservableObject {
                 return
             }
 
-            async let members: () = {
-                for await _ in memberChanges {
-                    guard !Task.isCancelled else { break }
-                    await self?.refresh(silent: true)
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { [weak self] in
+                    for await _ in memberChanges {
+                        guard !Task.isCancelled else { break }
+                        await self?.refresh(silent: true)
+                    }
                 }
-            }()
-            async let devicesObs: () = {
-                for await _ in deviceChanges {
-                    guard !Task.isCancelled else { break }
-                    await self?.refresh(silent: true)
+                group.addTask { [weak self] in
+                    for await _ in deviceChanges {
+                        guard !Task.isCancelled else { break }
+                        await self?.refresh(silent: true)
+                    }
                 }
-            }()
+            }
 
-            _ = await (members, devicesObs)
             await client.removeChannel(channel)
         }
     }
