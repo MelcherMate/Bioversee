@@ -260,6 +260,88 @@
   overflow: visible;
 }
 
+/* Cavitation foam around impellers when rotor > 50% */
+.agitator__cavitation {
+  position: absolute;
+  left: 50%;
+  width: 210px;
+  height: 72px;
+  margin-left: -105px;
+  pointer-events: none;
+  z-index: 4;
+  border-radius: 50%;
+  opacity: 0;
+  background:
+    radial-gradient(
+      ellipse 70% 55% at 50% 50%,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.18) 38%,
+      transparent 68%
+    ),
+    radial-gradient(
+      circle at 28% 42%,
+      rgba(255, 255, 255, 0.7) 0 2px,
+      transparent 3px
+    ),
+    radial-gradient(
+      circle at 62% 58%,
+      rgba(255, 255, 255, 0.65) 0 1.5px,
+      transparent 2.5px
+    ),
+    radial-gradient(
+      circle at 44% 30%,
+      rgba(255, 255, 255, 0.8) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 74% 40%,
+      rgba(255, 255, 255, 0.75) 0 1.5px,
+      transparent 2.5px
+    ),
+    radial-gradient(
+      circle at 18% 60%,
+      rgba(255, 255, 255, 0.7) 0 1px,
+      transparent 2px
+    );
+  background-size: 100% 100%, 28px 28px, 34px 34px, 22px 22px, 30px 30px, 26px 26px;
+  filter: blur(0.3px);
+  mix-blend-mode: soft-light;
+  animation: agitator-cavitation-boil 0.55s steps(3) infinite;
+}
+
+.agitator__cavitation--upper {
+  top: 356px;
+}
+
+.agitator__cavitation--lower {
+  top: 429px;
+}
+
+.agitator__cavitation.is-on {
+  opacity: var(--cavitation-strength, 0.55);
+}
+
+@keyframes agitator-cavitation-boil {
+  0% {
+    background-position: 0 0, 0 0, 8px 4px, 0 6px, 10px 0, 4px 8px;
+    transform: scaleX(1) scaleY(1);
+  }
+  50% {
+    background-position: 0 0, 6px 3px, 0 8px, 5px 0, 0 6px, 9px 2px;
+    transform: scaleX(1.06) scaleY(0.94);
+  }
+  100% {
+    background-position: 0 0, 12px 0, 4px 0, 8px 4px, 6px 8px, 0 4px;
+    transform: scaleX(0.97) scaleY(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agitator__cavitation {
+    animation: none;
+  }
+}
+
 /* BASE-ACID SUPPLY — thin plastic dosing tube */
 .base-acid-supply {
   position: absolute;

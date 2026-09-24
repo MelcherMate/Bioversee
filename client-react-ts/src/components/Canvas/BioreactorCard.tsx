@@ -1,13 +1,17 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { APPLE_DEPTH_COLORS } from "../pressure-vessel/apple-depth-style";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
+import { StirredBubbleField } from "./StirredBubbleField";
 import "./Bioreactor.css";
 
 export type JacketMode = "idle" | "warm" | "cold";
 export type DoseMode = "idle" | "acid" | "base";
+
+/** Bioreactor impeller speed range (matches web + iOS controls). */
+export const ROTOR_MAX_RPM = 300;
 
 type BioreactorCardProps = {
   rotorVal?: number;
@@ -971,6 +975,7 @@ function ImpellerRotor({
 
 function BioreactorCard(props: BioreactorCardProps) {
   const rotorVal = props.rotorVal ?? 0;
+  const rotorNorm = Math.min(1, Math.max(0, rotorVal / ROTOR_MAX_RPM));
   const aeratorVal = props.aeratorVal ?? 0;
   const jacketMode = props.jacketMode ?? "idle";
   const doseMode = props.doseMode ?? "idle";
@@ -980,8 +985,8 @@ function BioreactorCard(props: BioreactorCardProps) {
   // Slight offset rest pose so blades aren’t axis-aligned when stopped.
   const spinAngleRef = useRef(0.35);
   const [spinAngle, setSpinAngle] = useState(0.35);
-  const rotorValRef = useRef(rotorVal);
-  rotorValRef.current = rotorVal;
+  const rotorValRef = useRef(rotorNorm);
+  rotorValRef.current = rotorNorm;
 
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
     targetFillUnits,
@@ -995,9 +1000,9 @@ function BioreactorCard(props: BioreactorCardProps) {
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const speed = rotorValRef.current;
+      const speed = rotorValRef.current; // 0–1
       if (speed > 0) {
-        const radPerSec = 0.7 + (speed / 100) * 11;
+        const radPerSec = 0.7 + speed * 11;
         spinAngleRef.current += radPerSec * dt;
         setSpinAngle(spinAngleRef.current);
       }
@@ -1009,7 +1014,16 @@ function BioreactorCard(props: BioreactorCardProps) {
   }, []);
 
   const waveVelocity =
-    levelVelocity + (aeratorVal / 100) * 28 + (rotorVal / 100) * 20;
+    levelVelocity + (aeratorVal / 100) * 28 + rotorNorm * 20;
+
+  // Water clip is 510px tall; sparger sits ~52px above the dish floor.
+  const fillRatio = Math.max(0.05, displayFillUnits / VESSEL_MAX_FILL_UNITS);
+  const spargerSpawnBottomPct = Math.min(
+    22,
+    Math.max(9, (52 / (fillRatio * 510)) * 100),
+  );
+  const cavitationStrength =
+    rotorNorm > 0.5 ? Math.min(1, (rotorNorm - 0.5) / 0.5) : 0;
 
   return (
     <div
@@ -1037,6 +1051,30 @@ function BioreactorCard(props: BioreactorCardProps) {
           <div className="agitator__stage agitator__stage--lower">
             <ImpellerRotor angleRad={spinAngle} phaseRad={Math.PI / IMPELLER_BLADES} />
           </div>
+          {cavitationStrength > 0 ? (
+            <>
+              <div
+                className="agitator__cavitation agitator__cavitation--upper is-on"
+                style={
+                  {
+                    ["--cavitation-strength" as string]: String(
+                      0.35 + cavitationStrength * 0.65,
+                    ),
+                  } as CSSProperties
+                }
+              />
+              <div
+                className="agitator__cavitation agitator__cavitation--lower is-on"
+                style={
+                  {
+                    ["--cavitation-strength" as string]: String(
+                      0.4 + cavitationStrength * 0.6,
+                    ),
+                  } as CSSProperties
+                }
+              />
+            </>
+          ) : null}
         </div>
 
         {/* Under the water layer so tips read as submerged */}
@@ -1062,12 +1100,14 @@ function BioreactorCard(props: BioreactorCardProps) {
             fillUnits={displayFillUnits}
             fillVelocity={waveVelocity}
             showSurface={displayFillUnits / VESSEL_MAX_FILL_UNITS < 0.98}
-            bubbleCount={
-              aeratorVal <= 0
-                ? 0
-                : Math.max(1, Math.round((aeratorVal / 100) * 54))
-            }
-            bubbleSwirl={rotorVal / 100}
+            bubbleCount={0}
+          />
+          <StirredBubbleField
+            aeratorVal={aeratorVal}
+            rotorNorm={rotorNorm}
+            fillRatio={Math.min(1, displayFillUnits / VESSEL_MAX_FILL_UNITS)}
+            spawnBottomPct={spargerSpawnBottomPct}
+            spawnLeftRange={[26, 74]}
           />
         </div>
 

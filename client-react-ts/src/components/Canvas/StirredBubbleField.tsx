@@ -1,0 +1,351 @@
+import { useEffect, useRef } from "react";
+import "./StirredBubbleField.css";
+
+type Particle = {
+  x: number; // 0–1 left→right
+  y: number; // 0–1 bottom→top within the water column
+  vx: number;
+  vy: number;
+  r: number;
+  age: number;
+  life: number;
+};
+
+type StirredBubbleFieldProps = {
+  /** 0–100 aerator. */
+  aeratorVal: number;
+  /** 0–1 impeller speed. */
+  rotorNorm: number;
+  /** 0–1 water fill. */
+  fillRatio: number;
+  /** Sparger height as % of water column from bottom. */
+  spawnBottomPct: number;
+  /** Horizontal sparger band as % of width. */
+  spawnLeftRange?: [number, number];
+};
+
+const MAX_PARTICLES = 240;
+/** Steady-state count at 100% air ≈ this many in the column. */
+const TARGET_AT_FULL_AIR = 190;
+/** Long enough to ride a full wall→center→down→out loop. */
+const MEAN_LIFE_S = 5.2;
+
+/**
+ * Water-column height of each Rushton disc (y=0 bottom, y=1 surface).
+ * Impellers sit at fixed wrapper Y; the filled column grows from the bottom,
+ * so their normalized heights scale as 1/fill.
+ *
+ * Wrapper: water-clip bottom ≈ 410, lower disc ≈ 307, upper ≈ 234
+ * → offsets from bottom 103 / 176 over a 510px clip.
+ */
+function impellerHeights(fill: number): { yLo: number; yHi: number } {
+  const f = Math.max(0.2, fill);
+  return {
+    yLo: Math.min(0.85, 103 / (f * 510)),
+    yHi: Math.min(0.92, 176 / (f * 510)),
+  };
+}
+
+function planeKernel(y: number, yPlane: number, halfWidth = 0.07): number {
+  const t = (y - yPlane) / halfWidth;
+  return Math.exp(-(t * t));
+}
+
+function clamp01(v: number): number {
+  return Math.min(1, Math.max(0, v));
+}
+
+/** Smooth 0→1 ramp between a and b. */
+function smoothstep(a: number, b: number, x: number): number {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Dual-Rushton side-view field — one readable recirculation cell per half:
+ *   sides UP → surface IN to shaft → center DOWN → impeller OUT to sides again.
+ *
+ * At low rpm (~40) stirring is almost off so the sparger plume just rises.
+ * The full loop only locks in toward mid/high tip speed.
+ */
+function stirredVelocity(
+  x: number,
+  y: number,
+  rpmNorm: number,
+  fill: number,
+  tSec: number,
+): { vx: number; vy: number } {
+  const shaft = 0.5;
+  const dx = x - shaft;
+  const side = dx >= 0 ? 1 : -1;
+  const r = Math.abs(dx);
+  const { yLo, yHi } = impellerHeights(fill);
+  const yMid = (yLo + yHi) * 0.5;
+
+  // 40 rpm ≈ 0.13 → stir≈0; ~120 rpm → rising; 300 rpm → 1
+  const stir = smoothstep(0.12, 0.62, rpmNorm);
+  const stir2 = stir * stir;
+
+  let vx = 0;
+  let vy = 0;
+
+  const lo = planeKernel(y, yLo, 0.08);
+  const hi = planeKernel(y, yHi, 0.08);
+
+  // Mild blade nudge even at low speed — not a full loop yet
+  const tipBoost = Math.max(0, 1 - Math.abs(r - 0.2) * 5);
+  const soft = rpmNorm * (1 - stir) * 0.22;
+  vx += side * lo * soft * (0.4 + tipBoost * 0.3);
+  vx += side * hi * soft * (0.35 + tipBoost * 0.25);
+
+  // --- Full recirculation (ramps in with stir) ---
+  if (stir > 0.01) {
+    // 1) Radial discharge
+    vx += side * lo * stir * (0.85 + tipBoost * 0.7);
+    vx += side * hi * stir * (0.75 + tipBoost * 0.65);
+
+    // 2) Wall riser
+    const wall = clamp01((r - 0.26) / 0.2);
+    if (wall > 0) {
+      if (y >= yLo - 0.04) {
+        vy += wall * stir * (0.55 + 0.45 * clamp01((y - yLo) / 0.55));
+      } else {
+        vy -= wall * stir * 0.2;
+        vx += -side * wall * stir * 0.15;
+      }
+    }
+
+    // 3) Surface inward
+    const surface = clamp01((y - 0.72) / 0.22);
+    if (surface > 0) {
+      vx += -side * surface * stir * (0.7 + r * 0.5);
+      vy += surface * stir * (r > 0.12 ? 0.05 : -0.12);
+    }
+
+    // 4) Center downwelling — only when stirring is clearly on
+    const core = clamp01(1 - r / 0.18);
+    if (core > 0) {
+      if (y > yHi) {
+        vy -= core * stir * (0.55 + surface * 0.55);
+      }
+      if (y > yLo && y <= yHi) {
+        vy -= core * stir * 0.35;
+      }
+      if (y < yLo) {
+        vy += core * stir * 0.25;
+      }
+    }
+
+    // 5) Split at mid disc height
+    const split = planeKernel(y, yMid, 0.1) * clamp01(1 - r / 0.22);
+    vx += side * split * stir * 0.45;
+  }
+
+  // Buoyancy owns the low-rpm plume; fades as the loop takes over
+  vy += 0.1 * (1 - stir2) + 0.02 * stir2;
+
+  // Gentle sparger plume sway at low speed
+  if (stir < 0.35) {
+    const sway = (1 - stir / 0.35) * 0.04;
+    vx += Math.sin(tSec * 1.6 + y * 6) * sway * (0.5 + r);
+  }
+
+  if (stir2 > 0.05) {
+    const phase = tSec * (1.4 + stir * 2.6);
+    const eddy =
+      Math.sin((x * 7.2 + y * 5.5) * Math.PI + phase) *
+      Math.cos((y * 6.1 - x * 3.8) * Math.PI + phase * 0.6);
+    vx += eddy * stir2 * 0.35;
+    vy += eddy * stir2 * 0.28;
+    vx += (Math.random() - 0.5) * stir2 * 0.18;
+    vy += (Math.random() - 0.5) * stir2 * 0.14;
+  }
+
+  if (x < 0.06) vx += 0.45;
+  if (x > 0.94) vx -= 0.45;
+  if (y < 0.03) vy += 0.35;
+  if (y > 0.98) vy -= 0.2 * stir;
+
+  return { vx, vy };
+}
+
+/**
+ * Canvas bubble plume for the bioreactor: spawn from the sparger, advect with
+ * a dual-impeller stirred-tank field. Own rAF — not tied to React spin frames.
+ */
+export function StirredBubbleField({
+  aeratorVal,
+  rotorNorm,
+  fillRatio,
+  spawnBottomPct,
+  spawnLeftRange = [26, 74],
+}: StirredBubbleFieldProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const aeratorRef = useRef(aeratorVal);
+  const rotorRef = useRef(rotorNorm);
+  const spawnBottomRef = useRef(spawnBottomPct);
+  const leftRangeRef = useRef(spawnLeftRange);
+  const fillRef = useRef(fillRatio);
+
+  aeratorRef.current = aeratorVal;
+  rotorRef.current = rotorNorm;
+  spawnBottomRef.current = spawnBottomPct;
+  leftRangeRef.current = spawnLeftRange;
+  fillRef.current = fillRatio;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let frame = 0;
+    let last = performance.now();
+    let spawnDebt = 0;
+    let disposed = false;
+    const t0 = performance.now();
+
+    const resize = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const rect = parent.getBoundingClientRect();
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.max(1, Math.floor(rect.width));
+      const h = Math.max(1, Math.floor(rect.height * fillRef.current));
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    resize();
+    const ro = new ResizeObserver(resize);
+    if (canvas.parentElement) ro.observe(canvas.parentElement);
+
+    const spawnOne = () => {
+      const list = particlesRef.current;
+      if (list.length >= MAX_PARTICLES) return;
+      const [l0, l1] = leftRangeRef.current;
+      const x =
+        (l0 + Math.random() * (l1 - l0) + (Math.random() - 0.5) * 2) / 100;
+      const y =
+        (spawnBottomRef.current + (Math.random() - 0.5) * 1.4) / 100;
+      list.push({
+        x: Math.min(0.95, Math.max(0.05, x)),
+        y: Math.min(0.35, Math.max(0.02, y)),
+        vx: (Math.random() - 0.5) * 0.04,
+        vy: 0.03 + Math.random() * 0.03,
+        r: 1.35 + Math.random() * 2.35,
+        age: 0,
+        life: MEAN_LIFE_S * (0.75 + Math.random() * 0.5),
+      });
+    };
+
+    const tick = (now: number) => {
+      if (disposed) return;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const tSec = (now - t0) / 1000;
+
+      const air = Math.max(0, Math.min(1, aeratorRef.current / 100));
+      const rpm = Math.max(0, Math.min(1, rotorRef.current));
+      const fill = Math.max(0.05, fillRef.current);
+      const target = air * TARGET_AT_FULL_AIR;
+      const spawnPerSec = target <= 0 ? 0 : target / MEAN_LIFE_S;
+
+      // Only spawn rate follows aerator — existing particles keep moving.
+      spawnDebt += spawnPerSec * dt;
+      while (spawnDebt >= 1) {
+        spawnDebt -= 1;
+        spawnOne();
+      }
+
+      const h = Math.max(1, canvas.clientHeight);
+      const wantH = Math.max(
+        1,
+        Math.floor((canvas.parentElement?.clientHeight ?? h) * fill),
+      );
+      if (Math.abs(wantH - h) > 2) resize();
+
+      // Follow the mean field harder once the recirculation loop engages
+      const stir = Math.min(
+        1,
+        Math.max(0, (rpm - 0.12) / (0.62 - 0.12)),
+      );
+      const stirSmooth = stir * stir * (3 - 2 * stir);
+      const follow = 1.6 + stirSmooth * 3.2;
+      const dampX = 1.35 - stirSmooth * 0.35;
+      const dampY = 1.2 - stirSmooth * 0.35;
+
+      const next: Particle[] = [];
+      for (const p of particlesRef.current) {
+        p.age += dt;
+        // Keep them alive through a full loop; only cull past freeboard
+        if (p.age > p.life || p.y > 1.08) continue;
+
+        const { vx: fx, vy: fy } = stirredVelocity(p.x, p.y, rpm, fill, tSec);
+        p.vx = p.vx * (1 - dampX * dt) + fx * dt * follow;
+        p.vy = p.vy * (1 - dampY * dt) + fy * dt * follow;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+
+        if (p.x < 0.03) {
+          p.x = 0.03;
+          p.vx = Math.abs(p.vx) * 0.4;
+        } else if (p.x > 0.97) {
+          p.x = 0.97;
+          p.vx = -Math.abs(p.vx) * 0.4;
+        }
+        if (p.y < 0.01) {
+          p.y = 0.01;
+          p.vy = Math.max(0.02, Math.abs(p.vy) * 0.3);
+        } else if (p.y > 0.99) {
+          // Bounce slightly below free surface so they can turn inward
+          p.y = 0.99;
+          p.vy = Math.min(-0.02, -Math.abs(p.vy) * 0.35);
+        }
+
+        next.push(p);
+      }
+      particlesRef.current = next;
+
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      ctx.clearRect(0, 0, cw, ch);
+
+      for (const p of next) {
+        // Stay visible at the surface so the inward → down leg reads
+        const lifeFade = 1 - p.age / p.life;
+        const alpha = Math.max(0, 0.18 + 0.52 * lifeFade);
+        const px = p.x * cw;
+        const py = ch - p.y * ch;
+
+        ctx.beginPath();
+        ctx.arc(px, py, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.fill();
+      }
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+    };
+  }, []);
+
+  if (fillRatio < 0.005) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="stirred-bubble-field"
+      aria-hidden
+    />
+  );
+}

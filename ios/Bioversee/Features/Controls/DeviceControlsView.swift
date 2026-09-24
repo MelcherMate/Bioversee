@@ -260,7 +260,7 @@ struct DeviceControlsView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(BVTheme.text)
                 Spacer(minLength: 8)
-                Text("\(Int(value))")
+                Text("\(Int(value))\(control.unit.map { " \($0)" } ?? "")")
                     .font(.system(size: 13, weight: .bold).monospacedDigit())
                     .foregroundStyle(BVTheme.accent)
                     .padding(.horizontal, 8)

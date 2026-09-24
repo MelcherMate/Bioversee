@@ -175,6 +175,9 @@ function Bioreactor({ user }: BioreactorProps) {
               val={rotorVal}
               label={t("process.rotor")}
               user={user}
+              min={0}
+              max={300}
+              unit=" rpm"
               disabled={readOnly}
             />
             <Slider

@@ -12,13 +12,15 @@ struct DeviceControl: Identifiable, Hashable {
     let label: String
     let min: Double
     let max: Double
+    let unit: String?
 
     init(
         kind: ControlKind,
         name: String,
         label: String,
         min: Double = 0,
-        max: Double = 100
+        max: Double = 100,
+        unit: String? = nil
     ) {
         self.id = name
         self.kind = kind
@@ -26,6 +28,7 @@ struct DeviceControl: Identifiable, Hashable {
         self.label = label
         self.min = min
         self.max = max
+        self.unit = unit
     }
 }
 
@@ -38,7 +41,7 @@ enum ControlCatalog {
                 .init(kind: .switchControl, name: "switchColdWaterPump", label: "Cold water"),
                 .init(kind: .switchControl, name: "switchAcidPump", label: "Acid"),
                 .init(kind: .switchControl, name: "switchBasePump", label: "Base"),
-                .init(kind: .slider, name: "rotor", label: "Rotor"),
+                .init(kind: .slider, name: "rotor", label: "Rotor", min: 0, max: 300, unit: "rpm"),
                 .init(kind: .slider, name: "aerator", label: "Aerator"),
             ]
         case .pressureVessel:

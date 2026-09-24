@@ -24,6 +24,8 @@ type SliderProps = {
   user: AppUser;
   min?: number;
   max?: number;
+  /** Display unit after the value. Defaults to "%". */
+  unit?: string;
   disabled?: boolean;
 };
 
@@ -32,6 +34,7 @@ function Slider(props: SliderProps) {
   const disabled = Boolean(props.disabled);
   const min = props.min ?? 0;
   const max = props.max ?? 100;
+  const unit = props.unit ?? "%";
   const value = Number.isFinite(props.val) ? props.val : min;
   const percent = max === min ? 0 : ((value - min) / (max - min)) * 100;
 
@@ -126,14 +129,15 @@ function Slider(props: SliderProps) {
         <span className="bv-slider__label">{props.label}</span>
         {isSliding ? (
           <span className="bv-slider__value bv-slider__value--live">
-            {Math.round(value)}%
+            {Math.round(value)}
+            {unit}
           </span>
         ) : (
           <AnimatedNumber
             className="bv-slider__value"
             value={value}
             decimals={0}
-            suffix="%"
+            suffix={unit}
           />
         )}
       </div>

@@ -110,7 +110,7 @@ export async function seedOnboardingSampleData(
 
   // One-shot actuator baseline so controls are not empty.
   if (type === "bioreactor") {
-    await insertSliderState(deviceId, "rotor", 45, userId);
+    await insertSliderState(deviceId, "rotor", 135, userId);
     await insertSliderState(deviceId, "aerator", 55, userId);
     await insertSwitchState(deviceId, "switchWarmWaterPump", false, userId);
     await insertSwitchState(deviceId, "switchColdWaterPump", false, userId);

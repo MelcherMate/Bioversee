@@ -54,7 +54,7 @@ const SLIDER_GROUPS: PresetGroup[] = [
     deviceType: "bioreactor",
     device: "Bioreactor",
     items: [
-      { name: "rotor", label: "Rotor", sample: 45 },
+      { name: "rotor", label: "Rotor (rpm)", sample: 135 },
       { name: "aerator", label: "Aerator", sample: 55 },
     ],
   },

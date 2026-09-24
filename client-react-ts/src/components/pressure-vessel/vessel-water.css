@@ -47,14 +47,22 @@
 .vessel-water .bubble {
   position: absolute;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.35);
   opacity: 0;
-  animation: vessel-bubble-rise 3.8s ease-in infinite;
+  animation: vessel-bubble-rise 3.8s ease-out infinite;
   pointer-events: none;
   will-change: transform, bottom, opacity;
 }
 
-/* Phase-shifted horizontal swirl — amplitude from --bubble-swirl (rotor-driven). */
+/* Sparger plume bubbles: play once, then get removed — never restarted mid-rise. */
+.vessel-water .bubble--once {
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  animation-timing-function: ease-out;
+}
+
+/* Phase + lane drive opposing impeller circulation cells. */
 .vessel-water .bubble-phase-0 {
   --swirl-sign: 1;
 }
@@ -74,41 +82,73 @@
   --swirl-sign: -1;
 }
 
+/*
+ * Steady rise from sparger with gentle impeller sway.
+ * Bottom keyframes are evenly spaced so motion doesn’t surge mid-column.
+ */
 @keyframes vessel-bubble-rise {
   0% {
-    bottom: var(--bubble-bottom, 8%);
-    transform: translateX(0) scale(0.6);
+    bottom: var(--bubble-bottom, 2%);
+    transform: translateX(0) scale(0.55);
     opacity: 0;
   }
-  12% {
-    opacity: 0.75;
+  8% {
+    opacity: 0.85;
     transform: translateX(
-      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * 0.45)
-    ) scale(0.75);
+      calc(var(--bubble-lane, 1) * var(--bubble-swirl, 0px) * -0.12)
+    ) scale(0.7);
   }
-  35% {
+  22% {
+    bottom: calc(var(--bubble-bottom, 12%) + 14%);
     transform: translateX(
-      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * -0.85)
-    ) scale(0.9);
+      calc(var(--bubble-lane, 1) * var(--bubble-swirl, 0px) * -0.28)
+    ) scale(0.82);
   }
-  62% {
+  38% {
+    bottom: calc(var(--bubble-bottom, 12%) + 28%);
+    opacity: 0.72;
+    transform: translateX(
+      calc(
+        var(--bubble-lane, 1) * var(--bubble-swirl, 0px) * 0.55 +
+          var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * 0.12
+      )
+    ) scale(0.92);
+  }
+  55% {
+    bottom: 52%;
+    transform: translateX(
+      calc(
+        var(--bubble-lane, 1) * var(--bubble-swirl, 0px) * 0.2 +
+          var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * -0.4
+      )
+    ) scale(1);
+  }
+  72% {
+    bottom: 70%;
     opacity: 0.5;
     transform: translateX(
-      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * 1)
-    ) scale(0.95);
+      calc(
+        var(--bubble-lane, 1) * var(--bubble-swirl, 0px) * -0.45 +
+          var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * 0.22
+      )
+    ) scale(1.02);
   }
   88% {
-    bottom: calc(100% - 10px);
-    opacity: 0.2;
+    bottom: calc(100% - 12px);
+    opacity: 0.22;
     transform: translateX(
-      calc(var(--swirl-sign, 1) * var(--bubble-swirl, 0px) * -0.35)
-    ) scale(1);
+      calc(var(--bubble-lane, 1) * var(--bubble-swirl, 0px) * 0.15)
+    ) scale(1.05);
   }
   100% {
     bottom: calc(100% - 2px);
-    transform: translateX(0) scale(1);
+    transform: translateX(0) scale(1.08);
     opacity: 0;
   }
+}
+
+.vessel-water .bubble-field--turbulent .bubble {
+  animation-timing-function: ease-out;
 }
 
 .vessel-water .water-surface {
