@@ -968,6 +968,20 @@ function BioreactorCard(props: BioreactorCardProps) {
           />
         </div>
 
+        {/* Under the water layer so tips read as submerged */}
+        <div className="sensor sensor1 sensor--temp" aria-hidden>
+          <div className="sensor__port" />
+          <div className="sensor__collar" />
+          <div className="sensor__shaft" />
+          <div className="sensor__tip" />
+        </div>
+        <div className="sensor sensor2 sensor--ph" aria-hidden>
+          <div className="sensor__port" />
+          <div className="sensor__collar" />
+          <div className="sensor__shaft" />
+          <div className="sensor__tip" />
+        </div>
+
         <div className="br-water-clip">
           <VesselWaterBody
             fillUnits={displayFillUnits}
@@ -980,17 +994,6 @@ function BioreactorCard(props: BioreactorCardProps) {
             }
             bubbleSwirl={rotorVal / 100}
           />
-        </div>
-
-        <div className="sensor sensor1">
-          <div className="sensor_base" />
-          <div className="sensor_stem" />
-          <div className="sensor_head" />
-        </div>
-        <div className="sensor sensor2">
-          <div className="sensor_base" />
-          <div className="sensor_stem" />
-          <div className="sensor_head" />
         </div>
 
         <BaseAcidSupplyPipe mode={doseMode} fillUnits={displayFillUnits} />
