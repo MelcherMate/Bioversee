@@ -58,7 +58,7 @@
   height: 48px;
   border-radius: 14px;
   overflow: hidden;
-  background: #fff;
+  background: var(--bv-input-bg);
   box-shadow: 0 0 0 1px var(--bv-accent-border);
   display: grid;
   place-items: center;
@@ -145,7 +145,7 @@
   border: none;
   border-radius: var(--bv-radius-md);
   background: var(--bv-cta);
-  color: #fff;
+  color: var(--bv-cta-text);
   padding: 13px 16px;
   font-size: 15px;
   font-weight: 600;

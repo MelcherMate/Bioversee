@@ -46,7 +46,7 @@
 }
 
 .device-ctx__item--danger:hover {
-  background: #fef3f2;
+  background: var(--bv-danger-soft);
 }
 
 @keyframes device-ctx-in {

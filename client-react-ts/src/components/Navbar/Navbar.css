@@ -385,7 +385,7 @@ button.topbar__account-row:hover:not(:disabled) {
   border-radius: 8px;
   padding: 6px 10px;
   background: var(--bv-cta);
-  color: #fff;
+  color: var(--bv-cta-text);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -413,7 +413,7 @@ button.topbar__account-row:hover:not(:disabled) {
   margin: 0;
   font-size: 11px;
   color: var(--bv-text-secondary);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .topbar__menu-secondary,
@@ -435,13 +435,13 @@ button.topbar__account-row:hover:not(:disabled) {
 }
 
 .topbar__menu-secondary:hover:not(:disabled) {
-  background: #ebebed;
+  background: color-mix(in srgb, var(--bv-fill) 70%, var(--bv-text) 8%);
 }
 
 .topbar__menu-logout {
   margin-top: 8px;
   background: var(--bv-cta);
-  color: #fff;
+  color: var(--bv-cta-text);
 }
 
 .topbar__menu-logout:hover:not(:disabled) {

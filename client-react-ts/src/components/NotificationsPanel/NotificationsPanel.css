@@ -151,7 +151,7 @@
 
 .notif-panel__accept {
   background: var(--bv-cta);
-  color: #fff;
+  color: var(--bv-cta-text);
 }
 
 .notif-panel__accept:hover:not(:disabled) {
@@ -159,7 +159,7 @@
 }
 
 .notif-panel__decline {
-  background: #fff;
+  background: var(--bv-fill);
   color: var(--bv-text-secondary);
   box-shadow: inset 0 0 0 1px var(--bv-line);
 }

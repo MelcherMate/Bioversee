@@ -24,6 +24,14 @@ type DeviceContextMenuProps = {
   onLeave: (device: AccessibleDevice) => void;
 };
 
+function readCssVar(name: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
+    fallback
+  );
+}
+
 function DeviceContextMenu({
   device,
   x,
@@ -37,6 +45,8 @@ function DeviceContextMenu({
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
   const canAdmin = canAdminDevice(device.role);
+  const iconColor = readCssVar("--bv-text", "#1d1d1f");
+  const dangerColor = readCssVar("--bv-danger", "#b42318");
 
   useEffect(() => {
     const handlePointer = (event: MouseEvent) => {
@@ -82,7 +92,7 @@ function DeviceContextMenu({
             onClose();
           }}
         >
-          <CreateOutline color="#1d1d1f" height="16px" width="16px" title="" />
+          <CreateOutline color={iconColor} height="16px" width="16px" title="" />
           {t("deviceMenu.rename")}
         </button>
       ) : (
@@ -95,7 +105,12 @@ function DeviceContextMenu({
             onClose();
           }}
         >
-          <SettingsOutline color="#1d1d1f" height="16px" width="16px" title="" />
+          <SettingsOutline
+            color={iconColor}
+            height="16px"
+            width="16px"
+            title=""
+          />
           {t("deviceMenu.settings")}
         </button>
       )}
@@ -110,7 +125,7 @@ function DeviceContextMenu({
           }}
         >
           <ShareSocialOutline
-            color="#1d1d1f"
+            color={iconColor}
             height="16px"
             width="16px"
             title=""
@@ -128,7 +143,12 @@ function DeviceContextMenu({
             onClose();
           }}
         >
-          <TrashOutline color="#b42318" height="16px" width="16px" title="" />
+          <TrashOutline
+            color={dangerColor}
+            height="16px"
+            width="16px"
+            title=""
+          />
           {t("deviceMenu.delete")}
         </button>
       ) : (
@@ -141,7 +161,12 @@ function DeviceContextMenu({
             onClose();
           }}
         >
-          <ExitOutline color="#b42318" height="16px" width="16px" title="" />
+          <ExitOutline
+            color={dangerColor}
+            height="16px"
+            width="16px"
+            title=""
+          />
           {t("deviceMenu.leave")}
         </button>
       )}

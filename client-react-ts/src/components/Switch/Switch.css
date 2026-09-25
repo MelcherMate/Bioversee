@@ -25,7 +25,7 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--bv-text);
+  color: var(--bv-text-secondary);
   line-height: 1.25;
 }
 
@@ -37,8 +37,12 @@
   transition: color 0.2s var(--bv-ease);
 }
 
+.bv-switch--on .bv-switch__label {
+  color: var(--bv-text);
+}
+
 .bv-switch--on .bv-switch__state {
-  color: var(--bv-accent-hover);
+  color: var(--bv-accent);
 }
 
 .bv-switch__input {
@@ -56,7 +60,7 @@
   width: 44px;
   height: 26px;
   border-radius: 999px;
-  background: #e5e5ea;
+  background: var(--bv-control-track);
   transition: background 0.25s var(--bv-ease);
 }
 
@@ -67,11 +71,13 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bv-control-thumb);
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.12),
-    0 2px 6px rgba(0, 0, 0, 0.08);
-  transition: transform 0.25s var(--bv-ease);
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.2);
+  transition:
+    transform 0.25s var(--bv-ease),
+    background 0.25s var(--bv-ease);
 }
 
 .bv-switch--on .bv-switch__track {
@@ -80,6 +86,7 @@
 
 .bv-switch--on .bv-switch__thumb {
   transform: translateX(18px);
+  background: var(--bv-control-thumb-on);
 }
 
 .bv-switch--disabled {
@@ -94,7 +101,7 @@
 
 .bv-switch--disabled .bv-switch__track,
 .bv-switch--disabled.bv-switch--on .bv-switch__track {
-  background: #d1d1d6;
+  background: var(--bv-fill);
 }
 
 .bv-switch--disabled .bv-switch__input:focus-visible + .bv-switch__track {

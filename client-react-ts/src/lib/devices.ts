@@ -291,7 +291,11 @@ export async function leaveDevice(deviceId: string): Promise<void> {
 }
 
 export function isLegacyDeviceType(type: DeviceType): boolean {
-  return type === "bioreactor" || type === "water_purifier";
+  return type === "water_purifier";
+}
+
+export function isNewDeviceType(type: DeviceType): boolean {
+  return type === "bioreactor";
 }
 
 export { DEVICE_TYPES };

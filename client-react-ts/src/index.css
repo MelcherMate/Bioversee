@@ -31,43 +31,59 @@
   --bv-glass-border: rgba(255, 255, 255, 0.6);
   --bv-cta: #1d1d1f;
   --bv-cta-hover: #000000;
+  --bv-cta-text: #ffffff;
+  --bv-input-bg: #ffffff;
+  --bv-danger-soft: #fef3f2;
   --bv-danger: #b42318;
   --bv-success: #027a48;
+  --bv-accent-glow: color-mix(in srgb, var(--bv-accent) 22%, transparent);
+  --bv-segment-thumb: #ffffff;
+  --bv-control-track: #e5e5ea;
+  --bv-control-thumb: #ffffff;
+  --bv-control-thumb-on: #ffffff;
   --bv-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --bv-num-duration: 420ms;
   color-scheme: light;
 }
 
-/* Night mode — matched to Smart Grid (`data-sg-theme='dark'`) */
+/* Night mode — soft charcoal stack (not pure black), quieter chrome */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bv-text: #f5f5f7;
-  --bv-text-secondary: #a1a1a6;
-  --bv-text-tertiary: #8e8e93;
-  --bv-line: rgba(255, 255, 255, 0.12);
-  --bv-surface: #000000;
-  --bv-surface-elevated: #1c1c1e;
-  --bv-card: #2c2c2e;
-  --bv-fill: #3a3a3c;
+  --bv-text: #e4e4e8;
+  --bv-text-secondary: #a0a0a8;
+  --bv-text-tertiary: #787880;
+  --bv-line: rgba(255, 255, 255, 0.08);
+  --bv-surface: #101012;
+  --bv-surface-elevated: #1a1a1d;
+  --bv-card: #222226;
+  --bv-fill: #2c2c30;
   --bv-shadow-card:
     0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 24px 48px -12px rgba(0, 0, 0, 0.5),
-    0 8px 20px -8px rgba(0, 0, 0, 0.35);
+    0 24px 48px -12px rgba(0, 0, 0, 0.55),
+    0 8px 20px -8px rgba(0, 0, 0, 0.4);
   --bv-shadow-float:
     0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 12px 32px -8px rgba(0, 0, 0, 0.45);
-  --bv-overlay: rgba(0, 0, 0, 0.65);
-  --bv-accent-hover: color-mix(in srgb, var(--bv-accent) 70%, #fff);
-  --bv-accent-bright: color-mix(in srgb, var(--bv-accent) 55%, #fff);
-  --bv-accent-muted: color-mix(in srgb, var(--bv-accent) 22%, #2c2c2e);
-  --bv-accent-soft: color-mix(in srgb, var(--bv-accent) 12%, #2c2c2e);
-  --bv-accent-border: color-mix(in srgb, var(--bv-accent) 38%, #2c2c2e);
-  --bv-glass: rgba(44, 44, 46, 0.92);
+    0 14px 36px -10px rgba(0, 0, 0, 0.5);
+  --bv-overlay: rgba(8, 8, 10, 0.62);
+  --bv-accent-hover: color-mix(in srgb, var(--bv-accent) 78%, #fff);
+  --bv-accent-bright: color-mix(in srgb, var(--bv-accent) 58%, #fff);
+  --bv-accent-muted: color-mix(in srgb, var(--bv-accent) 22%, #222226);
+  --bv-accent-soft: color-mix(in srgb, var(--bv-accent) 12%, #101012);
+  --bv-accent-border: color-mix(in srgb, var(--bv-accent) 36%, #222226);
+  --bv-accent-glow: color-mix(in srgb, var(--bv-accent) 24%, transparent);
+  --bv-glass: rgba(34, 34, 38, 0.9);
   --bv-glass-border: rgba(255, 255, 255, 0.08);
-  --bv-cta: #f5f5f7;
-  --bv-cta-hover: #ffffff;
+  --bv-cta: var(--bv-accent);
+  --bv-cta-hover: color-mix(in srgb, var(--bv-accent) 82%, #fff);
+  --bv-cta-text: #ffffff;
+  --bv-input-bg: #2c2c30;
   --bv-danger: #f87171;
+  --bv-danger-soft: color-mix(in srgb, #f87171 16%, #222226);
   --bv-success: #34d399;
+  --bv-segment-thumb: #36363a;
+  --bv-control-track: #3a3a40;
+  --bv-control-thumb: #8a8a92;
+  --bv-control-thumb-on: #b4b4bc;
 }
 
 * {
@@ -91,6 +107,12 @@ button,
 input,
 select {
   font-family: inherit;
+}
+
+input,
+select,
+textarea {
+  color-scheme: inherit;
 }
 
 a {

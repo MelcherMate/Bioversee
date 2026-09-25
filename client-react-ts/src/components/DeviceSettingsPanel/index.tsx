@@ -172,7 +172,16 @@ function DeviceSettingsPanel({
           className="device-settings__danger"
           onClick={() => onRequestDelete(device)}
         >
-          <TrashOutline color="#b42318" height="16px" width="16px" title="" />
+          <TrashOutline
+            color={
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--bv-danger")
+                .trim() || "#b42318"
+            }
+            height="16px"
+            width="16px"
+            title=""
+          />
           {t("deviceSettings.deleteDevice")}
         </button>
       )}

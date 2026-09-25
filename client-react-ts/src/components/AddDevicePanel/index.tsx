@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   createMyDevice,
   isLegacyDeviceType,
+  isNewDeviceType,
   type DeviceType,
 } from "../../lib/devices";
 import { DEVICE_TYPE_META, DEVICE_TYPE_ORDER } from "../../lib/deviceIcons";
@@ -160,8 +161,15 @@ function AddDevicePanel({
                 }}
               >
                 <span className="add-device__type-label">{itemLabel}</span>
+                {isNewDeviceType(deviceType) ? (
+                  <span className="add-device__badge add-device__badge--new">
+                    {t("common.new")}
+                  </span>
+                ) : null}
                 {isLegacyDeviceType(deviceType) ? (
-                  <span className="add-device__legacy">{t("common.legacy")}</span>
+                  <span className="add-device__badge add-device__badge--legacy">
+                    {t("common.legacy")}
+                  </span>
                 ) : null}
               </button>
             );

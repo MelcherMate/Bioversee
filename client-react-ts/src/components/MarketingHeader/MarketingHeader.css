@@ -116,7 +116,7 @@
   padding: 10px 16px;
   border-radius: 12px;
   background: var(--bv-cta);
-  color: #fff;
+  color: var(--bv-cta-text);
   font-size: 13px;
   font-weight: 650;
   text-decoration: none;

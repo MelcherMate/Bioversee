@@ -48,7 +48,7 @@
   font-weight: 650;
   cursor: pointer;
   background: var(--bv-cta);
-  color: #fff;
+  color: var(--bv-cta-text);
 }
 
 .empty-device__add-btn:hover {

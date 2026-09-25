@@ -5,6 +5,7 @@ import { DEVICE_TYPE_META, DEVICE_TYPE_ORDER } from "../../lib/deviceIcons";
 import {
   createMyDevice,
   isLegacyDeviceType,
+  isNewDeviceType,
   type DeviceType,
 } from "../../lib/devices";
 import {
@@ -182,8 +183,13 @@ function OnboardingModal({ user }: OnboardingModalProps) {
                         {t(meta.descriptionKey)}
                       </span>
                     </span>
+                    {isNewDeviceType(deviceType) ? (
+                      <span className="onboarding__badge onboarding__badge--new">
+                        {t("common.new")}
+                      </span>
+                    ) : null}
                     {isLegacyDeviceType(deviceType) ? (
-                      <span className="onboarding__legacy">
+                      <span className="onboarding__badge onboarding__badge--legacy">
                         {t("common.legacy")}
                       </span>
                     ) : null}
