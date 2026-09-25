@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, memo, type CSSProperties } from "react";
 import { APPLE_DEPTH_COLORS } from "../pressure-vessel/apple-depth-style";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
@@ -902,56 +902,82 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
 }
 
 const IMPELLER_BLADES = 6;
+const IMPELLER_CX = 100;
+const IMPELLER_INNER_R = 24; // discRx(34) - 10
+const IMPELLER_OUTER_R = 82;
+const IMPELLER_BLADE_H = 50;
+const IMPELLER_CY = 32;
+
+type BladeLayout = { x: number; width: number; depth: number };
+
+function layoutImpellerBlades(
+  angleRad: number,
+  phaseRad: number,
+): BladeLayout[] {
+  const blades: BladeLayout[] = [];
+  for (let i = 0; i < IMPELLER_BLADES; i++) {
+    const a = angleRad + phaseRad + (i * Math.PI * 2) / IMPELLER_BLADES;
+    const cos = Math.cos(a);
+    const span = Math.abs(cos) * (IMPELLER_OUTER_R - IMPELLER_INNER_R);
+    const width = Math.max(8, span);
+    const mid = IMPELLER_CX + cos * ((IMPELLER_INNER_R + IMPELLER_OUTER_R) / 2);
+    blades.push({ x: mid - width / 2, width, depth: Math.sin(a) });
+  }
+  return blades;
+}
+
+/** Apply blade geometry to existing <rect> nodes without React re-render. */
+function paintImpellerBlades(
+  svg: SVGSVGElement | null,
+  angleRad: number,
+  phaseRad: number,
+) {
+  if (!svg) return;
+  const blades = layoutImpellerBlades(angleRad, phaseRad).sort(
+    (a, b) => a.depth - b.depth,
+  );
+  const rects = svg.querySelectorAll<SVGRectElement>("[data-blade]");
+  for (let k = 0; k < blades.length; k++) {
+    const rect = rects[k];
+    if (!rect) continue;
+    rect.setAttribute("x", String(blades[k].x));
+    rect.setAttribute("width", String(blades[k].width));
+  }
+}
 
 /**
  * Side-view Rushton: thin disc, rectangular blades standing on the rim.
- * Blades orbit the shaft; width foreshortens but never collapses.
+ * Memoized + static JSX so parent slider re-renders never reset blade attrs.
  */
-function ImpellerRotor({
-  angleRad,
+const ImpellerRotorSvg = memo(function ImpellerRotorSvg({
   phaseRad = 0,
 }: {
-  angleRad: number;
   phaseRad?: number;
 }) {
-  const cx = 100;
-  const cy = 32;
-  const discRx = 34;
-  /** Inner edge sits inside the disc so every blade reads as mounted on it. */
-  const innerR = discRx - 10;
-  const outerR = 82;
-  const bladeH = 50;
-
-  const blades = Array.from({ length: IMPELLER_BLADES }, (_, i) => {
-    const a = angleRad + phaseRad + (i * Math.PI * 2) / IMPELLER_BLADES;
-    const cos = Math.cos(a);
-    const span = Math.abs(cos) * (outerR - innerR);
-    const width = Math.max(8, span);
-    // Center on the projected midpoint so the box never snaps when it faces us.
-    const mid = cx + cos * ((innerR + outerR) / 2);
-    return {
-      i,
-      depth: Math.sin(a),
-      x: mid - width / 2,
-      width,
-    };
-  }).sort((a, b) => a.depth - b.depth);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const initial = layoutImpellerBlades(0.35, phaseRad).sort(
+    (a, b) => a.depth - b.depth,
+  );
 
   return (
     <svg
+      ref={svgRef}
       className="agitator__rotor"
       viewBox="0 0 200 64"
       width="190"
       height="64"
       aria-hidden
+      data-impeller-rotor
+      data-phase={phaseRad}
     >
-      {blades.map((blade) => (
+      {initial.map((blade, i) => (
         <rect
-          key={blade.i}
+          key={i}
+          data-blade={i}
           x={blade.x}
-          y={cy - bladeH / 2}
+          y={IMPELLER_CY - IMPELLER_BLADE_H / 2}
           width={blade.width}
-          height={bladeH}
+          height={IMPELLER_BLADE_H}
           rx={1.5}
           fill="#2c2c2c"
           stroke="#0a0a0a"
@@ -959,17 +985,111 @@ function ImpellerRotor({
         />
       ))}
       <ellipse
-        cx={cx}
-        cy={cy}
-        rx={discRx}
+        cx={IMPELLER_CX}
+        cy={IMPELLER_CY}
+        rx={34}
         ry={4.5}
         fill="#1c1c1c"
         stroke="#0a0a0a"
         strokeWidth={1}
       />
-      <ellipse cx={cx} cy={cy - 1} rx={discRx - 5} ry={1.6} fill="#3a3a3a" opacity={0.55} />
-      <circle cx={cx} cy={cy} r={7} fill="#3a3a3a" stroke="#0a0a0a" strokeWidth={1} />
+      <ellipse
+        cx={IMPELLER_CX}
+        cy={IMPELLER_CY - 1}
+        rx={29}
+        ry={1.6}
+        fill="#3a3a3a"
+        opacity={0.55}
+      />
+      <circle
+        cx={IMPELLER_CX}
+        cy={IMPELLER_CY}
+        r={7}
+        fill="#3a3a3a"
+        stroke="#0a0a0a"
+        strokeWidth={1}
+      />
     </svg>
+  );
+});
+
+/**
+ * Owns the impeller rAF loop. Updates SVG attributes directly — no setState.
+ */
+function SpinningAgitator({
+  rotorNorm,
+  cavitationStrength,
+}: {
+  rotorNorm: number;
+  cavitationStrength: number;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const angleRef = useRef(0.35);
+  const speedRef = useRef(rotorNorm);
+  speedRef.current = rotorNorm;
+
+  useEffect(() => {
+    let frame = 0;
+    let last = performance.now();
+    const root = rootRef.current;
+    const svgs = root
+      ? Array.from(
+          root.querySelectorAll<SVGSVGElement>("[data-impeller-rotor]"),
+        )
+      : [];
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const speed = speedRef.current;
+      if (speed > 0) {
+        angleRef.current += (0.7 + speed * 11) * dt;
+        for (const svg of svgs) {
+          const phase = Number(svg.dataset.phase || 0);
+          paintImpellerBlades(svg, angleRef.current, phase);
+        }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return (
+    <div className="agitator" aria-hidden ref={rootRef}>
+      <div className="agitator__shaft" />
+      <div className="agitator__stage agitator__stage--upper">
+        <ImpellerRotorSvg />
+      </div>
+      <div className="agitator__stage agitator__stage--lower">
+        <ImpellerRotorSvg phaseRad={Math.PI / IMPELLER_BLADES} />
+      </div>
+      {cavitationStrength > 0 ? (
+        <>
+          <div
+            className="agitator__cavitation agitator__cavitation--upper is-on"
+            style={
+              {
+                ["--cavitation-strength" as string]: String(
+                  0.35 + cavitationStrength * 0.65,
+                ),
+              } as CSSProperties
+            }
+          />
+          <div
+            className="agitator__cavitation agitator__cavitation--lower is-on"
+            style={
+              {
+                ["--cavitation-strength" as string]: String(
+                  0.4 + cavitationStrength * 0.6,
+                ),
+              } as CSSProperties
+            }
+          />
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -982,36 +1102,10 @@ function BioreactorCard(props: BioreactorCardProps) {
   const waterLevelVal = Math.min(100, Math.max(0, props.waterLevelVal ?? 92));
   const targetFillUnits = (waterLevelVal / 100) * VESSEL_MAX_FILL_UNITS;
 
-  // Slight offset rest pose so blades aren’t axis-aligned when stopped.
-  const spinAngleRef = useRef(0.35);
-  const [spinAngle, setSpinAngle] = useState(0.35);
-  const rotorValRef = useRef(rotorNorm);
-  rotorValRef.current = rotorNorm;
-
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
     targetFillUnits,
     { stiffness: 120, damping: 0.68 },
   );
-
-  useEffect(() => {
-    let frame = 0;
-    let last = performance.now();
-
-    const tick = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      const speed = rotorValRef.current; // 0–1
-      if (speed > 0) {
-        const radPerSec = 0.7 + speed * 11;
-        spinAngleRef.current += radPerSec * dt;
-        setSpinAngle(spinAngleRef.current);
-      }
-      frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   const waveVelocity =
     levelVelocity + (aeratorVal / 100) * 28 + rotorNorm * 20;
@@ -1043,39 +1137,10 @@ function BioreactorCard(props: BioreactorCardProps) {
 
         <div className="reaction_chamber" />
 
-        <div className="agitator" aria-hidden>
-          <div className="agitator__shaft" />
-          <div className="agitator__stage agitator__stage--upper">
-            <ImpellerRotor angleRad={spinAngle} />
-          </div>
-          <div className="agitator__stage agitator__stage--lower">
-            <ImpellerRotor angleRad={spinAngle} phaseRad={Math.PI / IMPELLER_BLADES} />
-          </div>
-          {cavitationStrength > 0 ? (
-            <>
-              <div
-                className="agitator__cavitation agitator__cavitation--upper is-on"
-                style={
-                  {
-                    ["--cavitation-strength" as string]: String(
-                      0.35 + cavitationStrength * 0.65,
-                    ),
-                  } as CSSProperties
-                }
-              />
-              <div
-                className="agitator__cavitation agitator__cavitation--lower is-on"
-                style={
-                  {
-                    ["--cavitation-strength" as string]: String(
-                      0.4 + cavitationStrength * 0.6,
-                    ),
-                  } as CSSProperties
-                }
-              />
-            </>
-          ) : null}
-        </div>
+        <SpinningAgitator
+          rotorNorm={rotorNorm}
+          cavitationStrength={cavitationStrength}
+        />
 
         {/* Under the water layer so tips read as submerged */}
         <div className="sensor sensor1 sensor--temp" aria-hidden>
