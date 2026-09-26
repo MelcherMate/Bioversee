@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bioversee Pi Setup</title>
+    <link rel="stylesheet" href="/assets/wizard.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="top">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">Raspberry Pi</p>
+            <h1>Bioversee setup</h1>
+          </div>
+        </div>
+        <ol class="steps" id="steps">
+          <li data-step="project" class="is-active">Project</li>
+          <li data-step="account">Account</li>
+          <li data-step="device">Device</li>
+          <li data-step="wiring">Wiring</li>
+          <li data-step="done">Done</li>
+        </ol>
+      </header>
+
+      <p class="banner" id="banner" hidden></p>
+
+      <main>
+        <section class="panel" id="step-project">
+          <h2>Connect to Bioversee</h2>
+          <p class="lede">
+            Paste the same Supabase URL and anon key used by the web app
+            (<code>VITE_SUPABASE_URL</code> /
+            <code>VITE_SUPABASE_PUBLISHABLE_KEY</code>).
+          </p>
+          <label>
+            Supabase URL
+            <input id="supabase-url" type="url" placeholder="https://xxxx.supabase.co" />
+          </label>
+          <label>
+            Anon / publishable key
+            <input id="supabase-key" type="password" autocomplete="off" />
+          </label>
+          <button type="button" class="btn" id="save-project">Continue</button>
+        </section>
+
+        <section class="panel" id="step-account" hidden>
+          <h2>Sign in</h2>
+          <p class="lede">Use your Bioversee account, or create one.</p>
+          <label>
+            Email
+            <input id="email" type="email" autocomplete="username" />
+          </label>
+          <label>
+            Password
+            <input id="password" type="password" autocomplete="current-password" />
+          </label>
+          <div class="row">
+            <button type="button" class="btn" id="login">Sign in</button>
+            <button type="button" class="btn btn-ghost" id="signup">Create account</button>
+          </div>
+        </section>
+
+        <section class="panel" id="step-device" hidden>
+          <h2>Choose a device</h2>
+          <p class="lede">
+            This Pi will monitor and control the process instance you select.
+          </p>
+          <div id="device-list" class="device-list"></div>
+          <button type="button" class="btn btn-ghost" id="refresh-devices">Refresh</button>
+        </section>
+
+        <section class="panel panel-wide" id="step-wiring" hidden>
+          <div class="wiring-grid">
+            <div>
+              <h2>GPIO header</h2>
+              <p class="lede">
+                Plug in sensors and actuators. Used pins light up as soon as
+                something is detected — confirm each guess.
+              </p>
+              <div class="header-board" id="header-board" aria-label="40-pin GPIO header"></div>
+              <div class="row" id="sim-row" hidden>
+                <button type="button" class="btn btn-ghost" data-sim="ds18b20">
+                  Simulate temp sensor
+                </button>
+                <button type="button" class="btn btn-ghost" data-sim="ph_i2c">
+                  Simulate pH (I2C)
+                </button>
+                <button type="button" class="btn btn-ghost" data-sim="warm_water">
+                  Simulate pump
+                </button>
+              </div>
+            </div>
+            <div>
+              <h2>Detections</h2>
+              <div id="guess-list" class="guess-list"></div>
+              <h3 class="subhead">Confirmed wiring</h3>
+              <ul id="confirmed-list" class="confirmed-list"></ul>
+              <label class="manual">
+                Add manually
+                <select id="manual-peripheral"></select>
+              </label>
+              <button type="button" class="btn btn-ghost" id="manual-add">Add</button>
+              <button type="button" class="btn" id="finish" disabled>Finish setup</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="step-done" hidden>
+          <h2>Ready</h2>
+          <p class="lede" id="done-message">
+            Monitoring will start automatically when this Pi boots.
+          </p>
+          <pre class="code" id="done-detail"></pre>
+        </section>
+      </main>
+    </div>
+    <script src="/assets/wizard.js"></script>
+  </body>
+</html>

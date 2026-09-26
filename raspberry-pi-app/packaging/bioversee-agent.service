@@ -1,0 +1,18 @@
+[Unit]
+Description=Bioversee Raspberry Pi monitoring agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/bioversee-pi
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/bioversee/pi.env
+ExecStart=/opt/bioversee-pi/.venv/bin/bioversee-agent
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

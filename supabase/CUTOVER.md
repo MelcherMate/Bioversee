@@ -64,5 +64,5 @@ Run [`user_settings.sql`](./user_settings.sql) once so theme / accent / language
 - Shared devices show the **owner’s avatar** on the icon.
 - Right-click a device icon → **Settings** / **Share** / **Delete** / **Leave**.
 - Header gear → Appearance (theme, accent, language) — stored in `user_settings`.
-- Pi API keys: table ready (`device_credentials`); mint UI + Edge Function still follow-up.
-- Pi ingest should use the **service role** or a future Edge Function that validates a device credential and inserts with `device_id`.
+- Pi API keys: run [`device_credentials_pi.sql`](./device_credentials_pi.sql), then deploy Edge Functions `mint-device-key` and `pi-ingest` (`pi-ingest` with `--no-verify-jwt`).
+- Pi agent authenticates with `X-Device-Key: bvpi_…` against `pi-ingest`.

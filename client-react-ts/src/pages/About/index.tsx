@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AppPhonePreview from "../../components/AppPhonePreview";
+import RaspberryPiPreview from "../../components/RaspberryPiPreview";
 import WebAppPreview from "../../components/WebAppPreview";
 import Mate from "../../img/Mate.png";
 import Logo from "../../utils/svgs/new_logo.svg";
@@ -91,6 +92,33 @@ function About() {
             <p className="landing-lede">{t("about.productBody")}</p>
           </div>
           <AppPhonePreview />
+        </div>
+      </section>
+
+      <section
+        id="raspberry-pi"
+        className="landing-section"
+        data-reveal
+        aria-labelledby="pi-title"
+      >
+        <div className="landing-section__inner landing-section__inner--pi">
+          <RaspberryPiPreview />
+          <div className="landing-app-copy">
+            <p className="landing-kicker">{t("about.piKicker")}</p>
+            <h2 id="pi-title" className="landing-title">
+              {t("about.piTitle")}
+            </h2>
+            <p className="landing-lede">{t("about.piBody")}</p>
+            <a
+              className="landing-btn landing-btn--primary"
+              href="https://github.com/MelcherMate/Bioversee_Webapp/tree/main/raspberry-pi-app#install-on-a-raspberry-pi"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("about.piDownload")}
+            </a>
+            <p className="landing-soon">{t("about.piDownloadHint")}</p>
+          </div>
         </div>
       </section>
 
