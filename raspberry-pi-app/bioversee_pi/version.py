@@ -10,7 +10,7 @@ from importlib import metadata
 from pathlib import Path
 
 # Source of truth for this tree (also in VERSION file + pyproject.toml).
-__version__ = "1.1.2"
+__version__ = "1.2.1"
 
 
 def display_version(version: str | None = None) -> str:

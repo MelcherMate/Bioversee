@@ -135,12 +135,13 @@ run_install() {
   cat > /etc/bioversee/pi.env <<EOF
 BIOVERSEE_SUPABASE_URL=${BIOVERSEE_SUPABASE_URL}
 BIOVERSEE_SUPABASE_ANON_KEY=${BIOVERSEE_SUPABASE_ANON_KEY}
-BIOVERSEE_WIZARD_HOST=0.0.0.0
+BIOVERSEE_WIZARD_HOST=127.0.0.1
 BIOVERSEE_WIZARD_PORT=8787
 EOF
   chmod 600 /etc/bioversee/pi.env
 
-  systemctl restart bioversee-wizard.service 2>/dev/null || true
+  # Do not start a browser — desktop app is launched after install.
+  systemctl disable --now bioversee-wizard.service 2>/dev/null || true
 }
 
 if [[ -n "${DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
@@ -165,9 +166,24 @@ else
   run_install
 fi
 
-IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-info "Bioversee is ready.\n\nOpening the setup wizard…\nhttp://${IP:-127.0.0.1}:8787"
+info "Bioversee is installed on this Pi.\n\nOpening the Bioversee desktop app…"
 
-if command -v xdg-open >/dev/null 2>&1; then
-  xdg-open "http://127.0.0.1:8787" >/dev/null 2>&1 || true
+# Launch the desktop app as the logged-in user (not as root).
+APP_BIN="/opt/bioversee-pi/.venv/bin/bioversee"
+LAUNCH_USER="${SUDO_USER:-${USER:-}}"
+if [[ -x "${APP_BIN}" ]]; then
+  if [[ -n "${LAUNCH_USER}" && "${LAUNCH_USER}" != "root" ]]; then
+    sudo -u "${LAUNCH_USER}" -E env \
+      DISPLAY="${DISPLAY:-}" \
+      XAUTHORITY="${XAUTHORITY:-}" \
+      WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" \
+      XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u "${LAUNCH_USER}")}" \
+      bash -lc "${APP_BIN}" >/tmp/bioversee-app.log 2>&1 &
+  else
+    "${APP_BIN}" >/tmp/bioversee-app.log 2>&1 &
+  fi
+elif [[ -f /usr/share/applications/bioversee.desktop ]]; then
+  if [[ -n "${LAUNCH_USER}" && "${LAUNCH_USER}" != "root" ]]; then
+    sudo -u "${LAUNCH_USER}" -E gtk-launch bioversee >/tmp/bioversee-app.log 2>&1 &
+  fi
 fi

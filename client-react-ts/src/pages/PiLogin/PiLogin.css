@@ -1,0 +1,24 @@
+.pi-login .auth-card {
+  max-width: 420px;
+}
+
+.pi-login .auth-google {
+  margin-top: 12px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.pi-login .auth-google:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

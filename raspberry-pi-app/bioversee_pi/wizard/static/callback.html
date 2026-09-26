@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bioversee — Returning to app</title>
+    <link rel="stylesheet" href="/assets/wizard.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <main class="panel callback-panel">
+        <h2 id="title">Signing you in…</h2>
+        <p class="lede" id="lede">Returning to the Bioversee app.</p>
+        <p class="row" id="actions" hidden>
+          <a class="btn" href="/">Open Bioversee app</a>
+        </p>
+      </main>
+    </div>
+    <script>
+      (async () => {
+        const title = document.getElementById("title");
+        const lede = document.getElementById("lede");
+        const actions = document.getElementById("actions");
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const access_token = params.get("access_token") || "";
+        const refresh_token = params.get("refresh_token") || "";
+        const expires_at = params.get("expires_at") || "";
+        const state = params.get("state") || "";
+        const email = params.get("email") || "";
+
+        if (!access_token || !state) {
+          title.textContent = "Sign-in incomplete";
+          lede.textContent =
+            "No session was returned. Go back to the Bioversee app and try Continue on bioversee.com again.";
+          actions.hidden = false;
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/auth/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              access_token,
+              refresh_token,
+              expires_at,
+              state,
+              email,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(
+              data.detail || data.error || res.statusText || "Could not finish sign-in"
+            );
+          }
+          // Clear tokens from the address bar.
+          history.replaceState(null, "", "/auth/callback");
+          title.textContent = "You're signed in";
+          lede.textContent = data.email
+            ? `Welcome, ${data.email}. Return to the Bioversee app window — you can close this tab.`
+            : "Return to the Bioversee app window — you can close this tab.";
+          actions.hidden = false;
+        } catch (err) {
+          title.textContent = "Could not finish sign-in";
+          lede.textContent =
+            (err && err.message) ||
+            "Return to the Bioversee app and try again.";
+          actions.hidden = false;
+        }
+      })();
+    </script>
+  </body>
+</html>

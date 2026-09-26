@@ -224,6 +224,37 @@ select {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, #fff);
 }
 
+.local-auth {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.local-auth summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.browser-wait {
+  margin-top: 14px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.browser-wait a {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.callback-panel {
+  margin-top: 48px;
+  text-align: center;
+}
+
 .device-list {
   display: grid;
   gap: 10px;

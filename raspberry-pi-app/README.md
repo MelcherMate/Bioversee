@@ -1,8 +1,8 @@
 # Bioversee Raspberry Pi app
 
-**Version: v1.1** (`1.1.1`)
+**Version: v1.2.1** (`1.2.1`) — **desktop app** on the Pi (not a website in the browser).
 
-Setup wizard and monitoring agent that binds a Raspberry Pi to a Bioversee device, maps GPIO wiring, and syncs sensors/actuators through Supabase.
+Native window via WebKit (`pywebview`) + background `bioversee-agent` for sensor/actuator sync.
 
 ## Recommended install (from the website)
 
@@ -11,19 +11,22 @@ On the Raspberry Pi, open **Install on this Pi** on the Bioversee site.
 1. Tap **Copy install command**
 2. Open **Terminal** (Ctrl+Alt+T)
 3. Paste (Ctrl+Shift+V) and press Enter
-4. Confirm the Install dialog and enter your password
+4. Confirm the Install dialog
 
-Raspberry Pi OS blocks double-clicked downloads from the browser (unlike Windows `.exe`), so the one-line install is the reliable path. After that, a normal GUI installer runs and opens the wizard.
+Then open **Bioversee** from the Desktop or the Applications menu — a desktop window, not Chrome.
 
-## Manual / developer install
+## Sign in
 
-1. **Setup wizard** (browser at `http://<pi>:8787`)
-   - Sign in / create a Bioversee account
+Tap **Continue on bioversee.com** in the app. Your browser opens the Bioversee website; after you sign in, you’re sent back to the local app automatically. Email/password inside the app still works as a fallback.
+
+## What you get
+
+1. **Bioversee desktop app**
+   - Sign in on the website (or with email in the app)
    - Pick which process device this Pi controls
-   - Live **40-pin GPIO** view — highlights pins when hardware is detected, guesses the peripheral, asks you to confirm
-   - Enables the agent to start on boot
-   - **Check / pull updates** from GitHub (shows current version in the header)
-2. **`bioversee-agent`** (systemd) — reads sensors, applies actuator commands, talks to `pi-ingest`
+   - Live **40-pin GPIO** wiring with guess/confirm
+   - In-app updates
+2. **`bioversee-agent`** (systemd) — reads sensors, applies actuators, talks to `pi-ingest` in the background
 
 ## Cloud setup (once)
 
@@ -38,73 +41,39 @@ supabase functions deploy mint-device-key
 supabase functions deploy pi-ingest --no-verify-jwt
 ```
 
-## Install on a Raspberry Pi
+## Manual / developer install
 
 ```bash
-# On the Pi, from this folder (or a release checkout):
 export BIOVERSEE_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
 export BIOVERSEE_SUPABASE_ANON_KEY="your-anon-key"
 sudo -E ./packaging/install.sh
+bioversee   # opens the desktop app
 ```
-
-Then open **http://\<pi-ip\>:8787** and complete the wizard.
-
-After **Finish**, the installer path enables:
-
-```bash
-sudo systemctl status bioversee-agent
-sudo systemctl status bioversee-wizard
-```
-
-Config is stored at `~/.config/bioversee/config.toml` (API key mode `0600`).
 
 ## Updates
-
-Version is tracked in [`VERSION`](./VERSION) (this release is **1.1.1** → displayed as **v1.1**).
-
-From the wizard UI: **Check** → **Update now**.
-
-From the shell on the Pi:
 
 ```bash
 bioversee-update check
 sudo bioversee-update apply
-# or
-sudo ./packaging/update.sh
 ```
 
-Updates download `MelcherMate/Bioversee` (`master` / `raspberry-pi-app`), replace `/opt/bioversee-pi`, reinstall the package, and restart services. Bump `VERSION` (and `pyproject.toml` / `bioversee_pi/version.py`) whenever you ship a new build, then push to GitHub so Pis can detect it.
+Bump `VERSION` when shipping; Pis detect updates from GitHub.
 
 ## Develop on a Mac / PC
 
-GPIO is simulated automatically when not running on a Pi:
-
 ```bash
 cd raspberry-pi-app
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
 export BIOVERSEE_SUPABASE_URL=...
 export BIOVERSEE_SUPABASE_ANON_KEY=...
-bioversee-wizard
-# open http://127.0.0.1:8787 — use “Simulate …” buttons on the wiring step
+bioversee   # desktop window if display available; else set BIOVERSEE_WIZARD_HEADLESS=1
 ```
-
-## Peripheral catalog (v1)
-
-| Guess | Bus | Cloud name |
-|-------|-----|------------|
-| DS18B20 temperature | 1-Wire (GPIO 4) | `temperature` |
-| pH I2C ADC | I2C | `ph` |
-| Pressure I2C | I2C | `pressure` |
-| Rotor / aerator / pumps | Digital GPIO | `rotor`, `aerator`, `switchWarmWaterPump`, … |
-
-You can always change the guess or add a peripheral manually in the wizard.
 
 ## Agent ingest API
 
 `POST /functions/v1/pi-ingest` with header `X-Device-Key: bvpi_…`
 
-- `{ "action": "sensors", "readings": [{ "name": "temperature", "value": 28.1 }] }`
-- `{ "action": "actuators" }` → latest slider/switch map
+- `{ "action": "sensors", "readings": [...] }`
+- `{ "action": "actuators" }`
 - `{ "action": "config", "config": { "pi": { "wiring": [...] } } }`

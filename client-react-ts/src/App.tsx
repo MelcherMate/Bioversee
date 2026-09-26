@@ -24,6 +24,7 @@ import Invite from "./pages/Invite";
 import IosAuthBridge from "./pages/IosAuthBridge";
 import Login from "./pages/Login";
 import MembraneBioreactor from "./pages/MembraneBioreactor";
+import PiLogin from "./pages/PiLogin";
 import PiSetup from "./pages/PiSetup";
 import PressureVessel from "./pages/PressureVessel";
 import WaterPurifier from "./pages/WaterPurifier";
@@ -173,9 +174,11 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
   const onLanding =
     pathname === "/about" ||
     pathname === "/pi-setup" ||
+    pathname === "/pi-login" ||
     (pathname === "/" && !user);
   const showChrome = Boolean(user) && !addingAccount && !onIosAuth;
-  const showMarketingHeader = onLanding && !user && pathname !== "/pi-setup";
+  const showMarketingHeader =
+    onLanding && !user && pathname !== "/pi-setup" && pathname !== "/pi-login";
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
 
   const loginRedirect = (next: string) => (
@@ -254,6 +257,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
           <Route path="/ios-auth" element={<IosAuthBridge />} />
           <Route path="/about" element={<About />} />
           <Route path="/pi-setup" element={<PiSetup />} />
+          <Route path="/pi-login" element={<PiLogin />} />
           <Route
             path="/settings"
             element={<Navigate to={APP_HOME_PATH} replace />}

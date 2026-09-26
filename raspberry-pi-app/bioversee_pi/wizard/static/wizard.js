@@ -3,6 +3,8 @@ const state = {
   pins: [],
   catalog: [],
   pollTimer: null,
+  browserAuthTimer: null,
+  browserLoginUrl: null,
 };
 
 async function api(path, options = {}) {
@@ -31,6 +33,7 @@ function showBanner(message) {
 
 function setStep(step) {
   state.step = step;
+  if (step !== "account") stopBrowserAuthPoll();
   document.querySelectorAll(".panel").forEach((panel) => {
     panel.hidden = panel.id !== `step-${step}`;
   });
@@ -152,8 +155,67 @@ document.getElementById("save-project").addEventListener("click", async () => {
   }
 });
 
+function stopBrowserAuthPoll() {
+  if (state.browserAuthTimer) {
+    clearInterval(state.browserAuthTimer);
+    state.browserAuthTimer = null;
+  }
+  const wait = document.getElementById("browser-login-wait");
+  if (wait) wait.hidden = true;
+}
+
+function startBrowserAuthPoll() {
+  stopBrowserAuthPoll();
+  const wait = document.getElementById("browser-login-wait");
+  wait.hidden = false;
+  state.browserAuthTimer = setInterval(async () => {
+    try {
+      const status = await api("/api/status");
+      if (status.signed_in) {
+        stopBrowserAuthPoll();
+        showBanner("");
+        setStep("device");
+        await loadDevices();
+      }
+    } catch {
+      /* keep waiting */
+    }
+  }, 1500);
+}
+
+async function startWebsiteLogin() {
+  showBanner("");
+  try {
+    const data = await api("/api/auth/browser-start", {
+      method: "POST",
+      body: "{}",
+    });
+    state.browserLoginUrl = data.login_url;
+    const link = document.getElementById("browser-login-link");
+    link.hidden = false;
+    link.href = data.login_url;
+    if (!data.opened && data.login_url) {
+      window.open(data.login_url, "_blank", "noopener,noreferrer");
+    }
+    startBrowserAuthPoll();
+  } catch (err) {
+    showBanner(err.message);
+  }
+}
+
+document.getElementById("browser-login").addEventListener("click", () => {
+  startWebsiteLogin().catch((err) => showBanner(err.message));
+});
+
+document.getElementById("browser-login-link").addEventListener("click", (event) => {
+  if (!state.browserLoginUrl) return;
+  event.preventDefault();
+  window.open(state.browserLoginUrl, "_blank", "noopener,noreferrer");
+});
+
 document.getElementById("login").addEventListener("click", async () => {
   showBanner("");
+  stopBrowserAuthPoll();
   try {
     await api("/api/auth/login", {
       method: "POST",
@@ -171,6 +233,7 @@ document.getElementById("login").addEventListener("click", async () => {
 
 document.getElementById("signup").addEventListener("click", async () => {
   showBanner("");
+  stopBrowserAuthPoll();
   try {
     const data = await api("/api/auth/signup", {
       method: "POST",

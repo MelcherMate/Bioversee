@@ -44,6 +44,7 @@ class AppSettings(BaseSettings):
     supabase_anon_key: str = ""
     wizard_host: str = "0.0.0.0"
     wizard_port: int = 8787
+    website_url: str = "https://www.bioversee.com"
     simulate_gpio: bool = False
     update_repo: str = "MelcherMate/Bioversee"
     update_branch: str = "master"

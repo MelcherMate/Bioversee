@@ -1,7 +1,7 @@
 [project]
 name = "bioversee-pi"
-version = "1.1.2"
-description = "Bioversee Raspberry Pi setup wizard and monitoring agent"
+version = "1.2.1"
+description = "Bioversee Raspberry Pi desktop app and monitoring agent"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -11,6 +11,7 @@ dependencies = [
   "pydantic>=2.0",
   "pydantic-settings>=2.0",
   "tomli-w>=1.0.0",
+  "pywebview>=5.0",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +21,7 @@ pi = [
 ]
 
 [project.scripts]
+bioversee = "bioversee_pi.wizard.app:main"
 bioversee-wizard = "bioversee_pi.wizard.app:main"
 bioversee-agent = "bioversee_pi.agent.main:main"
 bioversee-update = "bioversee_pi.updater:main"

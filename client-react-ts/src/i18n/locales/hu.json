@@ -329,7 +329,7 @@
     "phoneCaption": "Koppintson a Devices, Inbox vagy Account gombra az app felfedezéséhez, ahogy a telefonon is tenné.",
     "piKicker": "Raspberry Pi",
     "piTitle": "Edge vezérlés a Pi-n",
-    "piBody": "Futtassa a Bioversee-t Raspberry Pi-n a munkaasztalon — helyi folyamatvezérlés, amely szinkronban marad a webes és mobil appokkal.",
+    "piBody": "Futtassa a Bioversee-t Raspberry Pi-n a munkaasztalon — jelentkezzen be a weboldalon, majd folytassa az asztali appban helyi GPIO-vezérléssel, szinkronban a webes és mobil appokkal.",
     "piLabel": "Bioversee Raspberry Pi app előnézet",
     "piCaption": "Kompakt edge eszköz helyi megfigyeléshez és vezérléshez, amikor a folyamat mellett van.",
     "piDownload": "Telepítés ezen a Pi-n",
@@ -361,6 +361,17 @@
     "copied": "Másolva — nyissa meg a Terminált és illessze be",
     "hint": "A Raspberry Pi-n csinálja. Utána a böngészőben megnyílik a Bioversee varázsló.",
     "back": "Vissza a kezdőlapra"
+  },
+  "piLogin": {
+    "title": "Bejelentkezés a Pi-hez",
+    "lede": "Jelentkezzen be itt — utána visszairányítjuk a Raspberry Pi Bioversee appjába.",
+    "badRedirect": "Érvénytelen visszatérési cím. Nyissa meg a bejelentkezést a Bioversee Pi appból.",
+    "noSession": "Nincs aktív munkamenet. Próbáljon újra bejelentkezni.",
+    "openFromApp": "Ezt az oldalt a Pi-n futó Bioversee appból nyissa meg.",
+    "confirmEmail": "Erősítse meg az e-mailjét, majd jelentkezzen be.",
+    "returning": "Vissza a Pi appba…",
+    "returningBody": "Bezárhatja ezt a lapot, ha az app nem nyílik meg automatikusan.",
+    "back": "Vissza a weboldalra"
   },
   "footer": {
     "rights": "Minden jog fenntartva.",

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import os
+import secrets
 import subprocess
+import time
+import webbrowser
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -49,9 +53,22 @@ class CredentialsBody(BaseModel):
     password: str
 
 
+class BrowserCompleteBody(BaseModel):
+    access_token: str
+    refresh_token: str = ""
+    expires_at: str | int | float | None = None
+    state: str
+    email: str = ""
+
+
 class ProjectBody(BaseModel):
     supabase_url: str
     supabase_anon_key: str
+
+
+# Pending website→app login states: state → expiry (unix seconds)
+_pending_browser_logins: dict[str, float] = {}
+_BROWSER_LOGIN_TTL_S = 600.0
 
 
 class SelectDeviceBody(BaseModel):
@@ -84,6 +101,12 @@ async def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/auth/callback")
+async def auth_callback_page() -> FileResponse:
+    """Receives tokens from bioversee.com/pi-login and hands them to the local app."""
+    return FileResponse(STATIC_DIR / "callback.html")
+
+
 @app.get("/api/status")
 async def status() -> dict[str, Any]:
     cfg = load_local_config()
@@ -94,6 +117,7 @@ async def status() -> dict[str, Any]:
         "email": auth.current_user_email(),
         "has_project": bool(settings.supabase_url and settings.supabase_anon_key),
         "supabase_url": settings.supabase_url,
+        "website_url": settings.website_url.rstrip("/"),
         "simulate_gpio": probe_service.simulate,
         "local": {
             "device_id": cfg.device_id,
@@ -167,6 +191,60 @@ async def login(body: CredentialsBody) -> dict[str, Any]:
     except auth.AuthError as exc:
         raise HTTPException(400, str(exc)) from exc
     return {"ok": True, "email": body.email.strip()}
+
+
+def _prune_pending_logins() -> None:
+    now = time.time()
+    expired = [k for k, exp in _pending_browser_logins.items() if exp <= now]
+    for key in expired:
+        _pending_browser_logins.pop(key, None)
+
+
+@app.post("/api/auth/browser-start")
+async def browser_start() -> dict[str, Any]:
+    """Open bioversee.com/pi-login; tokens return to /auth/callback on this Pi."""
+    _require_project()
+    _prune_pending_logins()
+    state = secrets.token_urlsafe(24)
+    _pending_browser_logins[state] = time.time() + _BROWSER_LOGIN_TTL_S
+    redirect = f"http://127.0.0.1:{settings.wizard_port}/auth/callback"
+    website = (settings.website_url or "https://www.bioversee.com").rstrip("/")
+    login_url = f"{website}/pi-login?{urlencode({'redirect': redirect, 'state': state})}"
+    opened = False
+    try:
+        opened = bool(webbrowser.open(login_url))
+    except Exception:  # noqa: BLE001
+        opened = False
+    return {
+        "ok": True,
+        "login_url": login_url,
+        "state": state,
+        "opened": opened,
+        "expires_in": int(_BROWSER_LOGIN_TTL_S),
+    }
+
+
+@app.post("/api/auth/complete")
+async def auth_complete(body: BrowserCompleteBody) -> dict[str, Any]:
+    """Called by /auth/callback after the user signs in on the website."""
+    _prune_pending_logins()
+    expiry = _pending_browser_logins.get(body.state)
+    if not expiry or time.time() > expiry:
+        raise HTTPException(
+            400,
+            "Login expired or invalid — tap Continue on bioversee.com again",
+        )
+    _pending_browser_logins.pop(body.state, None)
+    try:
+        auth.accept_browser_session(
+            access_token=body.access_token.strip(),
+            refresh_token=(body.refresh_token or "").strip(),
+            expires_at=body.expires_at,
+            email=(body.email or "").strip(),
+        )
+    except auth.AuthError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"ok": True, "email": auth.current_user_email()}
 
 
 @app.post("/api/auth/logout")
@@ -395,7 +473,16 @@ def _enable_agent_service() -> dict[str, Any]:
 
 
 def main() -> None:
+    import logging
+
     import uvicorn
+
+    from bioversee_pi.desktop import run_desktop_app, should_use_desktop
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
     cfg = load_local_config()
     if cfg.supabase_url:
@@ -403,12 +490,23 @@ def main() -> None:
     if cfg.supabase_anon_key:
         settings.supabase_anon_key = cfg.supabase_anon_key
 
-    uvicorn.run(
-        "bioversee_pi.wizard.app:app",
-        host=settings.wizard_host,
-        port=settings.wizard_port,
-        reload=False,
-    )
+    # Desktop app always binds loopback; headless/server can use env host.
+    host = "127.0.0.1" if should_use_desktop() else settings.wizard_host
+    port = settings.wizard_port
+
+    def start_server() -> None:
+        uvicorn.run(
+            "bioversee_pi.wizard.app:app",
+            host=host,
+            port=port,
+            reload=False,
+            log_level="info",
+        )
+
+    if should_use_desktop():
+        run_desktop_app(host=host, port=port, start_server=start_server)
+    else:
+        start_server()
 
 
 if __name__ == "__main__":

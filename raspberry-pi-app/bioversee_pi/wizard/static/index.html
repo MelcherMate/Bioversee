@@ -59,19 +59,32 @@
 
         <section class="panel" id="step-account" hidden>
           <h2>Sign in</h2>
-          <p class="lede">Use your Bioversee account, or create one.</p>
-          <label>
-            Email
-            <input id="email" type="email" autocomplete="username" />
-          </label>
-          <label>
-            Password
-            <input id="password" type="password" autocomplete="current-password" />
-          </label>
-          <div class="row">
-            <button type="button" class="btn" id="login">Sign in</button>
-            <button type="button" class="btn btn-ghost" id="signup">Create account</button>
-          </div>
+          <p class="lede">
+            Opens bioversee.com in your browser. Sign in there, then you’ll return
+            to this app automatically.
+          </p>
+          <button type="button" class="btn" id="browser-login">
+            Continue on bioversee.com
+          </button>
+          <p class="lede browser-wait" id="browser-login-wait" hidden>
+            Waiting for you to finish in the browser…
+            <a href="#" id="browser-login-link" hidden>Open login page again</a>
+          </p>
+          <details class="local-auth">
+            <summary>Or sign in with email here</summary>
+            <label>
+              Email
+              <input id="email" type="email" autocomplete="username" />
+            </label>
+            <label>
+              Password
+              <input id="password" type="password" autocomplete="current-password" />
+            </label>
+            <div class="row">
+              <button type="button" class="btn" id="login">Sign in</button>
+              <button type="button" class="btn btn-ghost" id="signup">Create account</button>
+            </div>
+          </details>
         </section>
 
         <section class="panel" id="step-device" hidden>

@@ -111,6 +111,27 @@ async def get_access_token(settings: AppSettings) -> str | None:
     return None
 
 
+def accept_browser_session(
+    *,
+    access_token: str,
+    refresh_token: str = "",
+    expires_at: str | int | float | None = None,
+    email: str = "",
+) -> None:
+    """Persist tokens returned from website login (bioversee.com → local callback)."""
+    if not access_token:
+        raise AuthError("Missing access token")
+    save_session(
+        {
+            "access_token": access_token,
+            "refresh_token": refresh_token or "",
+            "expires_at": expires_at,
+            "user": {"email": email} if email else {},
+            "email": email or None,
+        }
+    )
+
+
 def logout() -> None:
     clear_session()
 

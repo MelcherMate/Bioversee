@@ -329,7 +329,7 @@
     "phoneCaption": "Tippen Sie auf Devices, Inbox oder Account, um die App zu erkunden, genau wie auf dem Handy.",
     "piKicker": "Raspberry Pi",
     "piTitle": "Edge-Steuerung auf dem Pi",
-    "piBody": "Betreiben Sie Bioversee auf einem Raspberry Pi am Arbeitsplatz — lokale Prozesssteuerung, die mit Web- und Mobil-Apps synchron bleibt.",
+    "piBody": "Betreiben Sie Bioversee auf einem Raspberry Pi am Arbeitsplatz — auf der Website anmelden, dann in der Desktop-App mit lokaler GPIO-Steuerung weiter, synchron mit Web und Mobil.",
     "piLabel": "Bioversee Raspberry-Pi-App-Vorschau",
     "piCaption": "Ein kompaktes Edge-Gerät für lokale Überwachung und Steuerung direkt am Prozess.",
     "piDownload": "Auf diesem Pi installieren",
@@ -361,6 +361,17 @@
     "copied": "Kopiert — Terminal öffnen und einfügen",
     "hint": "Auf dem Raspberry Pi ausführen. Danach öffnet sich der Bioversee-Assistent im Browser.",
     "back": "Zur Startseite"
+  },
+  "piLogin": {
+    "title": "Anmeldung für Ihren Pi",
+    "lede": "Melden Sie sich hier an — danach kehren Sie zur Bioversee-App auf dem Raspberry Pi zurück.",
+    "badRedirect": "Ungültige Rücksprungadresse. Öffnen Sie die Anmeldung aus der Bioversee-Pi-App.",
+    "noSession": "Keine aktive Sitzung. Bitte erneut anmelden.",
+    "openFromApp": "Öffnen Sie diese Seite aus der Bioversee-App auf dem Pi.",
+    "confirmEmail": "E-Mail zur Bestätigung prüfen, dann anmelden.",
+    "returning": "Zurück zur Pi-App…",
+    "returningBody": "Sie können diesen Tab schließen, falls die App nicht automatisch öffnet.",
+    "back": "Zur Website"
   },
   "footer": {
     "rights": "Alle Rechte vorbehalten.",
