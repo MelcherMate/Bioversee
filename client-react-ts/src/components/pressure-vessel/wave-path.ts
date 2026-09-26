@@ -1,13 +1,12 @@
 const SEGMENT_COUNT = 6;
 
+/** Even swell weight across the tank (same amplitude at walls and center). */
 export function segmentIntensity(
-  index: number,
-  total: number,
+  _index: number,
+  _total: number,
   multiplier: number,
 ): number {
-  const half = total / 2;
-  const t = (index > half ? total - index : index) / half;
-  return t * multiplier;
+  return multiplier;
 }
 
 function segmentDuration(index: number, layerSeed: number): number {
@@ -50,20 +49,24 @@ export function buildWaveSurfacePath(
   edgeY: number,
   segmentYs: number[],
 ): string {
-  const interval = width / (segmentYs.length + 1);
-  let d = `M 0 ${height} L 0 ${edgeY.toFixed(2)}`;
+  if (segmentYs.length === 0) {
+    return `M 0 ${height} L 0 ${edgeY} L ${width} ${edgeY} L ${width} ${height} Z`;
+  }
 
-  segmentYs.forEach((y, index) => {
-    const x = width * ((index + 1) / (segmentYs.length + 1));
-    const prevY = index === 0 ? edgeY : segmentYs[index - 1];
-    const x1 = index === 0 ? 0 : x - interval / 2;
-    d += ` C ${x1.toFixed(2)} ${prevY.toFixed(2)}, ${(x - interval / 2).toFixed(2)} ${y.toFixed(2)}, ${x.toFixed(2)} ${y.toFixed(2)}`;
-  });
+  const n = segmentYs.length;
+  let d = `M 0 ${height} L 0 ${segmentYs[0].toFixed(2)}`;
 
-  const lastY = segmentYs[segmentYs.length - 1];
-  d += ` C ${(width - interval / 2).toFixed(2)} ${lastY.toFixed(2)}, ${width} ${edgeY.toFixed(2)}, ${width} ${edgeY.toFixed(2)}`;
+  for (let i = 1; i < n; i++) {
+    const x = (width * i) / (n - 1);
+    const y = segmentYs[i];
+    const prevX = (width * (i - 1)) / (n - 1);
+    const prevY = segmentYs[i - 1];
+    const c1x = prevX + (x - prevX) / 3;
+    const c2x = prevX + (2 * (x - prevX)) / 3;
+    d += ` C ${c1x.toFixed(2)} ${prevY.toFixed(2)}, ${c2x.toFixed(2)} ${y.toFixed(2)}, ${x.toFixed(2)} ${y.toFixed(2)}`;
+  }
+
   d += ` L ${width} ${height} Z`;
-
   return d;
 }
 

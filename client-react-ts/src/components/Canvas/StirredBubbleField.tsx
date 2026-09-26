@@ -126,8 +126,8 @@ function stirredVelocity(
     vx += side * lo * stir * (0.75 + tipBoost * 0.55);
     vx += side * hi * stir * (0.65 + tipBoost * 0.5);
 
-    // 2) Wall riser — wider corridor along each side
-    const wall = clamp01((r - 0.16) / 0.28);
+    // 2) Wall riser — corridor along each side (reaches near the walls)
+    const wall = clamp01((r - 0.12) / 0.36);
     if (wall > 0) {
       if (y >= yLo - 0.04) {
         vy += wall * stir * (0.5 + 0.4 * clamp01((y - yLo) / 0.55));
@@ -188,8 +188,8 @@ function stirredVelocity(
     vy += (Math.random() - 0.5) * mix * 0.32;
   }
 
-  if (x < 0.06) vx += 0.45;
-  if (x > 0.94) vx -= 0.45;
+  if (x < 0.02) vx += 0.35;
+  if (x > 0.98) vx -= 0.35;
   if (y < 0.03) vy += 0.35;
   if (y > 0.98) vy -= 0.2 * stir;
 
@@ -240,6 +240,7 @@ export function StirredBubbleField({
     let last = performance.now();
     let spawnDebt = 0;
     let cavitationDebt = 0;
+    let foamAmt = 0;
     let disposed = false;
     const t0 = performance.now();
 
@@ -248,7 +249,9 @@ export function StirredBubbleField({
       if (!parent) return;
       const rect = parent.getBoundingClientRect();
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const w = Math.max(1, Math.floor(rect.width));
+      // Match .stirred-bubble-field CSS overhang (±20px) so both walls are covered
+      const overhang = 20;
+      const w = Math.max(1, Math.floor(rect.width + overhang * 2));
       const h = Math.max(1, Math.floor(rect.height * fillRef.current));
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
@@ -396,11 +399,11 @@ export function StirredBubbleField({
         p.x += p.vx * dt;
         p.y += p.vy * dt;
 
-        if (p.x < 0.03) {
-          p.x = 0.03;
+        if (p.x < 0.008) {
+          p.x = 0.008;
           p.vx = Math.abs(p.vx) * 0.4;
-        } else if (p.x > 0.97) {
-          p.x = 0.97;
+        } else if (p.x > 0.992) {
+          p.x = 0.992;
           p.vx = -Math.abs(p.vx) * 0.4;
         }
         if (p.y < 0.01) {
@@ -420,8 +423,11 @@ export function StirredBubbleField({
       const ch = canvas.clientHeight;
       ctx.clearRect(0, 0, cw, ch);
 
-      // Foam: high RPM bleaches bubbles toward white
-      const foam = rpm * rpm * (3 - 2 * rpm);
+      // Foam: high RPM bleaches bubbles toward white (eased so RPM jumps don't flash)
+      const foamTarget = rpm * rpm * (3 - 2 * rpm);
+      const foamEase = 1 - Math.exp(-dt * 2.8);
+      foamAmt += (foamTarget - foamAmt) * foamEase;
+      const foam = foamAmt;
       const br = Math.round(150 + (255 - 150) * foam);
       const bg = Math.round(210 + (255 - 210) * foam);
       const bb = Math.round(245 + (255 - 245) * foam);

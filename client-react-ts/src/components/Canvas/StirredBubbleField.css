@@ -1,7 +1,8 @@
 .stirred-bubble-field {
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Match .vessel-water overhang so bubbles reach the visible side walls */
+  left: -20px;
+  width: calc(100% + 40px);
   bottom: 0;
   z-index: 2;
   pointer-events: none;
