@@ -6,14 +6,14 @@ Setup wizard and monitoring agent that binds a Raspberry Pi to a Bioversee devic
 
 ## Recommended install (from the website)
 
-On the Raspberry Pi, open the Bioversee landing page and click **Download setup**.
+On the Raspberry Pi, open **Install on this Pi** on the Bioversee site.
 
-1. Open **Files → Downloads**
-2. Double-click **`bioversee-pi-setup.deb`** (like a Windows installer)
-3. Click **Install** and enter your password
-4. The wizard opens — sign in (cloud is already configured)
+1. Tap **Copy install command**
+2. Open **Terminal** (Ctrl+Alt+T)
+3. Paste (Ctrl+Shift+V) and press Enter
+4. Confirm the Install dialog and enter your password
 
-Advanced / terminal fallback: `bash bioversee-pi-setup.sh`
+Raspberry Pi OS blocks double-clicked downloads from the browser (unlike Windows `.exe`), so the one-line install is the reliable path. After that, a normal GUI installer runs and opens the wizard.
 
 ## Manual / developer install
 
