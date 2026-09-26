@@ -334,7 +334,7 @@
     "piCaption": "Kompakt edge eszköz helyi megfigyeléshez és vezérléshez, amikor a folyamat mellett van.",
     "piDownload": "Telepítő letöltése",
     "piDownloadSoon": "Hamarosan",
-    "piDownloadHint": "A Raspberry Pi-n: töltse le, majd futtassa:  bash bioversee-pi-setup  — telepít és automatikusan csatlakozik a Bioversee-hez.",
+    "piDownloadHint": "A Raspberry Pi-n: töltse le a telepítőt, nyissa meg a Fájlok → Letöltések mappát, és kattintson duplán a bioversee-pi-setup.deb fájlra — majd Telepítés.",
     "storyKicker": "Rólunk",
     "storyTitle": "Mérnöknek, mérnök által",
     "founder": "Alapító",

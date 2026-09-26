@@ -111,8 +111,8 @@ function About() {
             <p className="landing-lede">{t("about.piBody")}</p>
             <a
               className="landing-btn landing-btn--primary"
-              href="/downloads/bioversee-pi-setup"
-              download="bioversee-pi-setup"
+              href="/downloads/bioversee-pi-setup.deb"
+              download="bioversee-pi-setup.deb"
             >
               {t("about.piDownload")}
             </a>

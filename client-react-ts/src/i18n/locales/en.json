@@ -334,7 +334,7 @@
     "piCaption": "A compact edge device for local monitoring and control when you are next to the process.",
     "piDownload": "Download setup",
     "piDownloadSoon": "Coming soon",
-    "piDownloadHint": "On your Raspberry Pi: download, then run  bash bioversee-pi-setup  — it installs the app and connects to Bioversee automatically.",
+    "piDownloadHint": "On your Raspberry Pi: download the installer, open Files → Downloads, and double-click bioversee-pi-setup.deb — then click Install.",
     "storyKicker": "About",
     "storyTitle": "Built by an engineer, for engineers",
     "founder": "Founder",

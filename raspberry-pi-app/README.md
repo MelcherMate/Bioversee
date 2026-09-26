@@ -6,13 +6,14 @@ Setup wizard and monitoring agent that binds a Raspberry Pi to a Bioversee devic
 
 ## Recommended install (from the website)
 
-On the Raspberry Pi, open the Bioversee landing page and click **Download setup**. Then:
+On the Raspberry Pi, open the Bioversee landing page and click **Download setup**.
 
-```bash
-bash bioversee-pi-setup
-```
+1. Open **Files → Downloads**
+2. Double-click **`bioversee-pi-setup.deb`** (like a Windows installer)
+3. Click **Install** and enter your password
+4. The wizard opens — sign in (cloud is already configured)
 
-That setup app downloads this package, installs it, and already points at the main Bioversee Supabase project — you only sign in and wire devices.
+Advanced / terminal fallback: `bash bioversee-pi-setup.sh`
 
 ## Manual / developer install
 

@@ -334,7 +334,7 @@
     "piCaption": "Ein kompaktes Edge-Gerät für lokale Überwachung und Steuerung direkt am Prozess.",
     "piDownload": "Setup herunterladen",
     "piDownloadSoon": "Demnächst verfügbar",
-    "piDownloadHint": "Auf dem Raspberry Pi: herunterladen, dann  bash bioversee-pi-setup  ausführen — Installation und Cloud-Verbindung laufen automatisch.",
+    "piDownloadHint": "Auf dem Raspberry Pi: Installer herunterladen, Dateien → Downloads öffnen und bioversee-pi-setup.deb doppelklicken — dann Installieren.",
     "storyKicker": "Über uns",
     "storyTitle": "Von einem Ingenieur für Ingenieure",
     "founder": "Gründer",
