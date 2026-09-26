@@ -466,7 +466,7 @@ const Navbar = ({ user }: NavbarProps) => {
     <header className="topbar">
       <div className="topbar__inner">
         <div className="topbar__left">
-          <Link to={APP_HOME_PATH} className="topbar__brand" title={statusTitle}>
+          <Link to="/about" className="topbar__brand" title={statusTitle}>
             <span
               className={`topbar__mark topbar__mark--${connectivity}`}
               aria-hidden
