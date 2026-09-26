@@ -34,17 +34,10 @@ if ! id -u "${SERVICE_USER}" >/dev/null 2>&1; then
 fi
 
 apt-get update -y
-# WebKitGTK powers the native desktop window (pywebview).
+# Tkinter powers the native desktop setup wizard (CustomTkinter).
 apt-get install -y \
-  python3 python3-venv python3-pip \
+  python3 python3-venv python3-pip python3-tk \
   i2c-tools \
-  gir1.2-gtk-3.0 \
-  gir1.2-webkit2-4.1 \
-  || apt-get install -y \
-    python3 python3-venv python3-pip \
-    i2c-tools \
-    gir1.2-gtk-3.0 \
-    gir1.2-webkit2-4.0 \
   || true
 
 python3 -m venv "${PREFIX}/.venv"
@@ -80,7 +73,7 @@ Type=Application
 Name=Bioversee
 GenericName=Process control
 Comment=Bioversee desktop app for this Raspberry Pi
-Exec=env BIOVERSEE_WIZARD_HOST=127.0.0.1 ${PREFIX}/.venv/bin/bioversee
+Exec=${PREFIX}/.venv/bin/bioversee
 Icon=bioversee
 Terminal=false
 Categories=Science;Utility;

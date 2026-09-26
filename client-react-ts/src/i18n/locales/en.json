@@ -348,7 +348,7 @@
   "piSetup": {
     "kicker": "Raspberry Pi",
     "title": "Install Bioversee",
-    "lede": "Installs the Bioversee desktop app on this Raspberry Pi (not a website). One paste in Terminal, then open Bioversee from your desktop.",
+    "lede": "Installs the Bioversee desktop setup wizard on this Raspberry Pi (native app, not a browser). One paste in Terminal, then open Bioversee from your desktop.",
     "step1Title": "1. Copy the command",
     "step1Body": "Tap the black button above.",
     "step2Title": "2. Open Terminal",
@@ -359,7 +359,7 @@
     "downloadAgain": "Download installer again",
     "copyCommand": "Copy install command",
     "copied": "Copied — open Terminal and paste",
-    "hint": "After setup, Bioversee is a desktop app on the Pi — use the Bioversee icon, not the website.",
+    "hint": "After setup, Bioversee is a native desktop wizard on the Pi — use the Bioversee icon, not the website.",
     "back": "Back to home"
   },
   "piLogin": {
