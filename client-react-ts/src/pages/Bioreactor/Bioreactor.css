@@ -42,15 +42,15 @@ aside > * {
 }
 
 .boxTitle {
-  margin: 0 0 4px;
-  padding: 0 2px 8px;
+  margin: 0 0 8px;
+  padding: 0 2px;
   text-align: left;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: none;
   color: var(--bv-text-tertiary);
-  border-bottom: 1px solid var(--bv-line);
+  border-bottom: none;
 }
 
 .controlPanel,
@@ -58,7 +58,7 @@ aside > * {
 .sliderBox,
 .chartBox {
   border-radius: var(--bv-radius-lg);
-  padding: 14px 14px 10px;
+  padding: 14px;
   background: var(--bv-glass);
   border: 1px solid var(--bv-glass-border);
   box-shadow: var(--bv-shadow-float);
@@ -69,12 +69,39 @@ aside > * {
 .controlPanel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 14px;
+}
+
+.controlPanel > .bv-control-clock + .controlPanel__section {
+  padding-top: 12px;
+  border-top: 1px solid var(--bv-line);
+}
+
+.controlPanel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .controlPanel__section + .controlPanel__section {
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--bv-line);
+}
+
+/* iOS LazyVGrid 2-column pump cards */
+.controlPanel__switch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.controlPanel__knob-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+  justify-items: center;
 }
 
 .chartBox {

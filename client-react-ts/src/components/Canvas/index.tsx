@@ -1,4 +1,8 @@
 import React, { useState } from "react";
+import type {
+  BioreactorEquipment,
+  BioreactorGeometry,
+} from "../../lib/bioreactorGeometry";
 import BioreactorCard, {
   type DoseMode,
   type JacketMode,
@@ -18,6 +22,8 @@ type CanvasProps = {
   waterLevelVal?: number;
   jacketMode?: JacketMode;
   doseMode?: DoseMode;
+  equipment?: Partial<BioreactorEquipment>;
+  geometry?: BioreactorGeometry;
 };
 
 function Canvas(props: CanvasProps) {
@@ -85,6 +91,8 @@ function Canvas(props: CanvasProps) {
             waterLevelVal={props.waterLevelVal}
             jacketMode={props.jacketMode}
             doseMode={props.doseMode}
+            equipment={props.equipment}
+            geometry={props.geometry}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}
             scale={zoomLevel}

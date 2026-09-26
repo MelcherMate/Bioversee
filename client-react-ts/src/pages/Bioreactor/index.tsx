@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Canvas from "../../components/Canvas";
 import Chart from "../../components/Chart/index";
-import Slider from "../../components/Slider";
+import ControlClock from "../../components/ControlClock";
+import Knob from "../../components/Knob";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
 import { insertSwitchState } from "../../lib/actuators";
 import { canOperateDevice } from "../../lib/devices";
+import {
+  defaultBioreactorGeometry,
+  parseBioreactorConfig,
+} from "../../lib/bioreactorGeometry";
 import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
@@ -68,8 +73,26 @@ function Bioreactor({ user }: BioreactorProps) {
   }
 
   const readOnly = !canOperateDevice(device.role);
-  const jacketMode = warmWVal ? "warm" : coldWVal ? "cold" : "idle";
-  const doseMode = acidVal ? "acid" : baseVal ? "base" : "idle";
+  const config = parseBioreactorConfig(device.config);
+  const eq = config.equipment;
+  const jacketMode = eq.thermal_jacket
+    ? warmWVal
+      ? "warm"
+      : coldWVal
+        ? "cold"
+        : "idle"
+    : "idle";
+  const doseMode = eq.dosing
+    ? acidVal
+      ? "acid"
+      : baseVal
+        ? "base"
+        : "idle"
+    : "idle";
+
+  const showPumps =
+    eq.thermal_jacket || eq.dosing;
+  const showMotion = true; // water level always; rotor/aerator conditional inside
 
   const setWarmExclusive = (next: boolean) => {
     setWarmWVal(next);
@@ -123,110 +146,148 @@ function Bioreactor({ user }: BioreactorProps) {
     }
   };
 
+  const showCharts =
+    eq.sensor_temperature || eq.sensor_ph || eq.sensor_pressure;
+
   return (
     <div className="container">
       <aside id="actuatorSide">
         <div className="controlPanel">
-          <section className="controlPanel__section">
-            <h4 className="boxTitle">{t("process.pumps")}</h4>
-            <Switch
-              deviceId={device.id}
-              name="switchWarmWaterPump"
-              setVal={setWarmExclusive}
-              val={warmWVal}
-              label={t("process.warmWater")}
-              user={user}
-              disabled={readOnly}
-            />
-            <Switch
-              deviceId={device.id}
-              name="switchColdWaterPump"
-              setVal={setColdExclusive}
-              val={coldWVal}
-              label={t("process.coldWater")}
-              user={user}
-              disabled={readOnly}
-            />
-            <Switch
-              deviceId={device.id}
-              name="switchAcidPump"
-              setVal={setAcidExclusive}
-              val={acidVal}
-              label={t("process.acid")}
-              user={user}
-              disabled={readOnly}
-            />
-            <Switch
-              deviceId={device.id}
-              name="switchBasePump"
-              setVal={setBaseExclusive}
-              val={baseVal}
-              label={t("process.base")}
-              user={user}
-              disabled={readOnly}
-            />
-          </section>
-          <section className="controlPanel__section">
-            <h4 className="boxTitle">{t("process.motion")}</h4>
-            <Slider
-              deviceId={device.id}
-              name="rotor"
-              setVal={setRotorVal}
-              val={rotorVal}
-              label={t("process.rotor")}
-              user={user}
-              min={0}
-              max={300}
-              unit=" rpm"
-              disabled={readOnly}
-            />
-            <Slider
-              deviceId={device.id}
-              name="water_level"
-              setVal={setWaterLevelVal}
-              val={waterLevelVal}
-              label={t("process.waterLevel")}
-              user={user}
-              disabled={readOnly}
-            />
-            <Slider
-              deviceId={device.id}
-              name="aerator"
-              setVal={setAeratorVal}
-              val={aeratorVal}
-              label={t("process.aerator")}
-              user={user}
-              disabled={readOnly}
-            />
-          </section>
+          <ControlClock />
+          {showPumps ? (
+            <section className="controlPanel__section">
+              <h4 className="boxTitle">{t("process.pumps")}</h4>
+              <div className="controlPanel__switch-grid">
+                {eq.thermal_jacket ? (
+                  <>
+                    <Switch
+                      deviceId={device.id}
+                      name="switchWarmWaterPump"
+                      setVal={setWarmExclusive}
+                      val={warmWVal}
+                      label={t("process.warmWater")}
+                      user={user}
+                      disabled={readOnly}
+                    />
+                    <Switch
+                      deviceId={device.id}
+                      name="switchColdWaterPump"
+                      setVal={setColdExclusive}
+                      val={coldWVal}
+                      label={t("process.coldWater")}
+                      user={user}
+                      disabled={readOnly}
+                    />
+                  </>
+                ) : null}
+                {eq.dosing ? (
+                  <>
+                    <Switch
+                      deviceId={device.id}
+                      name="switchAcidPump"
+                      setVal={setAcidExclusive}
+                      val={acidVal}
+                      label={t("process.acid")}
+                      user={user}
+                      disabled={readOnly}
+                    />
+                    <Switch
+                      deviceId={device.id}
+                      name="switchBasePump"
+                      setVal={setBaseExclusive}
+                      val={baseVal}
+                      label={t("process.base")}
+                      user={user}
+                      disabled={readOnly}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+          {showMotion ? (
+            <section className="controlPanel__section">
+              <h4 className="boxTitle">{t("process.motion")}</h4>
+              <div className="controlPanel__knob-grid">
+                {eq.stirrer ? (
+                  <Knob
+                    deviceId={device.id}
+                    name="rotor"
+                    setVal={setRotorVal}
+                    val={rotorVal}
+                    label={t("process.rotor")}
+                    user={user}
+                    min={0}
+                    max={300}
+                    unit="rpm"
+                    disabled={readOnly}
+                  />
+                ) : null}
+                <Knob
+                  deviceId={device.id}
+                  name="water_level"
+                  setVal={setWaterLevelVal}
+                  val={waterLevelVal}
+                  label={t("process.waterLevel")}
+                  user={user}
+                  unit="%"
+                  step={10}
+                  disabled={readOnly}
+                />
+                {eq.aerator ? (
+                  <Knob
+                    deviceId={device.id}
+                    name="aerator"
+                    setVal={setAeratorVal}
+                    val={aeratorVal}
+                    label={t("process.aerator")}
+                    user={user}
+                    unit="%"
+                    step={10}
+                    disabled={readOnly}
+                  />
+                ) : null}
+              </div>
+            </section>
+          ) : null}
         </div>
       </aside>
       <main id="reactorBox" ref={canvasRef}>
         <Canvas
           cards={cards}
-          rotorVal={rotorVal}
-          aeratorVal={aeratorVal}
+          rotorVal={eq.stirrer ? rotorVal : 0}
+          aeratorVal={eq.aerator ? aeratorVal : 0}
           waterLevelVal={waterLevelVal}
           jacketMode={jacketMode}
           doseMode={doseMode}
+          equipment={eq}
+          geometry={defaultBioreactorGeometry()}
         />
       </main>
-      <aside id="sensorSide">
-        <div className="chartBox">
-          <Chart
-            deviceId={device.id}
-            name="temperature"
-            label={t("process.temperature")}
-          />
-          <Chart deviceId={device.id} name="ph" label={t("process.ph")} />
-          <Chart
-            deviceId={device.id}
-            name="pressure"
-            label={t("process.pressure")}
-            unit="psi"
-          />
-        </div>
-      </aside>
+      {showCharts ? (
+        <aside id="sensorSide">
+          <div className="chartBox">
+            {eq.sensor_temperature ? (
+              <Chart
+                deviceId={device.id}
+                name="temperature"
+                label={t("process.temperature")}
+              />
+            ) : null}
+            {eq.sensor_ph ? (
+              <Chart deviceId={device.id} name="ph" label={t("process.ph")} />
+            ) : null}
+            {eq.sensor_pressure ? (
+              <Chart
+                deviceId={device.id}
+                name="pressure"
+                label={t("process.pressure")}
+                unit="psi"
+              />
+            ) : null}
+          </div>
+        </aside>
+      ) : null}
     </div>
   );
 }

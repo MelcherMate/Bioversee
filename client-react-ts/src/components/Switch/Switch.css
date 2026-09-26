@@ -1,44 +1,69 @@
+/* iOS DeviceControlsView switchCell — card with accent when on */
 .bv-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 11px 12px;
+  min-height: 76px;
+  box-sizing: border-box;
+  border-radius: var(--bv-radius-md);
+  background: var(--bv-fill);
+  border: 1px solid var(--bv-line);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 0.18s var(--bv-ease),
+    border-color 0.18s var(--bv-ease);
+}
+
+.bv-switch--on {
+  background: var(--bv-accent-soft);
+  border-color: var(--bv-accent-border);
+}
+
+.bv-switch__title {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--bv-text);
+  line-height: 1.3;
+}
+
+.bv-switch__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  width: 100%;
-  margin: 0;
-  padding: 10px 2px;
-  cursor: pointer;
-  user-select: none;
+  gap: 8px;
 }
 
-.bv-switch + .bv-switch {
-  border-top: 1px solid var(--bv-line);
-}
-
-.bv-switch__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.bv-switch__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
-.bv-switch__label {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--bv-text-secondary);
-  line-height: 1.25;
+.bv-switch__dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bv-line);
+  transition: background 0.18s var(--bv-ease);
+}
+
+.bv-switch--on .bv-switch__dot {
+  background: var(--bv-accent);
 }
 
 .bv-switch__state {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 650;
   color: var(--bv-text-tertiary);
-  transition: color 0.2s var(--bv-ease);
-}
-
-.bv-switch--on .bv-switch__label {
-  color: var(--bv-text);
+  transition: color 0.18s var(--bv-ease);
 }
 
 .bv-switch--on .bv-switch__state {
@@ -57,27 +82,25 @@
 .bv-switch__track {
   position: relative;
   flex-shrink: 0;
-  width: 44px;
-  height: 26px;
+  width: 45px;
+  height: 27px;
   border-radius: 999px;
-  background: var(--bv-control-track);
-  transition: background 0.25s var(--bv-ease);
+  background: color-mix(in srgb, var(--bv-fill) 40%, #c8c8cc 60%);
+  transition: background 0.2s var(--bv-ease);
 }
 
 .bv-switch__thumb {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
   border-radius: 50%;
-  background: var(--bv-control-thumb);
+  background: #fff;
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 2px 6px rgba(0, 0, 0, 0.2);
-  transition:
-    transform 0.25s var(--bv-ease),
-    background 0.25s var(--bv-ease);
+    0 2px 6px rgba(0, 0, 0, 0.16),
+    0 1px 1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s var(--bv-ease);
 }
 
 .bv-switch--on .bv-switch__track {
@@ -86,40 +109,22 @@
 
 .bv-switch--on .bv-switch__thumb {
   transform: translateX(18px);
-  background: var(--bv-control-thumb-on);
 }
 
 .bv-switch--disabled {
   cursor: not-allowed;
   pointer-events: none;
-}
-
-.bv-switch--disabled .bv-switch__state,
-.bv-switch--disabled.bv-switch--on .bv-switch__state {
-  color: var(--bv-text-tertiary);
-}
-
-.bv-switch--disabled .bv-switch__track,
-.bv-switch--disabled.bv-switch--on .bv-switch__track {
-  background: var(--bv-fill);
-}
-
-.bv-switch--disabled .bv-switch__input:focus-visible + .bv-switch__track {
-  box-shadow: none;
-}
-
-.bv-switch--disabled:active .bv-switch__thumb {
-  width: 22px;
+  opacity: 0.55;
 }
 
 .bv-switch__input:focus-visible + .bv-switch__track {
   box-shadow: 0 0 0 3px var(--bv-accent-muted);
 }
 
-.bv-switch:active .bv-switch__thumb {
-  width: 24px;
+:root[data-theme="dark"] .bv-switch__track {
+  background: #3a3a3c;
 }
 
-.bv-switch--on:active .bv-switch__thumb {
-  transform: translateX(16px);
+:root[data-theme="dark"] .bv-switch--on .bv-switch__track {
+  background: var(--bv-accent);
 }

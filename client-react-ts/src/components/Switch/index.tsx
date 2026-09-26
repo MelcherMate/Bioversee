@@ -23,7 +23,6 @@ function Switch(props: SwitchProps) {
   const disabled = Boolean(props.disabled);
   const setValRef = useRef(props.setVal);
   setValRef.current = props.setVal;
-  /** Skip applying our own echo / remote updates briefly after a local toggle. */
   const localWriteUntilRef = useRef(0);
 
   useEffect(() => {
@@ -53,7 +52,6 @@ function Switch(props: SwitchProps) {
         return;
       }
 
-      // Poll / incomplete realtime payload — refetch this control.
       pull();
     });
 
@@ -81,27 +79,30 @@ function Switch(props: SwitchProps) {
       }`}
       htmlFor={`${props.deviceId}-${props.name}`}
     >
-      <div className="bv-switch__copy">
-        <span className="bv-switch__label">{props.label}</span>
-        <span className="bv-switch__state">
-          {props.val ? t("common.on") : t("common.off")}
+      <span className="bv-switch__title">{props.label}</span>
+      <span className="bv-switch__row">
+        <span className="bv-switch__status">
+          <span className="bv-switch__dot" aria-hidden="true" />
+          <span className="bv-switch__state">
+            {props.val ? t("common.on") : t("common.off")}
+          </span>
         </span>
-      </div>
-      <input
-        type="checkbox"
-        className="bv-switch__input"
-        checked={props.val}
-        id={`${props.deviceId}-${props.name}`}
-        disabled={disabled}
-        onChange={(event) => {
-          if (disabled) return;
-          const newValue = event.target.checked;
-          props.setVal(newValue);
-          sendSwitchStateToDatabase(newValue);
-        }}
-      />
-      <span className="bv-switch__track" aria-hidden="true">
-        <span className="bv-switch__thumb" />
+        <input
+          type="checkbox"
+          className="bv-switch__input"
+          checked={props.val}
+          id={`${props.deviceId}-${props.name}`}
+          disabled={disabled}
+          onChange={(event) => {
+            if (disabled) return;
+            const newValue = event.target.checked;
+            props.setVal(newValue);
+            sendSwitchStateToDatabase(newValue);
+          }}
+        />
+        <span className="bv-switch__track" aria-hidden="true">
+          <span className="bv-switch__thumb" />
+        </span>
       </span>
     </label>
   );

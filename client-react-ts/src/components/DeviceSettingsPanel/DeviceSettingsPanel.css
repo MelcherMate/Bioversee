@@ -1,20 +1,34 @@
 .device-settings {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.device-settings__backdrop {
   position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: min(320px, calc(100vw - 28px));
-  padding: 16px;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  background: rgba(12, 16, 22, 0.42);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.device-settings__dialog {
+  position: relative;
+  width: min(400px, 100%);
+  max-height: min(86vh, 720px);
+  overflow: auto;
+  padding: 18px 18px 16px;
   border-radius: var(--bv-radius-md);
   background: var(--bv-card);
   box-shadow: var(--bv-shadow-card);
-  z-index: 55;
-  animation: device-settings-in 0.2s var(--bv-ease);
-}
-
-.device-settings--anchored {
-  position: fixed;
-  right: auto;
-  z-index: 70;
+  animation: device-settings-in 0.22s var(--bv-ease);
 }
 
 .device-settings__head {
@@ -43,7 +57,7 @@
 
 .device-settings__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 650;
   letter-spacing: -0.03em;
 }
@@ -84,6 +98,58 @@
   margin: 8px 0 0;
   font-size: 12px;
   color: var(--bv-text-secondary);
+}
+
+.device-settings__geometry {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--bv-line);
+}
+
+.device-settings__equip-label {
+  margin-top: 16px;
+}
+
+.device-settings__field-label {
+  display: block;
+  margin: 10px 0 4px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--bv-text-secondary);
+}
+
+.device-settings__volume-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.device-settings__volume-row .device-settings__label {
+  margin: 0;
+}
+
+.device-settings__unit-toggle {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--bv-line);
+}
+
+.device-settings__unit-toggle button {
+  border: none;
+  background: var(--bv-fill);
+  color: var(--bv-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.device-settings__unit-toggle button.is-active {
+  background: var(--bv-accent);
+  color: #fff;
 }
 
 .device-settings__primary {
@@ -130,10 +196,10 @@
 @keyframes device-settings-in {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }

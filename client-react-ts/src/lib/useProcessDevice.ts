@@ -6,6 +6,7 @@ import {
   type DeviceType,
   type DeviceWithAccess,
 } from "./devices";
+import { subscribeDeviceUpdated } from "./deviceEvents";
 import { fallbackPathAfterLostDevice } from "./sharing";
 
 /**
@@ -19,6 +20,15 @@ export function useProcessDevice(type: DeviceType, userId: string) {
   const preferredDeviceId = searchParams.get("device");
   const [device, setDevice] = useState<DeviceWithAccess | null>(null);
   const [ready, setReady] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useEffect(() => {
+    return subscribeDeviceUpdated((deviceId) => {
+      if (!preferredDeviceId || preferredDeviceId === deviceId) {
+        setReloadToken((n) => n + 1);
+      }
+    });
+  }, [preferredDeviceId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +58,7 @@ export function useProcessDevice(type: DeviceType, userId: string) {
     return () => {
       cancelled = true;
     };
-  }, [userId, preferredDeviceId, type, navigate]);
+  }, [userId, preferredDeviceId, type, navigate, reloadToken]);
 
   return { device, ready, preferredDeviceId };
 }

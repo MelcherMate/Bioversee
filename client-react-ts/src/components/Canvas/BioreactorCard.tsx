@@ -1,9 +1,16 @@
-import { useEffect, useId, useRef, useState, memo, type CSSProperties } from "react";
+import { useEffect, useId, useMemo, useRef, useState, memo, type CSSProperties } from "react";
 import { APPLE_DEPTH_COLORS } from "../pressure-vessel/apple-depth-style";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
+import type { BioreactorEquipment, BioreactorGeometry } from "../../lib/bioreactorGeometry";
+import { defaultBioreactorGeometry, defaultEquipment } from "../../lib/bioreactorGeometry";
+import {
+  layoutFromGeometry,
+  layoutCssVars,
+  type BioreactorLayout,
+} from "./bioreactorLayout";
 import { StirredBubbleField } from "./StirredBubbleField";
 import "./Bioreactor.css";
 
@@ -19,14 +26,14 @@ type BioreactorCardProps = {
   waterLevelVal?: number;
   jacketMode?: JacketMode;
   doseMode?: DoseMode;
+  /** Optional fittings; omitted keys default to enabled. */
+  equipment?: Partial<BioreactorEquipment>;
+  geometry?: BioreactorGeometry;
   translateX: number;
   translateY: number;
   scale: number;
   onMouseDown: (event: React.MouseEvent) => void;
 };
-
-const CARD_WIDTH = 800;
-const CARD_HEIGHT = 750;
 
 /** Same solid pipe-water stroke as pressure-vessel runs. */
 const JACKET_WATER_WIDTH = PIPE_OD - 6;
@@ -71,9 +78,6 @@ function lerpHex(from: string, to: string, t: number) {
 
 /** Soft band width as a fraction of jacket width for the L→R color front. */
 const JACKET_COLOR_SWEEP_BAND = 0.16;
-/** Jacket SVG viewBox x-range (matches thermal-jacket__svg). */
-const JACKET_GRAD_X0 = -130;
-const JACKET_GRAD_X1 = 572;
 
 type JacketWaterBlend = {
   fromColor: string;
@@ -155,19 +159,57 @@ function useJacketWaterBlend(mode: JacketMode): JacketWaterBlend {
   return blend;
 }
 
-/** Chamber outer box (matches .reaction_chamber, border-box). */
-const VESSEL = {
-  left: 20,
-  right: 422,
-  top: -120,
-  bottom: 430,
-  radius: 169,
-} as const;
+type VesselBox = BioreactorLayout["vessel"];
 
-/** Offset of jacket pipe centerline outside the vessel wall. */
-const JACKET_THICK = 18;
-/** Horizontal run height of inlet/outlet L (lower on the vessel). */
-const JACKET_PIPE_Y = 120;
+function jacketRadii(vessel: VesselBox, jacketThick: number) {
+  const inner = {
+    left: vessel.left,
+    right: vessel.right,
+    bottom: vessel.bottom,
+    r: vessel.radius,
+    leftCx: vessel.left + vessel.radius,
+    rightCx: vessel.right - vessel.radius,
+    cy: vessel.bottom - vessel.radius,
+  };
+  const outer = {
+    left: vessel.left - jacketThick,
+    right: vessel.right + jacketThick,
+    bottom: vessel.bottom + jacketThick,
+    r: vessel.radius + jacketThick,
+    leftCx: inner.leftCx,
+    rightCx: inner.rightCx,
+    cy: inner.cy,
+  };
+  return { inner, outer };
+}
+
+/**
+ * One seamless centerline: left inlet → jacket U → right outlet.
+ */
+function buildJacketPipePath(
+  vessel: VesselBox,
+  jacketThick: number,
+  pipeY: number,
+  pathEndX: number,
+  pathStartX: number,
+): string {
+  const { inner, outer } = jacketRadii(vessel, jacketThick);
+  const midLeft = (inner.left + outer.left) / 2;
+  const midRight = (inner.right + outer.right) / 2;
+  const midR = (inner.r + outer.r) / 2;
+  const midBottom = (inner.bottom + outer.bottom) / 2;
+
+  return [
+    `M ${pathStartX} ${pipeY}`,
+    `L ${midLeft} ${pipeY}`,
+    `L ${midLeft} ${inner.cy}`,
+    `A ${midR} ${midR} 0 0 0 ${inner.leftCx} ${midBottom}`,
+    `L ${inner.rightCx} ${midBottom}`,
+    `A ${midR} ${midR} 0 0 0 ${midRight} ${inner.cy}`,
+    `L ${midRight} ${pipeY}`,
+    `L ${pathEndX} ${pipeY}`,
+  ].join(" ");
+}
 
 /**
  * Pressure-vessel-style pipe water: solid slug with head advancing on pump-on
@@ -260,59 +302,88 @@ function usePipeSlug(active: boolean, pathLength: number, speed: number) {
   return { tail, head };
 }
 
-function jacketRadii() {
-  const inner = {
-    left: VESSEL.left,
-    right: VESSEL.right,
-    bottom: VESSEL.bottom,
-    r: VESSEL.radius,
-    leftCx: VESSEL.left + VESSEL.radius,
-    rightCx: VESSEL.right - VESSEL.radius,
-    cy: VESSEL.bottom - VESSEL.radius,
-  };
-  const outer = {
-    left: VESSEL.left - JACKET_THICK,
-    right: VESSEL.right + JACKET_THICK,
-    bottom: VESSEL.bottom + JACKET_THICK,
-    r: VESSEL.radius + JACKET_THICK,
-    leftCx: inner.leftCx,
-    rightCx: inner.rightCx,
-    cy: inner.cy,
-  };
-  return { inner, outer };
-}
-
-/**
- * One seamless centerline: left inlet L → jacket U → right outlet L.
- * Same white-gray pipe language as base/acid and pressure-vessel runs.
- */
-function buildJacketPipePath(): string {
-  const { inner, outer } = jacketRadii();
-  const midLeft = (inner.left + outer.left) / 2;
-  const midRight = (inner.right + outer.right) / 2;
-  const midR = (inner.r + outer.r) / 2;
-  const midBottom = (inner.bottom + outer.bottom) / 2;
-  const leftCx = inner.leftCx;
-  const rightCx = inner.rightCx;
-  const pipeY = JACKET_PIPE_Y;
-
-  return [
-    `M -110 ${pipeY}`,
-    `L ${midLeft} ${pipeY}`,
-    `L ${midLeft} ${inner.cy}`,
-    `A ${midR} ${midR} 0 0 0 ${leftCx} ${midBottom}`,
-    `L ${rightCx} ${midBottom}`,
-    `A ${midR} ${midR} 0 0 0 ${midRight} ${inner.cy}`,
-    `L ${midRight} ${pipeY}`,
-    `L 552 ${pipeY}`,
-  ].join(" ");
-}
-
 type ThermalJacketProps = {
   mode: JacketMode;
+  layout: BioreactorLayout;
 };
 
-function ThermalJacket({ mode }: ThermalJacketProps) {
+/** Yellow industrial TX with green status lamp in a black box — for pipe flowmeters. */
+function PipeFlowmeter({
+  x,
+  y,
+  pipeOd,
+  lit = true,
+}: {
+  x: number;
+  y: number;
+  pipeOd: number;
+  lit?: boolean;
+}) {
+  const headY = -pipeOd / 2 - 34;
+  return (
+    <g className="br-flowmeter" transform={`translate(${x}, ${y})`}>
+      <rect
+        x={-7}
+        y={-pipeOd / 2 - 2}
+        width={14}
+        height={pipeOd + 4}
+        rx={2}
+        fill={PIPE_FILL}
+        stroke={PIPE_METAL.stroke}
+        strokeWidth={1.2}
+      />
+      <rect
+        x={-4}
+        y={-pipeOd / 2 - 16}
+        width={8}
+        height={14}
+        rx={1}
+        fill="#e8e8e8"
+        stroke="#9a9a9a"
+        strokeWidth={0.8}
+      />
+      <rect
+        x={-10}
+        y={headY}
+        width={20}
+        height={16}
+        rx={3}
+        fill="#e8b923"
+        stroke="#c99212"
+        strokeWidth={0.8}
+      />
+      {/* Cable boss */}
+      <rect x={8} y={headY + 4} width={6} height={8} rx={1} fill="#2a2a2a" />
+      {/* Green lamp in black box on the yellow head */}
+      <rect
+        x={-7}
+        y={headY + 3}
+        width={11}
+        height={10}
+        rx={1.5}
+        fill="#1a1a1a"
+        stroke="#0a0a0a"
+        strokeWidth={0.6}
+      />
+      <circle
+        cx={-1.5}
+        cy={headY + 8}
+        r={2.8}
+        fill={lit ? "#3dd68c" : "#4a4a4a"}
+        style={
+          lit
+            ? {
+                filter:
+                  "drop-shadow(0 0 3px color-mix(in srgb, #3dd68c 70%, transparent))",
+              }
+            : undefined
+        }
+      />
+    </g>
+  );
+}
+
+function ThermalJacket({ mode, layout }: ThermalJacketProps) {
   const prefix = useId().replace(/:/g, "");
   const active = mode !== "idle";
   const { fromColor, toColor, progress } = useJacketWaterBlend(mode);
@@ -323,7 +394,14 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
         ? "thermal-jacket--cold"
         : "thermal-jacket--idle";
 
-  const pipePath = buildJacketPipePath();
+  const pathStartX = layout.jacketSvg.gradX0 + 20;
+  const pipePath = buildJacketPipePath(
+    layout.vessel,
+    layout.jacketThick,
+    layout.jacketPipeY,
+    layout.jacketSvg.pathEndX,
+    pathStartX,
+  );
   const { tail, head } = usePipeSlug(
     active,
     JACKET_FLOW_PATH_LENGTH,
@@ -340,17 +418,19 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
   const settledColor = progress >= 1 ? toColor : fromColor;
   const waterStroke = sweeping ? `url(#${prefix}-color-sweep)` : settledColor;
 
-  // Soft L→R front: new color on the left, old on the right.
   const softStart = Math.max(0, progress - JACKET_COLOR_SWEEP_BAND / 2);
   const softEnd = Math.min(1, progress + JACKET_COLOR_SWEEP_BAND / 2);
+  const { viewBox, gradX0, gradX1, left, top, width, height } = layout.jacketSvg;
+
+  // Inlet flowmeter on the left horizontal run
+  const midLeft =
+    (layout.vessel.left + (layout.vessel.left - layout.jacketThick)) / 2;
+  const inletMeterX = pathStartX + (midLeft - pathStartX) * 0.55;
+  const inletMeterY = layout.jacketPipeY;
 
   return (
     <div className={`thermal-jacket ${modeClass}`}>
-      <svg
-        className="thermal-jacket__svg"
-        viewBox="-130 -140 702 620"
-        aria-hidden
-      >
+      <svg className="thermal-jacket__svg" viewBox={viewBox} aria-hidden>
         <defs>
           <filter
             id={`${prefix}-metal`}
@@ -371,9 +451,9 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
             <linearGradient
               id={`${prefix}-color-sweep`}
               gradientUnits="userSpaceOnUse"
-              x1={JACKET_GRAD_X0}
+              x1={gradX0}
               y1={0}
-              x2={JACKET_GRAD_X1}
+              x2={gradX1}
               y2={0}
             >
               <stop offset={0} stopColor={toColor} />
@@ -384,7 +464,7 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
           ) : null}
         </defs>
 
-        {/* Single continuous white-gray pipe (inlet + jacket + outlet) */}
+        {/* Left inlet → jacket U → right outlet */}
         <g filter={`url(#${prefix}-metal)`}>
           <path
             d={pipePath}
@@ -404,17 +484,16 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
           />
         </g>
 
-        {/* Solid water slug + moving flow lines (masked to the water body) */}
         {segLen > 0 ? (
           <g>
             <defs>
               <mask
                 id={`${prefix}-water-mask`}
                 maskUnits="userSpaceOnUse"
-                x="-130"
-                y="-140"
-                width="702"
-                height="620"
+                x={left}
+                y={top}
+                width={width}
+                height={height}
               >
                 <path
                   d={pipePath}
@@ -454,6 +533,14 @@ function ThermalJacket({ mode }: ThermalJacketProps) {
             />
           </g>
         ) : null}
+
+        {/* Flowmeter above the inlet flow */}
+        <PipeFlowmeter
+          x={inletMeterX}
+          y={inletMeterY}
+          pipeOd={PIPE_OD}
+          lit={active}
+        />
       </svg>
     </div>
   );
@@ -475,9 +562,6 @@ const DOSE_FLOW_CYCLE_SECONDS = 0.9;
 const DOSE_PIPE_SPEED = (DOSE_FLOW_CYCLE / DOSE_FLOW_CYCLE_SECONDS) * 2;
 /** Matches .base-acid-pipe-run { top }. */
 const DOSE_SVG_TOP = -163;
-/** Matches .br-water-clip { top, height }. */
-const WATER_CLIP_TOP = -100;
-const WATER_CLIP_HEIGHT = 510;
 /** Drop fall speed — fixed so drips never speed up/slow down with level. */
 const DOSE_DRIP_SPEED = 320;
 /**
@@ -493,6 +577,7 @@ const DOSE_DRIP_COUNT = 3;
 type BaseAcidSupplyPipeProps = {
   mode: DoseMode;
   fillUnits: number;
+  layout: BioreactorLayout;
 };
 
 function doseColor(mode: DoseMode) {
@@ -501,10 +586,11 @@ function doseColor(mode: DoseMode) {
   return null;
 }
 
-function doseDripFallPx(fillUnits: number) {
+function doseDripFallPx(fillUnits: number, layout: BioreactorLayout) {
   const fillRatio = Math.min(1, Math.max(0, fillUnits / VESSEL_MAX_FILL_UNITS));
-  const tipAbsY = DOSE_SVG_TOP + DOSE_TIP_Y;
-  const surfaceAbsY = WATER_CLIP_TOP + WATER_CLIP_HEIGHT * (1 - fillRatio);
+  const tipAbsY = layout.dose.svgTop + layout.dose.tipY;
+  const surfaceAbsY =
+    layout.waterClip.top + layout.waterClip.height * (1 - fillRatio);
   return Math.max(0, surfaceAbsY - tipAbsY);
 }
 
@@ -512,7 +598,7 @@ function doseDripFallPx(fillUnits: number) {
  * Dose tube sequencer: on acid↔base switch, finish draining the current
  * fluid (and drips) before the new fluid starts filling.
  */
-function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
+function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps) {
   const prefix = useId().replace(/:/g, "");
   const [liquidColor, setLiquidColor] = useState(DOSE_ACID);
   const [feeding, setFeeding] = useState(false);
@@ -574,7 +660,7 @@ function BaseAcidSupplyPipe({ mode, fillUnits }: BaseAcidSupplyPipeProps) {
   const segEnd = Math.max(segStart, head);
   const segLen = Math.max(0, Math.min(segEnd, DOSE_PATH_LENGTH) - segStart);
   const showLiquid = segLen > 0;
-  const dripFallPx = doseDripFallPx(fillUnits);
+  const dripFallPx = doseDripFallPx(fillUnits, layout);
   const showDrips =
     showLiquid && head >= DOSE_PATH_LENGTH - 1 && dripFallPx > 4;
 
@@ -744,6 +830,9 @@ const AERATOR_SUPPLY_PATH = [
 const AERATOR_SUPPLY_PATH_LENGTH = 640;
 const AERATOR_FLOW_DASH = 12;
 const AERATOR_FLOW_GAP = 24;
+const AERATOR_FLOW_CYCLE = AERATOR_FLOW_DASH + AERATOR_FLOW_GAP;
+/** Air advances ~12× faster than jacket water along a shorter run. */
+const AERATOR_AIR_SPEED = (AERATOR_FLOW_CYCLE / 0.55) * 12.8;
 const AERATOR_AIR = "#f8fafc";
 const AERATOR_AIR_DASH = "rgba(255, 255, 255, 0.92)";
 const AERATOR_COUPLING_W = 16;
@@ -758,12 +847,37 @@ function aeratorDiffuserLevel(val: number) {
 
 type AeratorSupplyProps = {
   aeratorVal: number;
+  layout: BioreactorLayout;
+  onAirAtSpargerChange?: (ready: boolean) => void;
 };
 
-function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
+function AeratorSupply({
+  aeratorVal,
+  layout,
+  onAirAtSpargerChange,
+}: AeratorSupplyProps) {
   const prefix = useId().replace(/:/g, "");
   const active = aeratorVal > 0;
-  const level = aeratorDiffuserLevel(aeratorVal);
+  const { tail, head } = usePipeSlug(
+    active,
+    AERATOR_SUPPLY_PATH_LENGTH,
+    AERATOR_AIR_SPEED,
+  );
+  const airAtSparger =
+    active &&
+    head >= AERATOR_SUPPLY_PATH_LENGTH - 0.5 &&
+    tail < AERATOR_SUPPLY_PATH_LENGTH - 1;
+  const onReadyRef = useRef(onAirAtSpargerChange);
+  onReadyRef.current = onAirAtSpargerChange;
+  const wasReadyRef = useRef(false);
+
+  useEffect(() => {
+    if (wasReadyRef.current === airAtSparger) return;
+    wasReadyRef.current = airAtSparger;
+    onReadyRef.current?.(airAtSparger);
+  }, [airAtSparger]);
+
+  const level = airAtSparger ? aeratorDiffuserLevel(aeratorVal) : 0;
   const airWidth = Math.max(3, AERATOR_PIPE_OD - 5);
   const glow =
     level === 0
@@ -776,11 +890,44 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
             ? 0.45
             : 0.55;
 
+  const {
+    spargerWidth,
+    spargerY,
+    spargerLeft,
+    dropX,
+    pipeEndX,
+    viewBox,
+    svgLeft,
+    svgTop,
+    svgWidth,
+    svgHeight,
+  } = layout.aerator;
+  const spargerTop = spargerY - AERATOR_SPARGER_HEIGHT / 2;
+  const supplyPath = [
+    `M ${svgLeft + 10} ${svgTop + 13}`,
+    `L ${dropX} ${svgTop + 13}`,
+    `L ${dropX} ${spargerY}`,
+    `L ${pipeEndX} ${spargerY}`,
+  ].join(" ");
+
+  const segStart = Math.max(0, tail);
+  const segEnd = Math.max(segStart, head);
+  const segLen = Math.max(
+    0,
+    Math.min(segEnd, AERATOR_SUPPLY_PATH_LENGTH) - segStart,
+  );
+
   return (
     <div className="aerator-supply">
       <svg
         className="aerator-supply__pipe"
-        viewBox="-110 -55 360 500"
+        viewBox={viewBox}
+        style={{
+          left: svgLeft,
+          top: svgTop,
+          width: svgWidth,
+          height: svgHeight,
+        }}
         aria-hidden
         overflow="visible"
       >
@@ -823,7 +970,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
         {/* Supply riser */}
         <g filter={`url(#${prefix}-metal)`}>
           <path
-            d={AERATOR_SUPPLY_PATH}
+            d={supplyPath}
             fill="none"
             stroke={PIPE_METAL.stroke}
             strokeWidth={AERATOR_PIPE_OD + 2}
@@ -831,7 +978,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
             strokeLinejoin="round"
           />
           <path
-            d={AERATOR_SUPPLY_PATH}
+            d={supplyPath}
             fill="none"
             stroke={PIPE_FILL}
             strokeWidth={AERATOR_PIPE_OD}
@@ -840,20 +987,44 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
           />
         </g>
 
-        {active ? (
+        {segLen > 0 ? (
           <g>
+            <defs>
+              <mask
+                id={`${prefix}-air-mask`}
+                maskUnits="userSpaceOnUse"
+                x={svgLeft}
+                y={svgTop}
+                width={svgWidth}
+                height={svgHeight}
+              >
+                <path
+                  d={supplyPath}
+                  pathLength={AERATOR_SUPPLY_PATH_LENGTH}
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={airWidth + 2}
+                  strokeLinecap="butt"
+                  strokeLinejoin="round"
+                  strokeDasharray={`${segLen} ${AERATOR_SUPPLY_PATH_LENGTH}`}
+                  strokeDashoffset={-segStart}
+                />
+              </mask>
+            </defs>
             <path
-              d={AERATOR_SUPPLY_PATH}
+              d={supplyPath}
               pathLength={AERATOR_SUPPLY_PATH_LENGTH}
               fill="none"
               stroke={AERATOR_AIR}
               strokeWidth={airWidth}
               strokeLinecap="butt"
               strokeLinejoin="round"
+              strokeDasharray={`${segLen} ${AERATOR_SUPPLY_PATH_LENGTH}`}
+              strokeDashoffset={-segStart}
             />
             <path
               className="aerator-supply__flow-dash"
-              d={AERATOR_SUPPLY_PATH}
+              d={supplyPath}
               pathLength={AERATOR_SUPPLY_PATH_LENGTH}
               fill="none"
               stroke={AERATOR_AIR_DASH}
@@ -861,6 +1032,7 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeDasharray={`${AERATOR_FLOW_DASH} ${AERATOR_FLOW_GAP}`}
+              mask={`url(#${prefix}-air-mask)`}
             />
           </g>
         ) : null}
@@ -868,16 +1040,16 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
         {/* Sparger bar — same OD as pipe for a flush joint */}
         <g filter={`url(#${prefix}-metal)`}>
           <rect
-            x={AERATOR_SPARGER_LEFT}
-            y={AERATOR_SPARGER_TOP}
-            width={AERATOR_SPARGER_WIDTH}
+            x={spargerLeft}
+            y={spargerTop}
+            width={spargerWidth}
             height={AERATOR_SPARGER_HEIGHT}
             rx={3}
             fill={`url(#${prefix}-diffuser)`}
             stroke={PIPE_METAL.stroke}
             strokeWidth={1.5}
             style={
-              active
+              airAtSparger
                 ? {
                     filter: `drop-shadow(0 0 ${4 + level / 20}px rgba(56, 189, 248, ${glow}))`,
                   }
@@ -886,8 +1058,8 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
           />
           {/* Coupling sleeve: bridges pipe OD into the perforated bar */}
           <rect
-            x={AERATOR_SPARGER_LEFT - 3}
-            y={AERATOR_SPARGER_Y - (AERATOR_PIPE_OD + 2) / 2}
+            x={spargerLeft - 3}
+            y={spargerY - (AERATOR_PIPE_OD + 2) / 2}
             width={AERATOR_COUPLING_W}
             height={AERATOR_PIPE_OD + 2}
             rx={2}
@@ -896,6 +1068,76 @@ function AeratorSupply({ aeratorVal }: AeratorSupplyProps) {
             strokeWidth={1.5}
           />
         </g>
+      </svg>
+    </div>
+  );
+}
+
+type BottomOutflowProps = {
+  layout: BioreactorLayout;
+};
+
+/** Bottom drain elbow — empty metal pipe with flowmeter on the run. */
+function BottomOutflow({ layout }: BottomOutflowProps) {
+  const prefix = useId().replace(/:/g, "");
+  const { centerX, vesselBottom, drop, run, pipeOd } = layout.outflow;
+  const pad = 28;
+  const svgLeft = centerX - pad;
+  const svgTop = vesselBottom - 4;
+  const svgW = pad + run + 36;
+  const svgH = drop + 48;
+  const x0 = pad;
+  const y0 = 4;
+  const y1 = y0 + drop;
+  const x1 = x0 + run;
+  const path = `M ${x0} ${y0} L ${x0} ${y1} L ${x1} ${y1}`;
+  const txX = x0 + run * 0.62;
+  const txY = y1;
+
+  return (
+    <div className="br-outflow" aria-hidden>
+      <svg
+        className="br-outflow__svg"
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        style={{ left: svgLeft, top: svgTop, width: svgW, height: svgH }}
+        overflow="visible"
+      >
+        <defs>
+          <filter
+            id={`${prefix}-metal`}
+            x="-30%"
+            y="-30%"
+            width="160%"
+            height="160%"
+          >
+            <feDropShadow
+              dx="1"
+              dy="2"
+              stdDeviation="1.1"
+              floodColor="#000"
+              floodOpacity="0.18"
+            />
+          </filter>
+        </defs>
+        <g filter={`url(#${prefix}-metal)`}>
+          <path
+            d={path}
+            fill="none"
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={pipeOd + 2}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={path}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={pipeOd}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+        </g>
+        <PipeFlowmeter x={txX} y={txY} pipeOd={pipeOd} lit />
       </svg>
     </div>
   );
@@ -1021,6 +1263,7 @@ function SpinningAgitator({
   cavitationStrength,
 }: {
   rotorNorm: number;
+  /** 0–1 foam intensity on the discs (≥40% fill & high RPM). */
   cavitationStrength: number;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -1056,6 +1299,9 @@ function SpinningAgitator({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // Faster boil as tip speed rises — ~0.28s at onset, ~0.08s at 300 rpm
+  const cavitationPeriod = `${(0.28 - cavitationStrength * 0.2).toFixed(3)}s`;
+
   return (
     <div className="agitator" aria-hidden ref={rootRef}>
       <div className="agitator__shaft" />
@@ -1072,8 +1318,9 @@ function SpinningAgitator({
             style={
               {
                 ["--cavitation-strength" as string]: String(
-                  0.35 + cavitationStrength * 0.65,
+                  0.55 + cavitationStrength * 0.45,
                 ),
+                ["--cavitation-period" as string]: cavitationPeriod,
               } as CSSProperties
             }
           />
@@ -1082,8 +1329,9 @@ function SpinningAgitator({
             style={
               {
                 ["--cavitation-strength" as string]: String(
-                  0.4 + cavitationStrength * 0.6,
+                  0.6 + cavitationStrength * 0.4,
                 ),
+                ["--cavitation-period" as string]: cavitationPeriod,
               } as CSSProperties
             }
           />
@@ -1100,6 +1348,18 @@ function BioreactorCard(props: BioreactorCardProps) {
   const jacketMode = props.jacketMode ?? "idle";
   const doseMode = props.doseMode ?? "idle";
   const waterLevelVal = Math.min(100, Math.max(0, props.waterLevelVal ?? 92));
+  const equipment = { ...defaultEquipment(), ...props.equipment };
+  const geometry = props.geometry ?? defaultBioreactorGeometry();
+  const layout = useMemo(
+    () => layoutFromGeometry(geometry),
+    [geometry.height_m, geometry.diameter_m],
+  );
+  const airActive = Boolean(equipment.aerator && aeratorVal > 0);
+  const [airAtSparger, setAirAtSparger] = useState(false);
+  useEffect(() => {
+    if (!equipment.aerator || aeratorVal <= 0) setAirAtSparger(false);
+  }, [equipment.aerator, aeratorVal]);
+  const bubbleAeratorVal = airActive && airAtSparger ? aeratorVal : 0;
   const targetFillUnits = (waterLevelVal / 100) * VESSEL_MAX_FILL_UNITS;
 
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
@@ -1108,57 +1368,86 @@ function BioreactorCard(props: BioreactorCardProps) {
   );
 
   const waveVelocity =
-    levelVelocity + (aeratorVal / 100) * 28 + rotorNorm * 20;
+    levelVelocity + (bubbleAeratorVal / 100) * 28 + rotorNorm * 20;
 
-  // Water clip is 510px tall; sparger sits ~52px above the dish floor.
-  const fillRatio = Math.max(0.05, displayFillUnits / VESSEL_MAX_FILL_UNITS);
+  const fillRatioRaw = displayFillUnits / VESSEL_MAX_FILL_UNITS;
+  const fillRatio = Math.max(0.05, fillRatioRaw);
+  const waterPct = Math.max(0, fillRatioRaw) * 100;
   const spargerSpawnBottomPct = Math.min(
     22,
-    Math.max(9, (52 / (fillRatio * 510)) * 100),
+    Math.max(
+      9,
+      (layout.aerator.spawnBottomPctAtFull / fillRatio),
+    ),
   );
+  /** Soft foam on the discs — ≥40% fill and rotor above half speed. */
   const cavitationStrength =
-    rotorNorm > 0.5 ? Math.min(1, (rotorNorm - 0.5) / 0.5) : 0;
+    waterPct >= 40 && rotorNorm > 0.5
+      ? Math.min(1, (rotorNorm - 0.5) / 0.5)
+      : 0;
 
   return (
     <div
       style={{
         position: "absolute",
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
+        width: layout.cardWidth,
+        height: layout.cardHeight,
         transform: `translate(${props.translateX}px, ${props.translateY}px) scale(${props.scale})`,
         userSelect: "none",
+        ...layoutCssVars(layout),
       }}
       onMouseDown={(event) => {
         props.onMouseDown(event);
       }}
     >
-      <div className="wrapper">
-        <ThermalJacket mode={jacketMode} />
+      <div className="wrapper" style={layoutCssVars(layout)}>
+        {equipment.thermal_jacket ? (
+          <ThermalJacket mode={jacketMode} layout={layout} />
+        ) : null}
 
         <div className="reaction_chamber" />
 
-        <SpinningAgitator
-          rotorNorm={rotorNorm}
-          cavitationStrength={cavitationStrength}
-        />
+        {equipment.stirrer ? (
+          <SpinningAgitator
+            rotorNorm={rotorNorm}
+            cavitationStrength={cavitationStrength}
+          />
+        ) : null}
 
-        {/* Under the water layer so tips read as submerged */}
-        <div className="sensor sensor1 sensor--temp" aria-hidden>
-          <div className="sensor__port">
-            <span className="sensor__lamp sensor__lamp--ok" />
+        {equipment.sensor_temperature ? (
+          <div className="sensor sensor1 sensor--temp" aria-hidden>
+            <div className="sensor__port">
+              <span className="sensor__lamp sensor__lamp--ok" />
+            </div>
+            <div className="sensor__collar" />
+            <div className="sensor__shaft" />
+            <div className="sensor__tip" />
           </div>
-          <div className="sensor__collar" />
-          <div className="sensor__shaft" />
-          <div className="sensor__tip" />
-        </div>
-        <div className="sensor sensor2 sensor--ph" aria-hidden>
-          <div className="sensor__port">
-            <span className="sensor__lamp sensor__lamp--ok" />
+        ) : null}
+        {equipment.sensor_ph ? (
+          <div className="sensor sensor2 sensor--ph" aria-hidden>
+            <div className="sensor__port">
+              <span className="sensor__lamp sensor__lamp--ok" />
+            </div>
+            <div className="sensor__collar" />
+            <div className="sensor__shaft" />
+            <div className="sensor__tip" />
           </div>
-          <div className="sensor__collar" />
-          <div className="sensor__shaft" />
-          <div className="sensor__tip" />
-        </div>
+        ) : null}
+        {equipment.sensor_pressure ? (
+          <div className="sensor sensor--pressure" aria-hidden>
+            <div className="sensor__tx-head">
+              <span className="sensor__tx-lamp-box">
+                <span className="sensor__lamp sensor__lamp--ok" />
+              </span>
+              <span className="sensor__tx-boss" />
+            </div>
+            <div className="sensor__tx-neck" />
+            <div className="sensor__port" />
+          </div>
+        ) : null}
+
+        {equipment.outflow ? <BottomOutflow layout={layout} /> : null}
 
         <div className="br-water-clip">
           <VesselWaterBody
@@ -1167,18 +1456,35 @@ function BioreactorCard(props: BioreactorCardProps) {
             showSurface={displayFillUnits / VESSEL_MAX_FILL_UNITS < 0.98}
             bubbleCount={0}
           />
-          <StirredBubbleField
-            aeratorVal={aeratorVal}
-            rotorNorm={rotorNorm}
-            fillRatio={Math.min(1, displayFillUnits / VESSEL_MAX_FILL_UNITS)}
-            spawnBottomPct={spargerSpawnBottomPct}
-            spawnLeftRange={[26, 74]}
-          />
+          {equipment.aerator || equipment.stirrer ? (
+            <StirredBubbleField
+              aeratorVal={equipment.aerator ? bubbleAeratorVal : 0}
+              rotorNorm={equipment.stirrer ? rotorNorm : 0}
+              fillRatio={Math.min(1, displayFillUnits / VESSEL_MAX_FILL_UNITS)}
+              spawnBottomPct={spargerSpawnBottomPct}
+              spawnLeftRange={[26, 74]}
+              impellerLowerFromBottom={layout.impeller.lowerFromBottom}
+              impellerUpperFromBottom={layout.impeller.upperFromBottom}
+              clipHeightPx={layout.impeller.clipHeight}
+            />
+          ) : null}
         </div>
 
-        <BaseAcidSupplyPipe mode={doseMode} fillUnits={displayFillUnits} />
+        {equipment.dosing ? (
+          <BaseAcidSupplyPipe
+            mode={doseMode}
+            fillUnits={displayFillUnits}
+            layout={layout}
+          />
+        ) : null}
 
-        <AeratorSupply aeratorVal={aeratorVal} />
+        {equipment.aerator ? (
+          <AeratorSupply
+            aeratorVal={aeratorVal}
+            layout={layout}
+            onAirAtSpargerChange={setAirAtSparger}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -1187,4 +1493,5 @@ function BioreactorCard(props: BioreactorCardProps) {
 BioreactorCard.displayName = "BioreactorCard";
 export default BioreactorCard;
 
-export { CARD_HEIGHT, CARD_WIDTH };
+export const CARD_WIDTH = 800;
+export const CARD_HEIGHT = 750;

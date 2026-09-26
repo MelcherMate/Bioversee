@@ -1,10 +1,10 @@
 .wrapper {
   display: block;
   position: relative;
-  margin-top: 200px;
-  margin-left: 175px;
-  width: 442px;
-  height: 521px;
+  margin-top: var(--br-wrapper-mt, 200px);
+  margin-left: var(--br-wrapper-ml, 175px);
+  width: var(--br-wrapper-w, 442px);
+  height: var(--br-wrapper-h, 521px);
 }
 
 /* THERMAL JACKET — SVG shell follows vessel; pipe-matched metal */
@@ -17,10 +17,10 @@
 
 .thermal-jacket__svg {
   position: absolute;
-  left: -130px;
-  top: -140px;
-  width: 702px;
-  height: 620px;
+  left: var(--br-jacket-svg-left, -130px);
+  top: var(--br-jacket-svg-top, -140px);
+  width: var(--br-jacket-svg-w, 702px);
+  height: var(--br-jacket-svg-h, 620px);
   overflow: visible;
 }
 
@@ -43,30 +43,35 @@
   }
 }
 
-/* REACTOR BODY — sits inside the jacket U */
+/* REACTOR BODY — oval capsule; pipe-matched grey shell */
 .reaction_chamber {
   display: block;
   position: absolute;
-  top: -120px;
-  left: 20px;
-  width: 402px;
-  height: 550px;
+  top: var(--br-chamber-top, -120px);
+  left: var(--br-chamber-left, 20px);
+  width: var(--br-chamber-w, 402px);
+  height: var(--br-chamber-h, 550px);
   box-sizing: border-box;
-  border: 20px solid #9a9a9a;
-  border-radius: 169px;
+  border: var(--br-chamber-border, 20px) solid #a1a1aa;
+  border-radius: var(--br-chamber-radius, 169px);
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 1px #71717a,
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 1px #52525b;
   z-index: 1;
 }
 
 /* Full inner chamber — capsule clip so fill can reach the dome */
 .br-water-clip {
   position: absolute;
-  top: -100px;
-  left: 40px;
+  top: var(--br-water-top, -100px);
+  left: var(--br-water-left, 40px);
   z-index: 2;
-  width: 362px;
-  height: 510px;
+  width: var(--br-water-w, 362px);
+  height: var(--br-water-h, 510px);
   overflow: hidden;
-  border-radius: 149px;
+  border-radius: var(--br-water-radius, 149px);
   pointer-events: none;
 }
 
@@ -76,26 +81,125 @@
   align-items: center;
   flex-direction: column;
   position: absolute;
-  top: -160px;
-  width: 16px;
-  /* Tip sits about level with the bottom of the lower rotor */
-  height: 500px;
+  top: var(--br-sensor-top, -160px);
+  width: var(--br-sensor-w, 16px);
+  height: var(--br-sensor-h, 420px);
   z-index: 2;
   pointer-events: none;
 }
 
 .sensor1 {
-  right: 72px;
+  right: var(--br-sensor-right-1, 72px);
 }
 
 .sensor2 {
-  right: 94px;
+  right: var(--br-sensor-right-2, 94px);
+}
+
+/* Headspace pressure transmitter — yellow industrial TX on the lid apex */
+.sensor--pressure {
+  top: var(--br-pressure-top, -162px);
+  left: var(--br-pressure-left, 163px);
+  right: auto;
+  width: 32px;
+  height: auto;
+  z-index: 4;
+  /* Port sits into the vessel wall; head + neck stay above */
+  transform: translateY(10px);
+}
+
+.sensor__tx-head {
+  position: relative;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 26px;
+  border-radius: 6px;
+  background: linear-gradient(
+    180deg,
+    #f5d76e 0%,
+    #e8b923 42%,
+    #c99212 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+.sensor__tx-lamp-box {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #141414 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sensor--pressure .sensor__tx-lamp-box .sensor__lamp {
+  position: static;
+  top: auto;
+  left: auto;
+  margin: 0;
+  width: 6px;
+  height: 6px;
+}
+
+.sensor__tx-boss {
+  position: absolute;
+  top: 7px;
+  right: -5px;
+  width: 9px;
+  height: 12px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #4a4a4a, #1a1a1a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.sensor__tx-neck {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 14px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    #d8d8d8 0%,
+    #f4f4f4 40%,
+    #a8a8a8 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.sensor--pressure .sensor__port {
+  width: 20px;
+  height: 18px;
+  margin-top: -1px;
+  border-radius: 2px;
+  /* Extends into the vessel wall / headspace */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.sensor--pressure .sensor__lamp {
+  top: 3px;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
 }
 
 .sensor__port {
   position: relative;
   flex: 0 0 auto;
-  width: 16px;
+  width: var(--br-sensor-w, 16px);
   height: 22px;
   border-radius: 3px 3px 2px 2px;
   background: linear-gradient(
@@ -207,10 +311,10 @@
 /* AGITATOR — side-view Rushton turbines (disc + vertical blades) */
 .agitator {
   position: absolute;
-  top: -160px;
-  left: 124px;
-  width: 195px;
-  height: 600px;
+  top: var(--br-agitator-top, -160px);
+  left: var(--br-agitator-left, 124px);
+  width: var(--br-agitator-w, 195px);
+  height: var(--br-agitator-h, 600px);
   z-index: 1;
   pointer-events: none;
 }
@@ -220,8 +324,7 @@
   left: 50%;
   top: 0;
   width: 6px;
-  /* Ends just under the lower rotor hub */
-  height: 485px;
+  height: var(--br-shaft-h, 485px);
   margin-left: -3px;
   border-radius: 3px;
   background: linear-gradient(
@@ -238,19 +341,18 @@
 .agitator__stage {
   position: absolute;
   left: 50%;
-  width: 190px;
-  height: 64px;
-  margin-left: -95px;
+  width: var(--br-stage-w, 190px);
+  height: var(--br-stage-h, 64px);
+  margin-left: calc(var(--br-stage-w, 190px) / -2);
   z-index: 3;
 }
 
-/* Wrapper Y centers ≈ 230 and 320 — lower one sits just above the sparger */
 .agitator__stage--upper {
-  top: 362px;
+  top: var(--br-stage-upper-top, 362px);
 }
 
 .agitator__stage--lower {
-  top: 435px;
+  top: var(--br-stage-lower-top, 435px);
 }
 
 .agitator__rotor {
@@ -260,61 +362,53 @@
   overflow: visible;
 }
 
-/* Cavitation foam around impellers when rotor > 50% */
+/* Soft bubble foam over each impeller disc (not a particle ring) */
 .agitator__cavitation {
   position: absolute;
   left: 50%;
-  width: 210px;
+  width: var(--br-cavitation-w, 210px);
   height: 72px;
-  margin-left: -105px;
+  margin-left: calc(var(--br-cavitation-w, 210px) / -2);
   pointer-events: none;
   z-index: 4;
   border-radius: 50%;
   opacity: 0;
-  background:
+  background-image:
     radial-gradient(
       ellipse 70% 55% at 50% 50%,
-      rgba(255, 255, 255, 0.55) 0%,
-      rgba(255, 255, 255, 0.18) 38%,
-      transparent 68%
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.28) 40%,
+      transparent 70%
     ),
-    radial-gradient(
-      circle at 28% 42%,
-      rgba(255, 255, 255, 0.7) 0 2px,
-      transparent 3px
-    ),
-    radial-gradient(
-      circle at 62% 58%,
-      rgba(255, 255, 255, 0.65) 0 1.5px,
-      transparent 2.5px
-    ),
-    radial-gradient(
-      circle at 44% 30%,
-      rgba(255, 255, 255, 0.8) 0 1px,
-      transparent 2px
-    ),
-    radial-gradient(
-      circle at 74% 40%,
-      rgba(255, 255, 255, 0.75) 0 1.5px,
-      transparent 2.5px
-    ),
-    radial-gradient(
-      circle at 18% 60%,
-      rgba(255, 255, 255, 0.7) 0 1px,
-      transparent 2px
-    );
-  background-size: 100% 100%, 28px 28px, 34px 34px, 22px 22px, 30px 30px, 26px 26px;
-  filter: blur(0.3px);
-  mix-blend-mode: soft-light;
-  animation: agitator-cavitation-boil 0.55s steps(3) infinite;
+    radial-gradient(circle, rgba(255, 255, 255, 1) 0 1.6px, transparent 2px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 1.2px, transparent 1.7px),
+    radial-gradient(circle, rgba(255, 255, 255, 1) 0 2px, transparent 2.5px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.88) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(255, 255, 255, 1) 0 1.4px, transparent 1.9px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 1.8px, transparent 2.3px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.98) 0 1.1px, transparent 1.6px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.85) 0 2.2px, transparent 2.7px);
+  background-size:
+    100% 100%,
+    36px 28px,
+    42px 32px,
+    30px 26px,
+    48px 34px,
+    38px 30px,
+    44px 28px,
+    32px 36px,
+    40px 30px;
+  background-repeat: no-repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat;
+  mix-blend-mode: normal;
+  animation: agitator-cavitation-boil var(--cavitation-period, 0.22s) linear infinite;
 }
 
 .agitator__cavitation--upper {
-  top: 356px;
+  top: calc(var(--br-stage-upper-top, 362px) - 4px);
 }
 
 .agitator__cavitation--lower {
-  top: 429px;
+  top: calc(var(--br-stage-lower-top, 435px) - 4px);
 }
 
 .agitator__cavitation.is-on {
@@ -323,16 +417,39 @@
 
 @keyframes agitator-cavitation-boil {
   0% {
-    background-position: 0 0, 0 0, 8px 4px, 0 6px, 10px 0, 4px 8px;
-    transform: scaleX(1) scaleY(1);
+    background-position:
+      0 0,
+      0 0, 8px 4px, 14px 10px, 4px 16px,
+      20px 2px, 12px 18px, 2px 12px, 18px 8px;
+    transform: scaleX(1) scaleY(1) rotate(0deg);
+  }
+  25% {
+    background-position:
+      0 0,
+      4px 2px, 12px 0, 8px 14px, 0 10px,
+      16px 8px, 6px 12px, 10px 4px, 22px 2px;
+    transform: scaleX(1.04) scaleY(0.97) rotate(0.4deg);
   }
   50% {
-    background-position: 0 0, 6px 3px, 0 8px, 5px 0, 0 6px, 9px 2px;
-    transform: scaleX(1.06) scaleY(0.94);
+    background-position:
+      0 0,
+      8px 4px, 0 8px, 18px 2px, 10px 0,
+      4px 14px, 20px 6px, 14px 16px, 2px 10px;
+    transform: scaleX(1.06) scaleY(0.94) rotate(0deg);
+  }
+  75% {
+    background-position:
+      0 0,
+      12px 0, 6px 12px, 2px 6px, 16px 8px,
+      10px 2px, 0 4px, 18px 10px, 8px 14px;
+    transform: scaleX(0.98) scaleY(1.03) rotate(-0.4deg);
   }
   100% {
-    background-position: 0 0, 12px 0, 4px 0, 8px 4px, 6px 8px, 0 4px;
-    transform: scaleX(0.97) scaleY(1.05);
+    background-position:
+      0 0,
+      0 0, 8px 4px, 14px 10px, 4px 16px,
+      20px 2px, 12px 18px, 2px 12px, 18px 8px;
+    transform: scaleX(1) scaleY(1) rotate(0deg);
   }
 }
 
@@ -352,8 +469,8 @@
 
 .base-acid-pipe-run {
   position: absolute;
-  left: -108px;
-  top: -163px;
+  left: var(--br-dose-left, -108px);
+  top: var(--br-dose-top, -163px);
   width: 280px;
   height: 140px;
   overflow: visible;
@@ -394,10 +511,10 @@
 
 .aerator-supply__pipe {
   position: absolute;
-  left: -110px;
-  top: -55px;
-  width: 360px;
-  height: 500px;
+  left: var(--br-aerator-left, -110px);
+  top: var(--br-aerator-top, -55px);
+  width: var(--br-aerator-w, 360px);
+  height: var(--br-aerator-h, 500px);
   overflow: visible;
 }
 
@@ -415,4 +532,21 @@
   .aerator-supply__flow-dash {
     animation: none;
   }
+}
+
+/* BOTTOM OUTFLOW — elbow under the dish */
+.br-outflow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.br-outflow__svg {
+  position: absolute;
+  overflow: visible;
+}
+
+.br-outflow__tx {
+  pointer-events: none;
 }

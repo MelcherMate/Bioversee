@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { DEVICE_TYPE_META, DEVICE_TYPE_ORDER } from "../../lib/deviceIcons";
-import {
-  createMyDevice,
-  isLegacyDeviceType,
-  isNewDeviceType,
-  type DeviceType,
-} from "../../lib/devices";
+import { DEVICE_TYPE_META } from "../../lib/deviceIcons";
+import { createMyDevice, type DeviceType } from "../../lib/devices";
 import {
   isOnboardingDoneLocal,
   markOnboardingCompleted,
@@ -32,7 +27,7 @@ function OnboardingModal({ user }: OnboardingModalProps) {
   const [visible, setVisible] = useState(false);
   const [checking, setChecking] = useState(true);
   const [step, setStep] = useState<Step>("welcome");
-  const [type, setType] = useState<DeviceType>("bioreactor");
+  const type: DeviceType = "bioreactor";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -163,39 +158,21 @@ function OnboardingModal({ user }: OnboardingModalProps) {
               role="listbox"
               aria-label={t("addDevice.type")}
             >
-              {DEVICE_TYPE_ORDER.map((deviceType) => {
-                const meta = DEVICE_TYPE_META[deviceType];
-                const active = type === deviceType;
-                return (
-                  <button
-                    key={deviceType}
-                    type="button"
-                    role="option"
-                    aria-selected={active}
-                    className={`onboarding__type ${active ? "is-active" : ""}`}
-                    onClick={() => setType(deviceType)}
-                  >
-                    <span className="onboarding__type-text">
-                      <span className="onboarding__type-label">
-                        {t(meta.labelKey)}
-                      </span>
-                      <span className="onboarding__type-desc">
-                        {t(meta.descriptionKey)}
-                      </span>
-                    </span>
-                    {isNewDeviceType(deviceType) ? (
-                      <span className="onboarding__badge onboarding__badge--new">
-                        {t("common.new")}
-                      </span>
-                    ) : null}
-                    {isLegacyDeviceType(deviceType) ? (
-                      <span className="onboarding__badge onboarding__badge--legacy">
-                        {t("common.legacy")}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
+              <button
+                type="button"
+                role="option"
+                aria-selected
+                className="onboarding__type is-active"
+              >
+                <span className="onboarding__type-text">
+                  <span className="onboarding__type-label">
+                    {t(DEVICE_TYPE_META.bioreactor.labelKey)}
+                  </span>
+                  <span className="onboarding__type-desc">
+                    {t(DEVICE_TYPE_META.bioreactor.descriptionKey)}
+                  </span>
+                </span>
+              </button>
             </div>
             <div className="onboarding__actions">
               <button

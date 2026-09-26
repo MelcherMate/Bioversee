@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  CreateOutline,
   ExitOutline,
   SettingsOutline,
   ShareSocialOutline,
@@ -82,38 +81,23 @@ function DeviceContextMenu({
       aria-label={t("deviceMenu.options", { name: device.name })}
     >
       <p className="device-ctx__name">{device.name}</p>
-      {canAdmin ? (
-        <button
-          type="button"
-          className="device-ctx__item"
-          role="menuitem"
-          onClick={() => {
-            onSettings(device);
-            onClose();
-          }}
-        >
-          <CreateOutline color={iconColor} height="16px" width="16px" title="" />
-          {t("deviceMenu.rename")}
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="device-ctx__item"
-          role="menuitem"
-          onClick={() => {
-            onSettings(device);
-            onClose();
-          }}
-        >
-          <SettingsOutline
-            color={iconColor}
-            height="16px"
-            width="16px"
-            title=""
-          />
-          {t("deviceMenu.settings")}
-        </button>
-      )}
+      <button
+        type="button"
+        className="device-ctx__item"
+        role="menuitem"
+        onClick={() => {
+          onSettings(device);
+          onClose();
+        }}
+      >
+        <SettingsOutline
+          color={iconColor}
+          height="16px"
+          width="16px"
+          title=""
+        />
+        {t("deviceMenu.settings")}
+      </button>
       {canAdmin ? (
         <button
           type="button"

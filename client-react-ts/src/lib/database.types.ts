@@ -68,6 +68,7 @@ export type Database = {
           owner_id: string;
           type: DeviceType;
           name: string;
+          config: Json;
           created_at: string;
           updated_at: string;
         };
@@ -76,6 +77,7 @@ export type Database = {
           owner_id: string;
           type: DeviceType;
           name: string;
+          config?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -84,6 +86,7 @@ export type Database = {
           owner_id?: string;
           type?: DeviceType;
           name?: string;
+          config?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -342,6 +345,10 @@ export type Database = {
       rename_my_device: {
         Args: { p_device_id: string; p_name: string };
         Returns: undefined;
+      };
+      update_my_device_config: {
+        Args: { p_device_id: string; p_config: Json };
+        Returns: Json;
       };
       leave_device: {
         Args: { p_device_id: string };

@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { avatarForAccount } from "./accountSessions";
+import type { Json } from "./database.types";
 
 export type DeviceType =
   | "bioreactor"
@@ -12,6 +13,8 @@ export type Device = {
   owner_id: string;
   type: DeviceType;
   name: string;
+  /** Type-specific JSON (e.g. bioreactor geometry). */
+  config: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 };
@@ -43,14 +46,33 @@ const DEVICE_TYPES: DeviceType[] = [
   "water_purifier",
 ];
 
+const DEVICE_SELECT =
+  "id, owner_id, type, name, config, created_at, updated_at";
+
+function mapDevice(row: Record<string, unknown>): Device {
+  const config =
+    row.config && typeof row.config === "object" && !Array.isArray(row.config)
+      ? (row.config as Record<string, unknown>)
+      : {};
+  return {
+    id: String(row.id),
+    owner_id: String(row.owner_id),
+    type: row.type as DeviceType,
+    name: String(row.name),
+    config,
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+  };
+}
+
 export async function listMyDevices(): Promise<Device[]> {
   const { data, error } = await supabase
     .from("devices")
-    .select("id, owner_id, type, name, created_at, updated_at")
+    .select(DEVICE_SELECT)
     .order("created_at", { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as Device[];
+  return (data ?? []).map((row) => mapDevice(row as Record<string, unknown>));
 }
 
 /**
@@ -66,7 +88,7 @@ export async function getMyDevice(type: DeviceType): Promise<Device | null> {
 
   const { data, error } = await supabase
     .from("devices")
-    .select("id, owner_id, type, name, created_at, updated_at")
+    .select(DEVICE_SELECT)
     .eq("type", type)
     .eq("owner_id", user.id)
     .order("created_at", { ascending: true })
@@ -74,7 +96,7 @@ export async function getMyDevice(type: DeviceType): Promise<Device | null> {
     .maybeSingle();
 
   if (error) throw error;
-  return (data as Device | null) ?? null;
+  return data ? mapDevice(data as Record<string, unknown>) : null;
 }
 
 async function withMembership(
@@ -118,14 +140,14 @@ export async function getDeviceForPage(
   if (preferredId) {
     const { data, error } = await supabase
       .from("devices")
-      .select("id, owner_id, type, name, created_at, updated_at")
+      .select(DEVICE_SELECT)
       .eq("id", preferredId)
       .eq("type", type)
       .maybeSingle();
 
     if (error) throw error;
     if (!data) return null;
-    return withMembership(data as Device);
+    return withMembership(mapDevice(data as Record<string, unknown>));
   }
 
   const owned = await getMyDevice(type);
@@ -146,14 +168,15 @@ export async function getMyDevicesByType(): Promise<
 
   const { data, error } = await supabase
     .from("devices")
-    .select("id, owner_id, type, name, created_at, updated_at")
+    .select(DEVICE_SELECT)
     .eq("owner_id", user.id)
     .order("created_at", { ascending: true });
 
   if (error) throw error;
 
   const byType: Partial<Record<DeviceType, Device>> = {};
-  for (const device of (data ?? []) as Device[]) {
+  for (const row of data ?? []) {
+    const device = mapDevice(row as Record<string, unknown>);
     if (!byType[device.type]) {
       byType[device.type] = device;
     }
@@ -185,13 +208,15 @@ export async function listAccessibleDevices(): Promise<AccessibleDevice[]> {
 
   const { data, error } = await supabase
     .from("devices")
-    .select("id, owner_id, type, name, created_at, updated_at")
+    .select(DEVICE_SELECT)
     .in("id", ids)
     .order("name", { ascending: true });
 
   if (error) throw error;
 
-  const devices = (data ?? []) as Device[];
+  const devices = (data ?? []).map((row) =>
+    mapDevice(row as Record<string, unknown>),
+  );
   const ownerIds = [
     ...new Set(
       devices.filter((device) => device.owner_id !== user.id).map((d) => d.owner_id)
@@ -281,6 +306,21 @@ export async function renameMyDevice(
     p_name: name,
   });
   if (error) throw error;
+}
+
+export async function updateMyDeviceConfig(
+  deviceId: string,
+  configPatch: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.rpc("update_my_device_config", {
+    p_device_id: deviceId,
+    p_config: configPatch as Json,
+  });
+  if (error) throw error;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
+  }
+  return configPatch;
 }
 
 export async function leaveDevice(deviceId: string): Promise<void> {

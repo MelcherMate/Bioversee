@@ -3,7 +3,9 @@
   flex-direction: column;
   gap: 10px;
   margin: 0;
-  padding: 10px 2px;
+  padding: 12px 14px 14px;
+  background: var(--bv-card);
+  box-sizing: border-box;
 }
 
 .bv-slider + .bv-slider {
@@ -18,18 +20,18 @@
 }
 
 .bv-slider__label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 400;
   letter-spacing: -0.01em;
-  color: var(--bv-text-secondary);
+  color: var(--bv-text);
 }
 
 .bv-slider__value {
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  color: var(--bv-accent);
+  color: var(--bv-text-secondary);
   --bv-num-duration: 280ms;
 }
 
