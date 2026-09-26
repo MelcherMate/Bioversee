@@ -15,10 +15,14 @@ function bioverseePiSetupPlugin(mode: string): Plugin {
     const env = loadEnv(mode, __dirname, "");
     const supabaseUrl = env.VITE_SUPABASE_URL?.trim() ?? "";
     const supabaseKey = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
-    const publicUrl = (env.VITE_PUBLIC_URL?.trim() || "https://bioversee.com").replace(
+    const rawPublic = (env.VITE_PUBLIC_URL?.trim() || "https://www.bioversee.com").replace(
       /\/$/,
       ""
     );
+    // Installer must self-fetch from the public site (not a Vercel preview URL).
+    const publicUrl = rawPublic.includes("vercel.app")
+      ? "https://www.bioversee.com"
+      : rawPublic;
     const setupVersion = "1.1.2";
     const setupShUrl = `${publicUrl}/downloads/bioversee-pi-setup.sh`;
 
