@@ -4,23 +4,53 @@ import { useTranslation } from "react-i18next";
 import Logo from "../../utils/svgs/new_logo.svg";
 import "./PiSetup.css";
 
+const SETUP_HREF = "/downloads/bioversee-pi-setup.sh";
+const SETUP_FILENAME = "bioversee-pi-setup.sh";
+
 function PiSetup() {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   const command = useMemo(
     () =>
-      `curl -fsSL ${window.location.origin}/downloads/bioversee-pi-setup.sh | bash`,
+      `curl -fsSL ${window.location.origin}${SETUP_HREF} | bash`,
     []
   );
 
+  const triggerDownload = () => {
+    // Force a file download (Vercel also sends Content-Disposition: attachment).
+    const a = document.createElement("a");
+    a.href = SETUP_HREF;
+    a.download = SETUP_FILENAME;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setDownloaded(true);
+    window.setTimeout(() => setDownloaded(false), 2500);
+  };
+
   const copyCommand = async () => {
     try {
-      await navigator.clipboard.writeText(command);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(command);
+      } else {
+        throw new Error("clipboard unavailable");
+      }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2500);
     } catch {
-      /* ignore */
+      // Fallback for Pi browsers / non-secure contexts where clipboard is blocked.
+      const pre = document.getElementById("pi-setup-cmd");
+      if (pre) {
+        const range = document.createRange();
+        range.selectNodeContents(pre);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+      window.prompt(t("piSetup.copyFallback"), command);
     }
   };
 
@@ -34,7 +64,15 @@ function PiSetup() {
 
         <button
           type="button"
-          className={`pi-setup__btn${copied ? " is-copied" : ""}`}
+          className={`pi-setup__btn${downloaded ? " is-copied" : ""}`}
+          onClick={triggerDownload}
+        >
+          {downloaded ? t("piSetup.downloaded") : t("piSetup.download")}
+        </button>
+
+        <button
+          type="button"
+          className={`pi-setup__btn pi-setup__btn--ghost${copied ? " is-copied" : ""}`}
           onClick={copyCommand}
         >
           {copied ? t("piSetup.copied") : t("piSetup.copyCommand")}
@@ -55,7 +93,7 @@ function PiSetup() {
           </li>
         </ol>
 
-        <pre className="pi-setup__cmd" tabIndex={0}>
+        <pre className="pi-setup__cmd" id="pi-setup-cmd" tabIndex={0}>
           {command}
         </pre>
 

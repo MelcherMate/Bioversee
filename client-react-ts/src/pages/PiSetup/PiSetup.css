@@ -78,6 +78,23 @@
   background: var(--bv-accent);
 }
 
+.pi-setup__btn--ghost {
+  margin-top: 10px;
+  background: transparent;
+  color: var(--bv-text);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.pi-setup__btn--ghost:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.pi-setup__btn--ghost.is-copied {
+  background: var(--bv-accent-soft);
+  color: var(--bv-accent);
+  box-shadow: none;
+}
+
 .pi-setup__steps {
   list-style: none;
   margin: 28px 0 18px;
