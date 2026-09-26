@@ -269,6 +269,9 @@
     "alreadyMemberBody": "You already have access to this device.",
     "failedBody": "This invite link is invalid or expired."
   },
+  "landing": {
+    "backToControls": "Back to controls"
+  },
   "process": {
     "loadingBioreactor": "Loading your bioreactor…",
     "loadingWaterPurifier": "Loading your water purifier…",
@@ -334,7 +337,7 @@
     "piCaption": "A compact edge device for local monitoring and control when you are next to the process.",
     "piDownload": "Install on this Pi",
     "piDownloadSoon": "Coming soon",
-    "piDownloadHint": "Opens the install page — download the installer or paste one Terminal command.",
+    "piDownloadHint": "Latest version: v1.3 — installer download opens when it’s ready.",
     "storyKicker": "About",
     "storyTitle": "Built by an engineer, for engineers",
     "founder": "Founder",

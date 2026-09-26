@@ -269,6 +269,9 @@
     "alreadyMemberBody": "Már van hozzáférése ehhez az eszközhöz.",
     "failedBody": "Ez a meghívó link érvénytelen vagy lejárt."
   },
+  "landing": {
+    "backToControls": "Vissza a vezérléshez"
+  },
   "process": {
     "loadingBioreactor": "Bioreaktor betöltése…",
     "loadingWaterPurifier": "Vízkezelő betöltése…",
@@ -334,7 +337,7 @@
     "piCaption": "Kompakt edge eszköz helyi megfigyeléshez és vezérléshez, amikor a folyamat mellett van.",
     "piDownload": "Telepítés ezen a Pi-n",
     "piDownloadSoon": "Hamarosan",
-    "piDownloadHint": "Megnyitja a telepítő oldalt — töltse le a telepítőt, vagy illesszen be egy Terminál-parancsot.",
+    "piDownloadHint": "Legújabb verzió: v1.3 — a telepítő letöltése, amint kész.",
     "storyKicker": "Rólunk",
     "storyTitle": "Mérnöknek, mérnök által",
     "founder": "Alapító",

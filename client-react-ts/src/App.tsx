@@ -176,9 +176,11 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
     pathname === "/pi-setup" ||
     pathname === "/pi-login" ||
     (pathname === "/" && !user);
-  const showChrome = Boolean(user) && !addingAccount && !onIosAuth;
+  // App chrome (device + / settings) only outside the marketing landing pages.
+  const showChrome =
+    Boolean(user) && !addingAccount && !onIosAuth && !onLanding;
   const showMarketingHeader =
-    onLanding && !user && pathname !== "/pi-setup" && pathname !== "/pi-login";
+    pathname === "/about" || (pathname === "/" && !user);
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
 
   const loginRedirect = (next: string) => (
@@ -195,7 +197,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
         .filter(Boolean)
         .join(" ")}
     >
-      {showMarketingHeader && <MarketingHeader />}
+      {showMarketingHeader && <MarketingHeader user={user} />}
       {showChrome && user && <Navbar user={user} />}
       <div className={`page-slot${onLanding ? " page-slot--landing" : ""}`}>
         <Routes>

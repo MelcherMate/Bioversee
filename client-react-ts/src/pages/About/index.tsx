@@ -109,9 +109,15 @@ function About() {
               {t("about.piTitle")}
             </h2>
             <p className="landing-lede">{t("about.piBody")}</p>
-            <Link to="/pi-setup" className="landing-btn landing-btn--primary">
-              {t("about.piDownload")}
-            </Link>
+            <button
+              type="button"
+              className="landing-btn landing-btn--primary landing-btn--disabled"
+              disabled
+              aria-disabled="true"
+              title={t("about.piDownloadSoon")}
+            >
+              {t("about.piDownloadSoon")}
+            </button>
             <p className="landing-soon">{t("about.piDownloadHint")}</p>
           </div>
         </div>

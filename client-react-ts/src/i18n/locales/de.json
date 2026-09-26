@@ -269,6 +269,9 @@
     "alreadyMemberBody": "Sie haben bereits Zugriff auf dieses Gerät.",
     "failedBody": "Dieser Einladungslink ist ungültig oder abgelaufen."
   },
+  "landing": {
+    "backToControls": "Zurück zur Steuerung"
+  },
   "process": {
     "loadingBioreactor": "Bioreaktor wird geladen…",
     "loadingWaterPurifier": "Wasseraufbereitung wird geladen…",
@@ -334,7 +337,7 @@
     "piCaption": "Ein kompaktes Edge-Gerät für lokale Überwachung und Steuerung direkt am Prozess.",
     "piDownload": "Auf diesem Pi installieren",
     "piDownloadSoon": "Demnächst verfügbar",
-    "piDownloadHint": "Öffnet die Installationsseite — Installer herunterladen oder einen Terminal-Befehl einfügen.",
+    "piDownloadHint": "Aktuelle Version: v1.3 — Installer-Download, sobald er bereit ist.",
     "storyKicker": "Über uns",
     "storyTitle": "Von einem Ingenieur für Ingenieure",
     "founder": "Gründer",

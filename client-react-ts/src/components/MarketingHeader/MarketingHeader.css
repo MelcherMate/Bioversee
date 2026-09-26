@@ -27,6 +27,51 @@
   min-width: 0;
 }
 
+.mkt-header__start {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mkt-header__back {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: var(--bv-cta);
+  color: var(--bv-cta-text);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.2s var(--bv-ease),
+    transform 0.2s var(--bv-ease);
+}
+
+.mkt-header__back:hover {
+  background: var(--bv-cta-hover);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 520px) {
+  .mkt-header__back {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .mkt-header__name {
+    display: none;
+  }
+}
+
+.mkt-header__account {
+  position: relative;
+}
+
 .mkt-header__mark {
   flex-shrink: 0;
   width: 36px;
