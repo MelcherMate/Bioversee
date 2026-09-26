@@ -40,7 +40,7 @@ python3 -m venv "${PREFIX}/.venv"
 "${PREFIX}/.venv/bin/pip" install -e "${PREFIX}[pi]" || \
   "${PREFIX}/.venv/bin/pip" install -e "${PREFIX}"
 
-if [[ ! -f "${ENV_FILE}" ]]; then
+if [[ ! -f "${ENV_FILE}" ]] || [[ -n "${BIOVERSEE_SUPABASE_URL:-}" ]]; then
   cat > "${ENV_FILE}" <<EOF
 BIOVERSEE_SUPABASE_URL=${BIOVERSEE_SUPABASE_URL:-}
 BIOVERSEE_SUPABASE_ANON_KEY=${BIOVERSEE_SUPABASE_ANON_KEY:-}

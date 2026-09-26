@@ -1,14 +1,27 @@
 # Bioversee Raspberry Pi app
 
+**Version: v1.1** (`1.1.1`)
+
 Setup wizard and monitoring agent that binds a Raspberry Pi to a Bioversee device, maps GPIO wiring, and syncs sensors/actuators through Supabase.
 
-## What you get
+## Recommended install (from the website)
+
+On the Raspberry Pi, open the Bioversee landing page and click **Download setup**. Then:
+
+```bash
+bash bioversee-pi-setup
+```
+
+That setup app downloads this package, installs it, and already points at the main Bioversee Supabase project — you only sign in and wire devices.
+
+## Manual / developer install
 
 1. **Setup wizard** (browser at `http://<pi>:8787`)
    - Sign in / create a Bioversee account
    - Pick which process device this Pi controls
    - Live **40-pin GPIO** view — highlights pins when hardware is detected, guesses the peripheral, asks you to confirm
    - Enables the agent to start on boot
+   - **Check / pull updates** from GitHub (shows current version in the header)
 2. **`bioversee-agent`** (systemd) — reads sensors, applies actuator commands, talks to `pi-ingest`
 
 ## Cloud setup (once)
@@ -43,6 +56,23 @@ sudo systemctl status bioversee-wizard
 ```
 
 Config is stored at `~/.config/bioversee/config.toml` (API key mode `0600`).
+
+## Updates
+
+Version is tracked in [`VERSION`](./VERSION) (this release is **1.1.1** → displayed as **v1.1**).
+
+From the wizard UI: **Check** → **Update now**.
+
+From the shell on the Pi:
+
+```bash
+bioversee-update check
+sudo bioversee-update apply
+# or
+sudo ./packaging/update.sh
+```
+
+Updates download `MelcherMate/Bioversee` (`master` / `raspberry-pi-app`), replace `/opt/bioversee-pi`, reinstall the package, and restart services. Bump `VERSION` (and `pyproject.toml` / `bioversee_pi/version.py`) whenever you ship a new build, then push to GitHub so Pis can detect it.
 
 ## Develop on a Mac / PC
 

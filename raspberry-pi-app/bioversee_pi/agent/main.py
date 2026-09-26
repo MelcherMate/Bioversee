@@ -8,6 +8,8 @@ from bioversee_pi.agent.drivers import read_sensor, set_actuator
 from bioversee_pi.config import AppSettings, load_local_config
 from bioversee_pi.devices import DevicesError, pi_ingest
 
+from bioversee_pi.version import display_version
+
 log = logging.getLogger("bioversee.agent")
 
 
@@ -26,7 +28,12 @@ async def run_loop(poll_seconds: float = 5.0) -> None:
         )
         return
 
-    log.info("Agent started for device %s (%s)", cfg.device_id, cfg.device_name)
+    log.info(
+        "Agent started for device %s (%s) — %s",
+        cfg.device_id,
+        cfg.device_name,
+        display_version(),
+    )
     last_switches: dict[str, bool] = {}
     last_sliders: dict[str, float] = {}
 

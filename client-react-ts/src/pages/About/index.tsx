@@ -111,9 +111,8 @@ function About() {
             <p className="landing-lede">{t("about.piBody")}</p>
             <a
               className="landing-btn landing-btn--primary"
-              href="https://github.com/MelcherMate/Bioversee/tree/master/raspberry-pi-app#install-on-a-raspberry-pi"
-              target="_blank"
-              rel="noreferrer"
+              href="/downloads/bioversee-pi-setup"
+              download="bioversee-pi-setup"
             >
               {t("about.piDownload")}
             </a>

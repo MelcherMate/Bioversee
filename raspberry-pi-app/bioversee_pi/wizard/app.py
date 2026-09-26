@@ -27,6 +27,8 @@ from bioversee_pi.devices import (
 from bioversee_pi.gpio.catalog import catalog_as_dict
 from bioversee_pi.gpio.header import header_as_dict
 from bioversee_pi.gpio.probe import probe_service
+from bioversee_pi.updater import apply_update, check_for_update
+from bioversee_pi.version import __version__, display_version
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -38,7 +40,7 @@ if not settings.supabase_anon_key:
         "VITE_SUPABASE_PUBLISHABLE_KEY", ""
     )
 
-app = FastAPI(title="Bioversee Pi Setup", version="0.1.0")
+app = FastAPI(title="Bioversee Pi Setup", version=__version__)
 app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 
 
@@ -86,6 +88,8 @@ async def index() -> FileResponse:
 async def status() -> dict[str, Any]:
     cfg = load_local_config()
     return {
+        "version": __version__,
+        "version_display": display_version(),
         "signed_in": bool(await auth.get_access_token(settings)),
         "email": auth.current_user_email(),
         "has_project": bool(settings.supabase_url and settings.supabase_anon_key),
@@ -100,6 +104,32 @@ async def status() -> dict[str, Any]:
             "agent_enabled": cfg.agent_enabled,
         },
     }
+
+
+@app.get("/api/update/status")
+async def update_status() -> dict[str, Any]:
+    return check_for_update(
+        repo=settings.update_repo,
+        branch=settings.update_branch,
+        subdir=settings.update_subdir,
+    )
+
+
+@app.post("/api/update/apply")
+async def update_apply() -> dict[str, Any]:
+    try:
+        result = apply_update(
+            prefix=Path(settings.install_prefix),
+            repo=settings.update_repo,
+            branch=settings.update_branch,
+            subdir=settings.update_subdir,
+            restart_services=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, str(exc)) from exc
+    if not result.get("ok"):
+        raise HTTPException(500, str(result.get("error") or "Update failed"))
+    return result
 
 
 @app.post("/api/project")

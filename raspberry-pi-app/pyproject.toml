@@ -1,6 +1,6 @@
 [project]
 name = "bioversee-pi"
-version = "0.1.0"
+version = "1.1.1"
 description = "Bioversee Raspberry Pi setup wizard and monitoring agent"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,7 @@ pi = [
 [project.scripts]
 bioversee-wizard = "bioversee_pi.wizard.app:main"
 bioversee-agent = "bioversee_pi.agent.main:main"
+bioversee-update = "bioversee_pi.updater:main"
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -46,8 +46,15 @@ function setStep(step) {
 
 async function bootstrap() {
   const status = await api("/api/status");
+  if (status.version_display) {
+    document.getElementById("app-version").textContent = status.version_display;
+  }
+  refreshUpdateStatus().catch(() => {});
   if (status.supabase_url) {
     document.getElementById("supabase-url").value = status.supabase_url;
+  }
+  if (status.has_project) {
+    document.querySelector('#steps li[data-step="project"]')?.remove();
   }
   if (!status.has_project) {
     setStep("project");
@@ -68,6 +75,66 @@ async function bootstrap() {
     document.getElementById("sim-row").hidden = false;
   }
 }
+
+async function refreshUpdateStatus() {
+  const box = document.getElementById("update-box");
+  const label = document.getElementById("update-label");
+  const applyBtn = document.getElementById("apply-update");
+  label.textContent = "Checking updates…";
+  applyBtn.hidden = true;
+  box.classList.remove("is-available");
+  try {
+    const data = await api("/api/update/status");
+    if (data.current_display) {
+      document.getElementById("app-version").textContent = data.current_display;
+    }
+    if (!data.ok) {
+      label.textContent = `${data.current_display || "v?"} · update check failed`;
+      return;
+    }
+    if (data.update_available) {
+      label.textContent = `${data.current_display} → ${data.remote_display} available`;
+      applyBtn.hidden = false;
+      box.classList.add("is-available");
+    } else {
+      label.textContent = `${data.current_display} · up to date`;
+    }
+  } catch (err) {
+    label.textContent = "Could not check for updates";
+  }
+}
+
+document.getElementById("check-update").addEventListener("click", () => {
+  showBanner("");
+  refreshUpdateStatus().catch((err) => showBanner(err.message));
+});
+
+document.getElementById("apply-update").addEventListener("click", async () => {
+  showBanner("");
+  const applyBtn = document.getElementById("apply-update");
+  const label = document.getElementById("update-label");
+  applyBtn.disabled = true;
+  label.textContent = "Updating… this may take a minute";
+  try {
+    const data = await api("/api/update/apply", {
+      method: "POST",
+      body: "{}",
+    });
+    label.textContent = data.message || "Updated";
+    applyBtn.hidden = true;
+    if (data.current_display) {
+      document.getElementById("app-version").textContent = data.current_display;
+    }
+    setTimeout(() => window.location.reload(), 2500);
+  } catch (err) {
+    showBanner(
+      err.message +
+        " — if permissions failed, run: sudo bioversee-update apply"
+    );
+    applyBtn.disabled = false;
+    refreshUpdateStatus().catch(() => {});
+  }
+});
 
 document.getElementById("save-project").addEventListener("click", async () => {
   showBanner("");

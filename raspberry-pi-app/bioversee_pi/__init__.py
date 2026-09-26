@@ -1,3 +1,5 @@
 """Bioversee Raspberry Pi agent and setup wizard."""
 
-__version__ = "0.1.0"
+from bioversee_pi.version import __version__, display_version
+
+__all__ = ["__version__", "display_version"]

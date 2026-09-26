@@ -45,8 +45,10 @@ class AppSettings(BaseSettings):
     wizard_host: str = "0.0.0.0"
     wizard_port: int = 8787
     simulate_gpio: bool = False
-    ingest_path: str = "/functions/v1/pi-ingest"
-    mint_path: str = "/functions/v1/mint-device-key"
+    update_repo: str = "MelcherMate/Bioversee"
+    update_branch: str = "master"
+    update_subdir: str = "raspberry-pi-app"
+    install_prefix: str = "/opt/bioversee-pi"
 
 
 def ensure_config_dir() -> Path:

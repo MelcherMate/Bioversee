@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Bioversee Pi Setup — download and run this on your Raspberry Pi.
+# Generated for the production Bioversee cloud (Supabase is preconfigured).
+#
+# Usage:
+#   bash bioversee-pi-setup
+#   # or:
+#   chmod +x bioversee-pi-setup && ./bioversee-pi-setup
+
+set -euo pipefail
+
+BIOVERSEE_SUPABASE_URL="@@BIOVERSEE_SUPABASE_URL@@"
+BIOVERSEE_SUPABASE_ANON_KEY="@@BIOVERSEE_SUPABASE_ANON_KEY@@"
+BIOVERSEE_UPDATE_REPO="${BIOVERSEE_UPDATE_REPO:-MelcherMate/Bioversee}"
+BIOVERSEE_UPDATE_BRANCH="${BIOVERSEE_UPDATE_BRANCH:-master}"
+BIOVERSEE_UPDATE_SUBDIR="${BIOVERSEE_UPDATE_SUBDIR:-raspberry-pi-app}"
+PREFIX="${BIOVERSEE_PREFIX:-/opt/bioversee-pi}"
+SETUP_VERSION="@@BIOVERSEE_SETUP_VERSION@@"
+
+if [[ -z "${BIOVERSEE_SUPABASE_URL}" || -z "${BIOVERSEE_SUPABASE_ANON_KEY}" ]] \
+  || [[ "${BIOVERSEE_SUPABASE_URL}" == @@* ]] \
+  || [[ "${BIOVERSEE_SUPABASE_ANON_KEY}" == @@* ]]; then
+  echo "This setup file was built without Supabase credentials." >&2
+  echo "Download it again from the Bioversee website after a production deploy." >&2
+  exit 1
+fi
+
+if [[ "$(uname -s)" != "Linux" ]]; then
+  echo "This setup app is for Raspberry Pi OS (Linux)." >&2
+  echo "Copy bioversee-pi-setup onto your Pi and run it there." >&2
+  exit 1
+fi
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "==> Re-running with sudo…"
+  exec sudo -E env \
+    BIOVERSEE_SUPABASE_URL="${BIOVERSEE_SUPABASE_URL}" \
+    BIOVERSEE_SUPABASE_ANON_KEY="${BIOVERSEE_SUPABASE_ANON_KEY}" \
+    BIOVERSEE_UPDATE_REPO="${BIOVERSEE_UPDATE_REPO}" \
+    BIOVERSEE_UPDATE_BRANCH="${BIOVERSEE_UPDATE_BRANCH}" \
+    BIOVERSEE_UPDATE_SUBDIR="${BIOVERSEE_UPDATE_SUBDIR}" \
+    BIOVERSEE_PREFIX="${PREFIX}" \
+    bash "$0" "$@"
+fi
+
+echo "==> Bioversee Pi Setup ${SETUP_VERSION}"
+echo "==> Connecting to your Bioversee cloud…"
+
+export BIOVERSEE_SUPABASE_URL BIOVERSEE_SUPABASE_ANON_KEY
+export BIOVERSEE_PREFIX="${PREFIX}"
+
+TMP="$(mktemp -d /tmp/bioversee-setup.XXXXXX)"
+cleanup() { rm -rf "${TMP}"; }
+trap cleanup EXIT
+
+ZIP_URL="https://github.com/${BIOVERSEE_UPDATE_REPO}/archive/refs/heads/${BIOVERSEE_UPDATE_BRANCH}.zip"
+ZIP_PATH="${TMP}/bioversee.zip"
+
+echo "==> Downloading Bioversee Pi app…"
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "${ZIP_URL}" -o "${ZIP_PATH}"
+elif command -v wget >/dev/null 2>&1; then
+  wget -qO "${ZIP_PATH}" "${ZIP_URL}"
+else
+  echo "Need curl or wget to download the app." >&2
+  exit 1
+fi
+
+echo "==> Unpacking…"
+if ! command -v unzip >/dev/null 2>&1; then
+  apt-get update -y
+  apt-get install -y unzip
+fi
+unzip -q "${ZIP_PATH}" -d "${TMP}/extract"
+
+SOURCE=""
+for dir in "${TMP}/extract"/*; do
+  if [[ -d "${dir}/${BIOVERSEE_UPDATE_SUBDIR}" ]]; then
+    SOURCE="${dir}/${BIOVERSEE_UPDATE_SUBDIR}"
+    break
+  fi
+done
+
+if [[ -z "${SOURCE}" || ! -f "${SOURCE}/packaging/install.sh" ]]; then
+  echo "Could not find ${BIOVERSEE_UPDATE_SUBDIR}/packaging/install.sh in the download." >&2
+  exit 1
+fi
+
+chmod +x "${SOURCE}/packaging/install.sh"
+echo "==> Installing to ${PREFIX}…"
+BIOVERSEE_SUPABASE_URL="${BIOVERSEE_SUPABASE_URL}" \
+BIOVERSEE_SUPABASE_ANON_KEY="${BIOVERSEE_SUPABASE_ANON_KEY}" \
+bash "${SOURCE}/packaging/install.sh"
+
+# Ensure cloud env is written even if install.sh left an empty file
+ENV_DIR="/etc/bioversee"
+ENV_FILE="${ENV_DIR}/pi.env"
+mkdir -p "${ENV_DIR}"
+cat > "${ENV_FILE}" <<EOF
+BIOVERSEE_SUPABASE_URL=${BIOVERSEE_SUPABASE_URL}
+BIOVERSEE_SUPABASE_ANON_KEY=${BIOVERSEE_SUPABASE_ANON_KEY}
+BIOVERSEE_WIZARD_HOST=0.0.0.0
+BIOVERSEE_WIZARD_PORT=8787
+EOF
+chmod 600 "${ENV_FILE}"
+
+systemctl restart bioversee-wizard.service 2>/dev/null || true
+
+IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+echo
+echo "Setup complete."
+echo "  Open:  http://${IP:-127.0.0.1}:8787"
+echo "  Sign in with your Bioversee account (cloud is already configured)."
+echo
+if command -v xdg-open >/dev/null 2>&1; then
+  xdg-open "http://127.0.0.1:8787" >/dev/null 2>&1 || true
+fi

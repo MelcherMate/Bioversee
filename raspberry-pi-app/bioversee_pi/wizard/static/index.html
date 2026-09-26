@@ -13,16 +13,27 @@
           <span class="brand-mark" aria-hidden="true"></span>
           <div>
             <p class="eyebrow">Raspberry Pi</p>
-            <h1>Bioversee setup</h1>
+            <h1>Bioversee setup <span class="version" id="app-version">v1.1</span></h1>
           </div>
         </div>
-        <ol class="steps" id="steps">
-          <li data-step="project" class="is-active">Project</li>
-          <li data-step="account">Account</li>
-          <li data-step="device">Device</li>
-          <li data-step="wiring">Wiring</li>
-          <li data-step="done">Done</li>
-        </ol>
+        <div class="top-actions">
+          <div class="update-box" id="update-box">
+            <span id="update-label">Checking updates…</span>
+            <button type="button" class="btn btn-ghost btn-small" id="check-update">
+              Check
+            </button>
+            <button type="button" class="btn btn-small" id="apply-update" hidden>
+              Update now
+            </button>
+          </div>
+          <ol class="steps" id="steps">
+            <li data-step="project" class="is-active">Project</li>
+            <li data-step="account">Account</li>
+            <li data-step="device">Device</li>
+            <li data-step="wiring">Wiring</li>
+            <li data-step="done">Done</li>
+          </ol>
+        </div>
       </header>
 
       <p class="banner" id="banner" hidden></p>
