@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-# Bioversee Pi Setup — download and run this on your Raspberry Pi.
-# Generated for the production Bioversee cloud (Supabase is preconfigured).
-#
-# Usage:
-#   bash bioversee-pi-setup
-#   # or:
-#   chmod +x bioversee-pi-setup && ./bioversee-pi-setup
+# Bioversee Pi Setup — GUI installer (cloud preconfigured).
+# Prefer launching via "Install Bioversee.desktop" (double-click in Downloads).
+# Or: curl -fsSL https://YOUR_SITE/downloads/bioversee-pi-setup.sh | bash
 
 set -euo pipefail
 
@@ -16,23 +12,68 @@ BIOVERSEE_UPDATE_BRANCH="${BIOVERSEE_UPDATE_BRANCH:-master}"
 BIOVERSEE_UPDATE_SUBDIR="${BIOVERSEE_UPDATE_SUBDIR:-raspberry-pi-app}"
 PREFIX="${BIOVERSEE_PREFIX:-/opt/bioversee-pi}"
 SETUP_VERSION="@@BIOVERSEE_SETUP_VERSION@@"
+SETUP_SH_URL="@@BIOVERSEE_SETUP_SH_URL@@"
+
+TITLE="Bioversee Setup"
+
+die() {
+  local msg="$1"
+  if [[ -n "${DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
+    zenity --error --title="$TITLE" --width=420 --text="$msg" || true
+  fi
+  echo "$msg" >&2
+  exit 1
+}
+
+info() {
+  if [[ -n "${DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
+    zenity --info --title="$TITLE" --width=420 --text="$1" || true
+  else
+    echo "$1"
+  fi
+}
 
 if [[ -z "${BIOVERSEE_SUPABASE_URL}" || -z "${BIOVERSEE_SUPABASE_ANON_KEY}" ]] \
   || [[ "${BIOVERSEE_SUPABASE_URL}" == @@* ]] \
   || [[ "${BIOVERSEE_SUPABASE_ANON_KEY}" == @@* ]]; then
-  echo "This setup file was built without Supabase credentials." >&2
-  echo "Download it again from the Bioversee website after a production deploy." >&2
-  exit 1
+  die "Setup was built without cloud credentials. Open bioversee.com and try again."
 fi
 
 if [[ "$(uname -s)" != "Linux" ]]; then
-  echo "This setup app is for Raspberry Pi OS (Linux)." >&2
-  echo "Copy bioversee-pi-setup onto your Pi and run it there." >&2
-  exit 1
+  die "Run this installer on your Raspberry Pi."
 fi
 
+# --- GUI confirm (non-root) ---
 if [[ "$(id -u)" -ne 0 ]]; then
-  echo "==> Re-running with sudo…"
+  if [[ -n "${DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
+    if ! zenity --question --title="$TITLE" --width=420 \
+      --ok-label="Install" --cancel-label="Cancel" \
+      --text="Install Bioversee on this Raspberry Pi?\n\nVersion ${SETUP_VERSION}\nConnects to Bioversee cloud automatically."; then
+      exit 0
+    fi
+  fi
+
+  # Elevate with a password dialog (like Windows UAC), then re-run this script
+  export BIOVERSEE_SUPABASE_URL BIOVERSEE_SUPABASE_ANON_KEY
+  export BIOVERSEE_UPDATE_REPO BIOVERSEE_UPDATE_BRANCH BIOVERSEE_UPDATE_SUBDIR
+  export BIOVERSEE_PREFIX="${PREFIX}"
+  export SETUP_SH_URL
+
+  if command -v pkexec >/dev/null 2>&1; then
+    if [[ -n "${SETUP_SH_URL}" && "${SETUP_SH_URL}" != @@* ]]; then
+      exec pkexec env \
+        DISPLAY="${DISPLAY:-}" \
+        XAUTHORITY="${XAUTHORITY:-}" \
+        BIOVERSEE_SUPABASE_URL="${BIOVERSEE_SUPABASE_URL}" \
+        BIOVERSEE_SUPABASE_ANON_KEY="${BIOVERSEE_SUPABASE_ANON_KEY}" \
+        BIOVERSEE_UPDATE_REPO="${BIOVERSEE_UPDATE_REPO}" \
+        BIOVERSEE_UPDATE_BRANCH="${BIOVERSEE_UPDATE_BRANCH}" \
+        BIOVERSEE_UPDATE_SUBDIR="${BIOVERSEE_UPDATE_SUBDIR}" \
+        BIOVERSEE_PREFIX="${PREFIX}" \
+        bash -c "curl -fsSL '${SETUP_SH_URL}' | bash"
+    fi
+  fi
+
   exec sudo -E env \
     BIOVERSEE_SUPABASE_URL="${BIOVERSEE_SUPABASE_URL}" \
     BIOVERSEE_SUPABASE_ANON_KEY="${BIOVERSEE_SUPABASE_ANON_KEY}" \
@@ -40,78 +81,93 @@ if [[ "$(id -u)" -ne 0 ]]; then
     BIOVERSEE_UPDATE_BRANCH="${BIOVERSEE_UPDATE_BRANCH}" \
     BIOVERSEE_UPDATE_SUBDIR="${BIOVERSEE_UPDATE_SUBDIR}" \
     BIOVERSEE_PREFIX="${PREFIX}" \
-    bash "$0" "$@"
+    bash -c "curl -fsSL '${SETUP_SH_URL}' | bash"
 fi
 
-echo "==> Bioversee Pi Setup ${SETUP_VERSION}"
-echo "==> Connecting to your Bioversee cloud…"
-
+# --- root install ---
 export BIOVERSEE_SUPABASE_URL BIOVERSEE_SUPABASE_ANON_KEY
 export BIOVERSEE_PREFIX="${PREFIX}"
 
-TMP="$(mktemp -d /tmp/bioversee-setup.XXXXXX)"
-cleanup() { rm -rf "${TMP}"; }
-trap cleanup EXIT
+run_install() {
+  echo "==> Bioversee Pi Setup ${SETUP_VERSION}"
+  TMP="$(mktemp -d /tmp/bioversee-setup.XXXXXX)"
+  cleanup() { rm -rf "${TMP}"; }
+  trap cleanup EXIT
 
-ZIP_URL="https://github.com/${BIOVERSEE_UPDATE_REPO}/archive/refs/heads/${BIOVERSEE_UPDATE_BRANCH}.zip"
-ZIP_PATH="${TMP}/bioversee.zip"
+  ZIP_URL="https://github.com/${BIOVERSEE_UPDATE_REPO}/archive/refs/heads/${BIOVERSEE_UPDATE_BRANCH}.zip"
+  ZIP_PATH="${TMP}/bioversee.zip"
 
-echo "==> Downloading Bioversee Pi app…"
-if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "${ZIP_URL}" -o "${ZIP_PATH}"
-elif command -v wget >/dev/null 2>&1; then
-  wget -qO "${ZIP_PATH}" "${ZIP_URL}"
-else
-  echo "Need curl or wget to download the app." >&2
-  exit 1
-fi
-
-echo "==> Unpacking…"
-if ! command -v unzip >/dev/null 2>&1; then
-  apt-get update -y
-  apt-get install -y unzip
-fi
-unzip -q "${ZIP_PATH}" -d "${TMP}/extract"
-
-SOURCE=""
-for dir in "${TMP}/extract"/*; do
-  if [[ -d "${dir}/${BIOVERSEE_UPDATE_SUBDIR}" ]]; then
-    SOURCE="${dir}/${BIOVERSEE_UPDATE_SUBDIR}"
-    break
+  echo "==> Downloading…"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "${ZIP_URL}" -o "${ZIP_PATH}"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "${ZIP_PATH}" "${ZIP_URL}"
+  else
+    die "Need curl or wget."
   fi
-done
 
-if [[ -z "${SOURCE}" || ! -f "${SOURCE}/packaging/install.sh" ]]; then
-  echo "Could not find ${BIOVERSEE_UPDATE_SUBDIR}/packaging/install.sh in the download." >&2
-  exit 1
-fi
+  echo "==> Unpacking…"
+  if ! command -v unzip >/dev/null 2>&1; then
+    apt-get update -y
+    apt-get install -y unzip
+  fi
+  unzip -q "${ZIP_PATH}" -d "${TMP}/extract"
 
-chmod +x "${SOURCE}/packaging/install.sh"
-echo "==> Installing to ${PREFIX}…"
-BIOVERSEE_SUPABASE_URL="${BIOVERSEE_SUPABASE_URL}" \
-BIOVERSEE_SUPABASE_ANON_KEY="${BIOVERSEE_SUPABASE_ANON_KEY}" \
-bash "${SOURCE}/packaging/install.sh"
+  SOURCE=""
+  for dir in "${TMP}/extract"/*; do
+    if [[ -d "${dir}/${BIOVERSEE_UPDATE_SUBDIR}" ]]; then
+      SOURCE="${dir}/${BIOVERSEE_UPDATE_SUBDIR}"
+      break
+    fi
+  done
 
-# Ensure cloud env is written even if install.sh left an empty file
-ENV_DIR="/etc/bioversee"
-ENV_FILE="${ENV_DIR}/pi.env"
-mkdir -p "${ENV_DIR}"
-cat > "${ENV_FILE}" <<EOF
+  if [[ -z "${SOURCE}" || ! -f "${SOURCE}/packaging/install.sh" ]]; then
+    die "Download incomplete — try again."
+  fi
+
+  chmod +x "${SOURCE}/packaging/install.sh"
+  echo "==> Installing…"
+  BIOVERSEE_SUPABASE_URL="${BIOVERSEE_SUPABASE_URL}" \
+  BIOVERSEE_SUPABASE_ANON_KEY="${BIOVERSEE_SUPABASE_ANON_KEY}" \
+  bash "${SOURCE}/packaging/install.sh"
+
+  mkdir -p /etc/bioversee
+  cat > /etc/bioversee/pi.env <<EOF
 BIOVERSEE_SUPABASE_URL=${BIOVERSEE_SUPABASE_URL}
 BIOVERSEE_SUPABASE_ANON_KEY=${BIOVERSEE_SUPABASE_ANON_KEY}
 BIOVERSEE_WIZARD_HOST=0.0.0.0
 BIOVERSEE_WIZARD_PORT=8787
 EOF
-chmod 600 "${ENV_FILE}"
+  chmod 600 /etc/bioversee/pi.env
 
-systemctl restart bioversee-wizard.service 2>/dev/null || true
+  systemctl restart bioversee-wizard.service 2>/dev/null || true
+}
+
+if [[ -n "${DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
+  LOG="$(mktemp /tmp/bioversee-setup.XXXXXX.log)"
+  (
+    echo "10"
+    echo "# Installing Bioversee…"
+    if run_install >"$LOG" 2>&1; then
+      echo "100"
+      echo "# Done"
+    else
+      echo "100"
+      echo "# Failed"
+      exit 1
+    fi
+  ) | zenity --progress --title="$TITLE" --width=420 --auto-close --no-cancel \
+      --text="Installing Bioversee…" || {
+    die "Install failed.\n$(tail -n 15 "$LOG" 2>/dev/null | sed 's/&/\&amp;/g')"
+  }
+  rm -f "$LOG"
+else
+  run_install
+fi
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-echo
-echo "Setup complete."
-echo "  Open:  http://${IP:-127.0.0.1}:8787"
-echo "  Sign in with your Bioversee account (cloud is already configured)."
-echo
+info "Bioversee is ready.\n\nOpening the setup wizard…\nhttp://${IP:-127.0.0.1}:8787"
+
 if command -v xdg-open >/dev/null 2>&1; then
   xdg-open "http://127.0.0.1:8787" >/dev/null 2>&1 || true
 fi

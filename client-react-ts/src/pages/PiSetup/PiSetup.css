@@ -1,0 +1,127 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap");
+
+.pi-setup {
+  --bv-landing-display: "Outfit", var(--bv-font);
+  --bv-text: #1d1d1f;
+  --bv-text-secondary: #6e6e73;
+  --bv-accent: #0d9488;
+  --bv-accent-soft: color-mix(in srgb, #0d9488 10%, #fff);
+
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 40px 20px;
+  background:
+    radial-gradient(900px 480px at 50% -10%, var(--bv-accent-soft), transparent 55%),
+    linear-gradient(180deg, #fff, #f5f5f7);
+  color: var(--bv-text);
+}
+
+.pi-setup__card {
+  width: min(520px, 100%);
+  text-align: center;
+}
+
+.pi-setup__logo {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+}
+
+.pi-setup__kicker {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bv-accent);
+}
+
+.pi-setup__title {
+  margin: 0 0 10px;
+  font-family: var(--bv-landing-display), sans-serif;
+  font-size: clamp(28px, 5vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.pi-setup__lede {
+  margin: 0 0 28px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--bv-text-secondary);
+}
+
+.pi-setup__steps {
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+  text-align: left;
+  display: grid;
+  gap: 14px;
+}
+
+.pi-setup__steps li {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.pi-setup__steps strong {
+  font-size: 14px;
+}
+
+.pi-setup__steps span {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--bv-text-secondary);
+}
+
+.pi-setup__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+  padding: 14px 22px;
+  border-radius: 12px;
+  background: #1d1d1f;
+  color: #fff;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.pi-setup__btn:hover {
+  background: #000;
+}
+
+.pi-setup__linkish {
+  display: block;
+  margin: 14px auto 0;
+  border: 0;
+  background: transparent;
+  color: var(--bv-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pi-setup__hint {
+  margin: 18px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--bv-text-secondary);
+}
+
+.pi-setup__back {
+  display: inline-block;
+  margin-top: 22px;
+  color: var(--bv-text-secondary);
+  font-size: 13px;
+}

@@ -1,6 +1,6 @@
 [project]
 name = "bioversee-pi"
-version = "1.1.1"
+version = "1.1.2"
 description = "Bioversee Raspberry Pi setup wizard and monitoring agent"
 readme = "README.md"
 requires-python = ">=3.11"

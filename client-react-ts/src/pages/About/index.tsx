@@ -109,13 +109,9 @@ function About() {
               {t("about.piTitle")}
             </h2>
             <p className="landing-lede">{t("about.piBody")}</p>
-            <a
-              className="landing-btn landing-btn--primary"
-              href="/downloads/bioversee-pi-setup.deb"
-              download="bioversee-pi-setup.deb"
-            >
+            <Link to="/pi-setup" className="landing-btn landing-btn--primary">
               {t("about.piDownload")}
-            </a>
+            </Link>
             <p className="landing-soon">{t("about.piDownloadHint")}</p>
           </div>
         </div>

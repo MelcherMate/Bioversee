@@ -1,18 +1,26 @@
 import react from "@vitejs/plugin-react";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, resolve } from "path";
-import { fileURLToPath, pathToFileURL } from "url";
+import { fileURLToPath } from "url";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-/** Bake cloud keys into a double-clickable .deb installer for Raspberry Pi OS. */
+/**
+ * Build a double-clickable "Install Bioversee" launcher (.desktop) + setup script.
+ * On Raspberry Pi OS, .desktop files show as an app icon (like a Windows installer).
+ */
 function bioverseePiSetupPlugin(mode: string): Plugin {
-  const writeSetup = async () => {
+  const writeSetup = () => {
     const env = loadEnv(mode, __dirname, "");
     const supabaseUrl = env.VITE_SUPABASE_URL?.trim() ?? "";
     const supabaseKey = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
-    const setupVersion = "1.1.1";
+    const publicUrl = (env.VITE_PUBLIC_URL?.trim() || "https://bioversee.com").replace(
+      /\/$/,
+      ""
+    );
+    const setupVersion = "1.1.2";
+    const setupShUrl = `${publicUrl}/downloads/bioversee-pi-setup.sh`;
 
     const templatePath = resolve(
       __dirname,
@@ -25,53 +33,52 @@ function bioverseePiSetupPlugin(mode: string): Plugin {
     setupScript = setupScript
       .replaceAll("@@BIOVERSEE_SUPABASE_URL@@", supabaseUrl)
       .replaceAll("@@BIOVERSEE_SUPABASE_ANON_KEY@@", supabaseKey)
-      .replaceAll("@@BIOVERSEE_SETUP_VERSION@@", setupVersion);
+      .replaceAll("@@BIOVERSEE_SETUP_VERSION@@", setupVersion)
+      .replaceAll("@@BIOVERSEE_SETUP_SH_URL@@", setupShUrl);
 
-    // Keep shell fallback for advanced users / terminals
     writeFileSync(resolve(outDir, "bioversee-pi-setup.sh"), setupScript, {
       encoding: "utf8",
       mode: 0o755,
     });
 
-    const { writePiSetupDeb } = await import(
-      pathToFileURL(resolve(__dirname, "scripts/buildPiSetupDeb.mjs")).href
-    );
+    // Application launcher — appears as an install icon in Files / Downloads
+    const desktop = `[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Install Bioversee
+GenericName=Bioversee Installer
+Comment=Install Bioversee on this Raspberry Pi
+Exec=bash -c "curl -fsSL '${setupShUrl}' | bash"
+Icon=system-software-install
+Terminal=false
+Categories=Utility;Settings;
+StartupNotify=true
+X-GNOME-UsesNotifications=true
+`;
 
-    let iconPng: Buffer | undefined;
-    try {
-      iconPng = readFileSync(
-        resolve(__dirname, "../ios/Bioversee/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png")
-      );
-    } catch {
-      iconPng = undefined;
-    }
-
-    const debPath = resolve(outDir, "bioversee-pi-setup.deb");
-    writePiSetupDeb({
-      version: setupVersion,
-      setupScript,
-      outPath: debPath,
-      iconPng,
+    writeFileSync(resolve(outDir, "Install-Bioversee.desktop"), desktop, {
+      encoding: "utf8",
+      mode: 0o755,
     });
 
     if (!supabaseUrl || !supabaseKey) {
       console.warn(
-        "[bioversee-pi-setup] VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY missing — installer will refuse until rebuilt with env."
+        "[bioversee-pi-setup] Missing VITE_SUPABASE_* — installer needs a production build with env."
       );
     } else {
       console.info(
-        `[bioversee-pi-setup] Wrote ${debPath} (v${setupVersion}, double-click installer)`
+        `[bioversee-pi-setup] Wrote Install-Bioversee.desktop + setup.sh (v${setupVersion})`
       );
     }
   };
 
   return {
     name: "bioversee-pi-setup",
-    async buildStart() {
-      await writeSetup();
+    buildStart() {
+      writeSetup();
     },
-    async configureServer() {
-      await writeSetup();
+    configureServer() {
+      writeSetup();
     },
   };
 }
