@@ -59,8 +59,8 @@ _CALLBACK_HTML = """<!DOCTYPE html>
         history.replaceState(null, "", "/auth/callback");
         t.textContent = "You're signed in";
         d.textContent = data.email
-          ? ("Welcome, " + data.email + ". Return to the Bioversee app — you can close this tab.")
-          : "Return to the Bioversee app window — you can close this tab.";
+          ? ("Welcome, " + data.email + ". Return to the Bioversee app — you can close this window.")
+          : "Return to the Bioversee app window — you can close this window.";
       } catch (err) {
         t.textContent = "Could not finish sign-in";
         d.textContent = (err && err.message) || "Try again from the Bioversee app.";

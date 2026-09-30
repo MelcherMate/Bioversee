@@ -30,6 +30,13 @@ For the local machine control language I choose Python because of the gpiozero l
 - Hosting target: **Vercel**
 - Backend-as-a-service: **Supabase**
 
+## Raspberry Pi app download (early access)
+
+The About page **Download** button is password-gated while this part of Bioversee is under construction.
+
+- **Password:** `raspberry`
+- Correct password opens `/pi-setup` (installer for the Pi desktop app).
+
 ## Local development
 
 ```bash

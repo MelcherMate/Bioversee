@@ -35,9 +35,15 @@ fi
 
 apt-get update -y
 # Tkinter powers the native desktop setup wizard (CustomTkinter).
+# WebKitGTK powers the in-app Google OAuth webview (pywebview).
 apt-get install -y \
   python3 python3-venv python3-pip python3-tk \
   i2c-tools \
+  gir1.2-webkit2-4.1 \
+  || apt-get install -y \
+    python3 python3-venv python3-pip python3-tk \
+    i2c-tools \
+    gir1.2-webkit2-4.0 \
   || true
 
 python3 -m venv "${PREFIX}/.venv"
@@ -54,6 +60,40 @@ BIOVERSEE_WIZARD_PORT=8787
 EOF
   chmod 600 "${ENV_FILE}"
 fi
+
+# Seed user config so the desktop app has project keys without pasting them.
+USER_HOME="$(getent passwd "${SERVICE_USER}" | cut -d: -f6 || true)"
+if [[ -n "${USER_HOME}" && -n "${BIOVERSEE_SUPABASE_URL:-}" && -n "${BIOVERSEE_SUPABASE_ANON_KEY:-}" ]]; then
+  mkdir -p "${USER_HOME}/.config/bioversee"
+  CONFIG_TOML="${USER_HOME}/.config/bioversee/config.toml"
+  if [[ ! -f "${CONFIG_TOML}" ]] || ! grep -q 'supabase_url' "${CONFIG_TOML}" 2>/dev/null; then
+    cat > "${CONFIG_TOML}" <<EOF
+supabase_url = "${BIOVERSEE_SUPABASE_URL}"
+supabase_anon_key = "${BIOVERSEE_SUPABASE_ANON_KEY}"
+agent_enabled = false
+wiring = []
+EOF
+    chmod 600 "${CONFIG_TOML}"
+    chown "${SERVICE_USER}:${SERVICE_USER}" "${CONFIG_TOML}" || true
+  fi
+  chown -R "${SERVICE_USER}:${SERVICE_USER}" "${USER_HOME}/.config/bioversee" || true
+fi
+
+# Launcher that loads installer env then starts the desktop app.
+LAUNCHER="${PREFIX}/bin/bioversee-launch"
+mkdir -p "${PREFIX}/bin"
+cat > "${LAUNCHER}" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -f /etc/bioversee/pi.env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source /etc/bioversee/pi.env
+  set +a
+fi
+exec "${PREFIX}/.venv/bin/bioversee" "\$@"
+EOF
+chmod 755 "${LAUNCHER}"
 
 # Background monitoring agent only (desktop app is launched by the user).
 sed "s/^User=pi$/User=${SERVICE_USER}/; s/^Group=pi$/Group=${SERVICE_USER}/" \
@@ -73,7 +113,7 @@ Type=Application
 Name=Bioversee
 GenericName=Process control
 Comment=Bioversee desktop app for this Raspberry Pi
-Exec=${PREFIX}/.venv/bin/bioversee
+Exec=${LAUNCHER}
 Icon=bioversee
 Terminal=false
 Categories=Science;Utility;
@@ -92,7 +132,6 @@ elif [[ -f "${ROOT}/../ios/Bioversee/Resources/Assets.xcassets/AppIcon.appiconse
 fi
 
 # Shortcut on the user desktop
-USER_HOME="$(getent passwd "${SERVICE_USER}" | cut -d: -f6 || true)"
 if [[ -n "${USER_HOME}" && -d "${USER_HOME}" ]]; then
   mkdir -p "${USER_HOME}/Desktop"
   cp "${APP_DESKTOP}" "${USER_HOME}/Desktop/Bioversee.desktop"

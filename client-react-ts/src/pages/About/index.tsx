@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AppPhonePreview from "../../components/AppPhonePreview";
 import RaspberryPiPreview from "../../components/RaspberryPiPreview";
@@ -7,6 +7,9 @@ import WebAppPreview from "../../components/WebAppPreview";
 import Mate from "../../img/Mate.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import "./About.css";
+
+/** Early-access password for the Raspberry Pi installer (documented in repo README). */
+const PI_DOWNLOAD_PASSWORD = "raspberry";
 
 function useRevealOnScroll() {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -37,7 +40,40 @@ function useRevealOnScroll() {
 
 function About() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const rootRef = useRevealOnScroll();
+  const [piGateOpen, setPiGateOpen] = useState(false);
+  const [piPassword, setPiPassword] = useState("");
+  const [piPasswordError, setPiPasswordError] = useState(false);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!piGateOpen) return;
+    const id = window.setTimeout(() => passwordInputRef.current?.focus(), 50);
+    return () => window.clearTimeout(id);
+  }, [piGateOpen]);
+
+  const openPiGate = () => {
+    setPiPassword("");
+    setPiPasswordError(false);
+    setPiGateOpen(true);
+  };
+
+  const closePiGate = () => {
+    setPiGateOpen(false);
+    setPiPassword("");
+    setPiPasswordError(false);
+  };
+
+  const submitPiGate = (event: FormEvent) => {
+    event.preventDefault();
+    if (piPassword.trim() === PI_DOWNLOAD_PASSWORD) {
+      closePiGate();
+      navigate("/pi-setup");
+      return;
+    }
+    setPiPasswordError(true);
+  };
 
   return (
     <div className="landing" ref={rootRef} data-theme="light">
@@ -111,17 +147,69 @@ function About() {
             <p className="landing-lede">{t("about.piBody")}</p>
             <button
               type="button"
-              className="landing-btn landing-btn--primary landing-btn--disabled"
-              disabled
-              aria-disabled="true"
-              title={t("about.piDownloadSoon")}
+              className="landing-btn landing-btn--primary"
+              onClick={openPiGate}
             >
-              {t("about.piDownloadSoon")}
+              {t("about.piDownload")}
             </button>
             <p className="landing-soon">{t("about.piDownloadHint")}</p>
           </div>
         </div>
       </section>
+
+      {piGateOpen ? (
+        <div
+          className="landing-pi-gate"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pi-gate-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closePiGate();
+          }}
+        >
+          <div className="landing-pi-gate__card">
+            <h3 id="pi-gate-title" className="landing-pi-gate__title">
+              {t("about.piGateTitle")}
+            </h3>
+            <p className="landing-pi-gate__sorry">{t("about.piGateSorry")}</p>
+            <form className="landing-pi-gate__form" onSubmit={submitPiGate}>
+              <label className="landing-pi-gate__label" htmlFor="pi-download-password">
+                {t("about.piGatePasswordLabel")}
+              </label>
+              <input
+                id="pi-download-password"
+                ref={passwordInputRef}
+                type="password"
+                className="landing-pi-gate__input"
+                value={piPassword}
+                onChange={(event) => {
+                  setPiPassword(event.target.value);
+                  setPiPasswordError(false);
+                }}
+                autoComplete="off"
+                placeholder={t("about.piGatePasswordPlaceholder")}
+              />
+              {piPasswordError ? (
+                <p className="landing-pi-gate__error" role="alert">
+                  {t("about.piGateWrongPassword")}
+                </p>
+              ) : null}
+              <div className="landing-pi-gate__actions">
+                <button
+                  type="button"
+                  className="landing-btn landing-btn--ghost"
+                  onClick={closePiGate}
+                >
+                  {t("about.piGateCancel")}
+                </button>
+                <button type="submit" className="landing-btn landing-btn--primary">
+                  {t("about.piGateContinue")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       <section
         id="about"

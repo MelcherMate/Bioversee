@@ -196,10 +196,20 @@ class ProbeService:
             else:
                 self._pin_levels[pin.physical] = "idle"
 
+    def _skip_bcm_for_buses(self) -> set[int]:
+        """Don't claim pins owned by kernel buses (I2C / 1-Wire)."""
+        skip: set[int] = set()
+        if Path("/dev/i2c-1").exists():
+            skip.update({2, 3})
+        if Path("/sys/bus/w1/devices").exists():
+            skip.add(4)
+        return skip
+
     def _read_gpio_levels(self, claimed_bcm: set[int]) -> dict[int, int | None]:
         """Best-effort sample of all header GPIOs as inputs."""
         bcm_pins = [p.bcm for p in HEADER_PINS if p.bcm is not None]
         out: dict[int, int | None] = {b: None for b in bcm_pins}
+        skip = claimed_bcm | self._skip_bcm_for_buses()
 
         # Prefer lgpio (native on modern Pi OS).
         try:
@@ -209,11 +219,11 @@ class ProbeService:
                 self._lgpio_handle = lgpio.gpiochip_open(0)
             handle = self._lgpio_handle
             for bcm in bcm_pins:
-                if bcm in claimed_bcm:
+                if bcm in skip:
                     continue
                 try:
                     if bcm not in self._claimed_inputs:
-                        # Pull-up so floating pins read high (idle-ish) when nothing drives low.
+                        # Pull-up so floating pins read high when nothing drives low.
                         lgpio.gpio_claim_input(handle, bcm, lgpio.SET_PULL_UP)
                         self._claimed_inputs.add(bcm)
                     out[bcm] = int(lgpio.gpio_read(handle, bcm))
@@ -228,7 +238,7 @@ class ProbeService:
             from gpiozero import DigitalInputDevice  # type: ignore
 
             for bcm in bcm_pins:
-                if bcm in claimed_bcm:
+                if bcm in skip:
                     continue
                 try:
                     pin = DigitalInputDevice(bcm, pull_up=True)

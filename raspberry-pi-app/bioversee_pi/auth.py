@@ -118,7 +118,7 @@ def accept_browser_session(
     expires_at: str | int | float | None = None,
     email: str = "",
 ) -> None:
-    """Persist tokens returned from website login (bioversee.com → local callback)."""
+    """Persist tokens returned from the in-app OAuth webview callback."""
     if not access_token:
         raise AuthError("Missing access token")
     save_session(

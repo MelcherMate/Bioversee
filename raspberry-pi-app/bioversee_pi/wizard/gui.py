@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 from bioversee_pi.devices import DevicesError
 from bioversee_pi.version import display_version
-from bioversee_pi.wizard import services
+from bioversee_pi.wizard import oauth_webview, services
 from bioversee_pi.wizard.callback_server import CallbackServer
 
 log = logging.getLogger("bioversee.gui")
@@ -28,6 +28,11 @@ _POWER = "#F59E0B"
 _GND = "#6B7280"
 _ACTIVE = "#14B8A6"
 _CONFIRMED = "#0F766E"
+_HIGH = "#22C55E"
+_LOW = "#EF4444"
+_IDLE = "#EEF2F0"
+_BUSY = "#6366F1"
+_UNKNOWN = "#CBD5E1"
 
 STEPS = ("account", "device", "wiring", "done")
 
@@ -74,11 +79,11 @@ class WizardApp:
         self.devices: list[dict[str, Any]] = []
         self.catalog: list[dict[str, Any]] = []
         self.pins: list[dict[str, Any]] = []
-        self.browser_login_url: str | None = None
         self._poll_job: str | None = None
         self._auth_poll_job: str | None = None
         self._pin_labels: dict[int, Any] = {}
         self._busy = False
+        self._catalog_by_label: dict[str, str] = {}
 
         self.callback = CallbackServer(
             host="127.0.0.1",
@@ -102,6 +107,7 @@ class WizardApp:
 
     def _on_close(self) -> None:
         self._stop_polls()
+        oauth_webview.close_oauth_window()
         try:
             self.callback.stop()
         except Exception:  # noqa: BLE001
@@ -177,9 +183,6 @@ class WizardApp:
     def _set_banner(self, message: str) -> None:
         self.banner.configure(text=message or "")
 
-    def _set_busy(self, busy: bool) -> None:
-        self._busy = busy
-
     def _show(self, name: str) -> None:
         self.step = name
         for frame in self.frames.values():
@@ -251,49 +254,32 @@ class WizardApp:
         ).pack(anchor="w")
         ctk.CTkLabel(
             f,
-            text="Opens bioversee.com in your browser. After you sign in, this app continues automatically.",
+            text="Sign in or create an account in this app. No system browser required.",
             text_color=_MUTED,
             wraplength=700,
             justify="left",
         ).pack(anchor="w", pady=(6, 16))
-        ctk.CTkButton(
-            f,
-            text="Continue on bioversee.com",
-            height=46,
-            fg_color=_ACCENT,
-            hover_color=_ACCENT_HOVER,
-            font=ctk.CTkFont(size=15, weight="bold"),
-            command=self._browser_login,
-        ).pack(anchor="w")
-        self.auth_wait = ctk.CTkLabel(f, text="", text_color=_ACCENT)
-        self.auth_wait.pack(anchor="w", pady=(12, 0))
 
-        local = ctk.CTkFrame(f, fg_color="#F7FAF9", corner_radius=12)
-        local.pack(fill="x", pady=(28, 0))
-        ctk.CTkLabel(
-            local,
-            text="Or sign in with email here",
-            text_color=_MUTED,
-            font=ctk.CTkFont(size=13, weight="bold"),
-        ).pack(anchor="w", padx=16, pady=(14, 8))
-        self.email = ctk.CTkEntry(local, height=38, placeholder_text="Email")
-        self.email.pack(fill="x", padx=16, pady=4)
-        self.password = ctk.CTkEntry(local, height=38, placeholder_text="Password", show="•")
-        self.password.pack(fill="x", padx=16, pady=4)
-        row = ctk.CTkFrame(local, fg_color="transparent")
-        row.pack(fill="x", padx=16, pady=(8, 16))
+        self.email = ctk.CTkEntry(f, height=42, placeholder_text="Email")
+        self.email.pack(fill="x", pady=4)
+        self.password = ctk.CTkEntry(f, height=42, placeholder_text="Password", show="•")
+        self.password.pack(fill="x", pady=4)
+
+        row = ctk.CTkFrame(f, fg_color="transparent")
+        row.pack(fill="x", pady=(12, 8))
         ctk.CTkButton(
             row,
             text="Sign in",
-            height=38,
-            fg_color=_TEXT,
-            hover_color="#111",
+            height=42,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            font=ctk.CTkFont(size=15, weight="bold"),
             command=self._local_login,
         ).pack(side="left", padx=(0, 8))
         ctk.CTkButton(
             row,
             text="Create account",
-            height=38,
+            height=42,
             fg_color="transparent",
             border_width=1,
             border_color=_LINE,
@@ -301,6 +287,22 @@ class WizardApp:
             hover_color="#E8F5F3",
             command=self._local_signup,
         ).pack(side="left")
+
+        divider = ctk.CTkFrame(f, fg_color="transparent")
+        divider.pack(fill="x", pady=(20, 12))
+        ctk.CTkLabel(divider, text="or", text_color=_MUTED).pack()
+
+        ctk.CTkButton(
+            f,
+            text="Continue with Google",
+            height=44,
+            fg_color=_TEXT,
+            hover_color="#111",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._google_login,
+        ).pack(anchor="w")
+        self.auth_wait = ctk.CTkLabel(f, text="", text_color=_ACCENT)
+        self.auth_wait.pack(anchor="w", pady=(12, 0))
         return f
 
     def _frame_device(self):
@@ -309,7 +311,7 @@ class WizardApp:
         head = ctk.CTkFrame(f, fg_color="transparent")
         head.pack(fill="x")
         ctk.CTkLabel(
-            head, text="Choose a device", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            head, text="Your device", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
         ).pack(side="left")
         ctk.CTkButton(
             head,
@@ -325,9 +327,40 @@ class WizardApp:
         ).pack(side="right")
         ctk.CTkLabel(
             f,
-            text="This Pi will monitor and control the process instance you select.",
+            text="Create a new bioreactor device or select one from your profile.",
             text_color=_MUTED,
         ).pack(anchor="w", pady=(6, 12))
+
+        create = ctk.CTkFrame(f, fg_color="#F7FAF9", corner_radius=12)
+        create.pack(fill="x", pady=(0, 14))
+        ctk.CTkLabel(
+            create,
+            text="Create new device",
+            text_color=_TEXT,
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", padx=14, pady=(12, 6))
+        create_row = ctk.CTkFrame(create, fg_color="transparent")
+        create_row.pack(fill="x", padx=14, pady=(0, 14))
+        self.new_device_name = ctk.CTkEntry(
+            create_row, height=38, placeholder_text="Device name (e.g. Bench reactor 1)"
+        )
+        self.new_device_name.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(
+            create_row,
+            text="Create & continue",
+            width=150,
+            height=38,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            command=self._create_device,
+        ).pack(side="right")
+
+        ctk.CTkLabel(
+            f,
+            text="Existing devices",
+            text_color=_TEXT,
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", pady=(4, 6))
         self.device_list = ctk.CTkScrollableFrame(f, fg_color="transparent")
         self.device_list.pack(fill="both", expand=True)
         return f
@@ -336,13 +369,34 @@ class WizardApp:
         ctk = self.ctk
         f = ctk.CTkFrame(self.card, fg_color="transparent")
         ctk.CTkLabel(
-            f, text="GPIO wiring", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            f, text="GPIO live status", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
         ).pack(anchor="w")
         ctk.CTkLabel(
             f,
-            text="Plug in sensors and actuators. Used pins light up — confirm each guess.",
+            text="All 40 pins update live: HIGH / LOW / idle. Detected sensors highlight automatically.",
             text_color=_MUTED,
-        ).pack(anchor="w", pady=(4, 10))
+        ).pack(anchor="w", pady=(4, 6))
+
+        legend = ctk.CTkFrame(f, fg_color="transparent")
+        legend.pack(fill="x", pady=(0, 8))
+        for label, color in (
+            ("HIGH", _HIGH),
+            ("LOW", _LOW),
+            ("Idle", _IDLE),
+            ("Detect", _ACTIVE),
+            ("Confirmed", _CONFIRMED),
+            ("Power", _POWER),
+            ("GND", _GND),
+        ):
+            chip = ctk.CTkLabel(
+                legend,
+                text=f" {label} ",
+                corner_radius=6,
+                fg_color=color,
+                text_color="#111" if color in (_IDLE, _POWER, _HIGH) else "#fff",
+                font=ctk.CTkFont(size=11, weight="bold"),
+            )
+            chip.pack(side="left", padx=(0, 6))
 
         grid = ctk.CTkFrame(f, fg_color="transparent")
         grid.pack(fill="both", expand=True)
@@ -478,16 +532,15 @@ class WizardApp:
             return
         self._show("account")
 
-    def _browser_login(self) -> None:
+    def _google_login(self) -> None:
         self._clear_banner()
         try:
-            data = services.start_browser_login(self.settings)
+            services.start_oauth_login(self.settings)
         except Exception as exc:  # noqa: BLE001
             self._set_banner(str(exc))
             return
-        self.browser_login_url = data.get("login_url")
         self.auth_wait.configure(
-            text="Waiting for you to finish in the browser…  (keep this window open)"
+            text="Complete Google sign-in in the window that opened… (keep this app open)"
         )
         self._start_auth_poll()
 
@@ -507,6 +560,7 @@ class WizardApp:
     def _auth_tick(self, st: dict[str, Any]) -> None:
         if st.get("signed_in"):
             self._stop_auth_poll()
+            oauth_webview.close_oauth_window()
             self.auth_wait.configure(text="")
             self._show("device")
             self._load_devices()
@@ -520,6 +574,9 @@ class WizardApp:
         self._clear_banner()
         email = self.email.get().strip()
         password = self.password.get()
+        if not email or not password:
+            self._set_banner("Enter email and password.")
+            return
         _run_async(
             services.sign_in(self.settings, email, password),
             on_ok=lambda _r: self.root.after(0, lambda: (self._show("device"), self._load_devices())),
@@ -530,6 +587,9 @@ class WizardApp:
         self._clear_banner()
         email = self.email.get().strip()
         password = self.password.get()
+        if not email or not password:
+            self._set_banner("Enter email and password.")
+            return
 
         def ok(data: dict[str, Any]) -> None:
             if data.get("needs_confirmation"):
@@ -568,7 +628,7 @@ class WizardApp:
         if not self.devices:
             self.ctk.CTkLabel(
                 self.device_list,
-                text="No operable devices yet. Create one in the Bioversee web app, then refresh.",
+                text="No devices yet — create one above.",
                 text_color=_MUTED,
                 wraplength=640,
                 justify="left",
@@ -588,6 +648,21 @@ class WizardApp:
                 command=lambda d=device: self._select_device(d),
             )
             btn.pack(fill="x", pady=5)
+
+    def _create_device(self) -> None:
+        self._clear_banner()
+        name = self.new_device_name.get().strip()
+        if not name:
+            self._set_banner("Enter a device name.")
+            return
+        _run_async(
+            services.create_device(self.settings, name=name, device_type="bioreactor"),
+            on_ok=lambda _r: self.root.after(
+                0,
+                lambda: self._enter_wiring(simulate=_probe_simulate()),
+            ),
+            on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
+        )
 
     def _select_device(self, device: dict[str, Any]) -> None:
         self._clear_banner()
@@ -647,7 +722,7 @@ class WizardApp:
                     color = _GND
                     text = "#fff"
                 else:
-                    color = "#EEF2F0"
+                    color = _IDLE
                     text = "#111"
                 lbl = self.ctk.CTkLabel(
                     line,
@@ -663,19 +738,35 @@ class WizardApp:
                 lbl.pack(side="left", padx=2)
                 self._pin_labels[int(pin["physical"])] = (lbl, kind)
 
-    def _paint_pins(self, active: list[int], confirmed: list[int]) -> None:
+    def _paint_pins(
+        self,
+        *,
+        pin_levels: dict[str, str] | dict[int, str],
+        active: list[int],
+        confirmed: list[int],
+    ) -> None:
         active_set = set(active)
         confirmed_set = set(confirmed)
         for physical, (lbl, kind) in self._pin_labels.items():
+            level = pin_levels.get(physical) or pin_levels.get(str(physical)) or "idle"
             if kind in ("5v", "3v3"):
-                base = _POWER
-                text = "#111"
+                base, text = _POWER, "#111"
             elif kind == "gnd":
-                base = _GND
-                text = "#fff"
+                base, text = _GND, "#fff"
+            elif kind == "id":
+                base, text = _UNKNOWN, "#111"
+            elif level == "high":
+                base, text = _HIGH, "#111"
+            elif level == "low":
+                base, text = _LOW, "#fff"
+            elif level == "busy":
+                base, text = _BUSY, "#fff"
+            elif level == "unknown":
+                base, text = _UNKNOWN, "#111"
             else:
-                base = "#EEF2F0"
-                text = "#111"
+                base, text = _IDLE, "#111"
+
+            # Overlay detection / confirmation on top of live electrical state.
             if physical in confirmed_set:
                 base, text = _CONFIRMED, "#fff"
             elif physical in active_set:
@@ -691,7 +782,7 @@ class WizardApp:
                 on_ok=lambda st: self.root.after(0, lambda: self._render_wiring_state(st)),
                 on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
             )
-            self._poll_job = self.root.after(1500, tick)
+            self._poll_job = self.root.after(800, tick)
 
         self._poll_job = self.root.after(200, tick)
 
@@ -705,7 +796,18 @@ class WizardApp:
         self._stop_auth_poll()
 
     def _render_wiring_state(self, st: dict[str, Any]) -> None:
-        self._paint_pins(st.get("active_physical") or [], st.get("confirmed_physical") or [])
+        levels_raw = st.get("pin_levels") or {}
+        levels: dict[int, str] = {}
+        for key, value in levels_raw.items():
+            try:
+                levels[int(key)] = str(value)
+            except (TypeError, ValueError):
+                continue
+        self._paint_pins(
+            pin_levels=levels,
+            active=st.get("active_physical") or [],
+            confirmed=st.get("confirmed_physical") or [],
+        )
         for child in self.guess_box.winfo_children():
             child.destroy()
         pending = st.get("pending") or []
@@ -817,7 +919,7 @@ class WizardApp:
         self._stop_wiring_poll()
         agent = data.get("agent") or {}
         if agent.get("enabled"):
-            msg = "Monitoring will start automatically when this Pi boots."
+            msg = "Monitoring will start automatically when this Pi boots. Control this device from the Bioversee website."
         else:
             msg = agent.get("message") or "Setup saved. Enable the agent service manually."
         self.done_message.configure(text=msg)
@@ -831,7 +933,6 @@ class WizardApp:
         self._show("done")
 
 
-# Helper used from select_device callback
 def _probe_simulate() -> bool:
     from bioversee_pi.gpio.probe import probe_service
 
@@ -843,8 +944,11 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    # Ensure DISPLAY exists for desktop use
     import os
+
+    from bioversee_pi.config import bootstrap_env_from_system
+
+    bootstrap_env_from_system()
 
     if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         raise SystemExit(

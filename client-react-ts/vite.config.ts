@@ -23,7 +23,7 @@ function bioverseePiSetupPlugin(mode: string): Plugin {
     const publicUrl = rawPublic.includes("vercel.app")
       ? "https://www.bioversee.com"
       : rawPublic;
-    const setupVersion = "1.3.0";
+    const setupVersion = "1.4.0";
     const setupShUrl = `${publicUrl}/downloads/bioversee-pi-setup.sh`;
 
     const templatePath = resolve(
