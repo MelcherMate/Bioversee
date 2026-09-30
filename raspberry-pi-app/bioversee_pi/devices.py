@@ -79,6 +79,44 @@ async def _user_id(settings: AppSettings, headers: dict[str, str]) -> str:
     return str(res.json()["id"])
 
 
+async def create_device(
+    settings: AppSettings,
+    *,
+    name: str,
+    device_type: str = "bioreactor",
+) -> dict[str, Any]:
+    """Create a named device owned by the signed-in user (RPC create_my_device)."""
+    headers = await _authed_headers(settings)
+    base = settings.supabase_url.rstrip("/")
+    trimmed = (name or "").strip()
+    if not trimmed:
+        raise DevicesError("Device name is required")
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        res = await client.post(
+            f"{base}/rest/v1/rpc/create_my_device",
+            headers=headers,
+            json={
+                "p_type": device_type,
+                "p_name": trimmed,
+                "p_member_emails": [],
+                "p_member_role": "viewer",
+            },
+        )
+    if res.status_code >= 400:
+        raise DevicesError(res.text)
+    device_id = res.json()
+    if isinstance(device_id, dict):
+        device_id = device_id.get("id") or device_id.get("create_my_device")
+    if not device_id:
+        raise DevicesError("create_my_device returned no device id")
+    return {
+        "id": str(device_id),
+        "name": trimmed,
+        "type": device_type,
+        "role": "owner",
+    }
+
+
 async def mint_device_key(
     settings: AppSettings,
     device_id: str,

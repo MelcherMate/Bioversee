@@ -6,7 +6,6 @@ import os
 import secrets
 import subprocess
 import time
-import webbrowser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -16,11 +15,13 @@ from bioversee_pi.config import (
     CONFIG_PATH,
     AppSettings,
     WiringEntry,
+    bootstrap_env_from_system,
     load_local_config,
     save_local_config,
 )
 from bioversee_pi.devices import (
     DevicesError,
+    create_device as create_device_api,
     list_accessible_devices,
     mint_device_key,
     pi_ingest,
@@ -31,24 +32,32 @@ from bioversee_pi.gpio.header import header_as_dict, physical_pins_for_bcm
 from bioversee_pi.gpio.probe import probe_service
 from bioversee_pi.updater import apply_update, check_for_update
 from bioversee_pi.version import __version__, display_version
+from bioversee_pi.wizard import oauth_webview
 
-_BROWSER_LOGIN_TTL_S = 600.0
-_pending_browser_logins: dict[str, float] = {}
+_OAUTH_LOGIN_TTL_S = 600.0
+_pending_oauth_logins: dict[str, float] = {}
 
 
 def load_settings() -> AppSettings:
+    bootstrap_env_from_system()
     settings = AppSettings()
     if not settings.supabase_url:
         settings.supabase_url = os.environ.get("VITE_SUPABASE_URL", "")
     if not settings.supabase_anon_key:
         settings.supabase_anon_key = os.environ.get(
             "VITE_SUPABASE_PUBLISHABLE_KEY", ""
-        )
+        ) or os.environ.get("BIOVERSEE_SUPABASE_ANON_KEY", "")
     cfg = load_local_config()
     if cfg.supabase_url:
         settings.supabase_url = cfg.supabase_url
     if cfg.supabase_anon_key:
         settings.supabase_anon_key = cfg.supabase_anon_key
+    # Persist installer keys into user config so the next launch works without env.
+    if settings.supabase_url and settings.supabase_anon_key:
+        if not cfg.supabase_url or not cfg.supabase_anon_key:
+            cfg.supabase_url = settings.supabase_url
+            cfg.supabase_anon_key = settings.supabase_anon_key
+            save_local_config(cfg)
     return settings
 
 
@@ -108,30 +117,30 @@ async def status(settings: AppSettings) -> dict[str, Any]:
 
 def _prune_pending_logins() -> None:
     now = time.time()
-    for key in [k for k, exp in _pending_browser_logins.items() if exp <= now]:
-        _pending_browser_logins.pop(key, None)
+    for key in [k for k, exp in _pending_oauth_logins.items() if exp <= now]:
+        _pending_oauth_logins.pop(key, None)
 
 
-def start_browser_login(settings: AppSettings) -> dict[str, Any]:
+def start_oauth_login(settings: AppSettings) -> dict[str, Any]:
+    """Start Google / website OAuth inside an embedded webview (no system browser)."""
     ensure_project(settings)
     _prune_pending_logins()
     state = secrets.token_urlsafe(24)
-    _pending_browser_logins[state] = time.time() + _BROWSER_LOGIN_TTL_S
+    _pending_oauth_logins[state] = time.time() + _OAUTH_LOGIN_TTL_S
     redirect = f"http://127.0.0.1:{settings.wizard_port}/auth/callback"
     website = (settings.website_url or "https://www.bioversee.com").rstrip("/")
     login_url = f"{website}/pi-login?{urlencode({'redirect': redirect, 'state': state})}"
-    opened = False
-    try:
-        opened = bool(webbrowser.open(login_url))
-    except Exception:  # noqa: BLE001
-        opened = False
+    oauth_webview.open_oauth_window(login_url)
     return {
         "ok": True,
         "login_url": login_url,
         "state": state,
-        "opened": opened,
-        "expires_in": int(_BROWSER_LOGIN_TTL_S),
+        "expires_in": int(_OAUTH_LOGIN_TTL_S),
     }
+
+
+# Back-compat alias used by older call sites
+start_browser_login = start_oauth_login
 
 
 def complete_browser_login(
@@ -143,18 +152,17 @@ def complete_browser_login(
     email: str = "",
 ) -> dict[str, Any]:
     _prune_pending_logins()
-    expiry = _pending_browser_logins.get(state)
+    expiry = _pending_oauth_logins.get(state)
     if not expiry or time.time() > expiry:
-        raise RuntimeError(
-            "Login expired or invalid — tap Continue on bioversee.com again"
-        )
-    _pending_browser_logins.pop(state, None)
+        raise RuntimeError("Login expired or invalid — try Continue with Google again")
+    _pending_oauth_logins.pop(state, None)
     auth.accept_browser_session(
         access_token=access_token.strip(),
         refresh_token=(refresh_token or "").strip(),
         expires_at=expires_at,
         email=(email or "").strip(),
     )
+    oauth_webview.close_oauth_window()
     return {"ok": True, "email": auth.current_user_email()}
 
 
@@ -176,6 +184,25 @@ async def sign_up(settings: AppSettings, email: str, password: str) -> dict[str,
 async def list_devices(settings: AppSettings) -> list[dict[str, Any]]:
     ensure_project(settings)
     return await list_accessible_devices(settings)
+
+
+async def create_device(
+    settings: AppSettings,
+    *,
+    name: str,
+    device_type: str = "bioreactor",
+) -> dict[str, Any]:
+    ensure_project(settings)
+    created = await create_device_api(
+        settings, name=name, device_type=device_type
+    )
+    # Bind immediately so the user lands on GPIO wiring.
+    return await select_device(
+        settings,
+        device_id=str(created["id"]),
+        device_name=created.get("name"),
+        device_type=created.get("type"),
+    )
 
 
 async def select_device(
@@ -213,8 +240,9 @@ def gpio_header() -> dict[str, Any]:
 
 
 async def gpio_state() -> dict[str, Any]:
-    await probe_service.poll_once()
     cfg = load_local_config()
+    claimed_bcm = {w.bcm for w in cfg.wiring if w.bcm is not None}
+    await probe_service.poll_once(claimed_bcm=claimed_bcm)
     snap = probe_service.snapshot()
     confirmed_physical = sorted({p for w in cfg.wiring for p in (w.physical or [])})
     return {

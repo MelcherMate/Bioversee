@@ -45,11 +45,38 @@ class AppSettings(BaseSettings):
     wizard_host: str = "0.0.0.0"
     wizard_port: int = 8787
     website_url: str = "https://www.bioversee.com"
+    mint_path: str = "/functions/v1/mint-device-key"
+    ingest_path: str = "/functions/v1/pi-ingest"
     simulate_gpio: bool = False
     update_repo: str = "MelcherMate/Bioversee"
     update_branch: str = "master"
     update_subdir: str = "raspberry-pi-app"
     install_prefix: str = "/opt/bioversee-pi"
+
+
+SYSTEM_ENV_FILE = Path("/etc/bioversee/pi.env")
+
+
+def bootstrap_env_from_system(env_file: Path | None = None) -> None:
+    """Load installer-baked keys into the process if not already set."""
+    path = env_file or SYSTEM_ENV_FILE
+    if not path.is_file():
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if not key:
+            continue
+        if key not in os.environ or not os.environ.get(key):
+            os.environ[key] = value
 
 
 def ensure_config_dir() -> Path:
