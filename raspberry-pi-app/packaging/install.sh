@@ -58,7 +58,13 @@ BIOVERSEE_SUPABASE_ANON_KEY=${BIOVERSEE_SUPABASE_ANON_KEY:-}
 BIOVERSEE_WIZARD_HOST=127.0.0.1
 BIOVERSEE_WIZARD_PORT=8787
 EOF
-  chmod 600 "${ENV_FILE}"
+  # Anon/publishable key is public by design; must be readable by the desktop user.
+  chmod 644 "${ENV_FILE}"
+fi
+
+# Ensure an existing install is not left root-only (breaks the desktop launcher).
+if [[ -f "${ENV_FILE}" ]]; then
+  chmod 644 "${ENV_FILE}" || true
 fi
 
 # Seed user config so the desktop app has project keys without pasting them.
@@ -82,17 +88,22 @@ fi
 # Launcher that loads installer env then starts the desktop app.
 LAUNCHER="${PREFIX}/bin/bioversee-launch"
 mkdir -p "${PREFIX}/bin"
-cat > "${LAUNCHER}" <<EOF
+cat > "${LAUNCHER}" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ -f /etc/bioversee/pi.env ]]; then
+ENV_FILE="/etc/bioversee/pi.env"
+if [[ -r "${ENV_FILE}" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source /etc/bioversee/pi.env
+  source "${ENV_FILE}"
   set +a
+elif [[ -f "${ENV_FILE}" ]]; then
+  echo "Warning: ${ENV_FILE} is not readable — continuing without it." >&2
 fi
-exec "${PREFIX}/.venv/bin/bioversee" "\$@"
+exec "/opt/bioversee-pi/.venv/bin/bioversee" "$@"
 EOF
+# Keep PREFIX expandable for non-default installs
+sed -i "s|/opt/bioversee-pi|${PREFIX}|g" "${LAUNCHER}"
 chmod 755 "${LAUNCHER}"
 
 # Background monitoring agent only (desktop app is launched by the user).
