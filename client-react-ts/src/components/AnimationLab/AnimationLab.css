@@ -1,0 +1,165 @@
+.anim-lab__veil {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  border: none;
+  padding: 0;
+  background: var(--bv-overlay);
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 0.28s var(--bv-ease);
+}
+
+.anim-lab__veil.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.anim-lab {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(440px, calc(100vw - 20px));
+  max-height: min(72vh, 520px);
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+  overflow: auto;
+  background: var(--bv-surface-elevated);
+  border: 1px solid var(--bv-line);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  box-shadow: var(--bv-shadow-card);
+  transform: translate(-50%, 110%);
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.anim-lab.is-open {
+  transform: translate(-50%, 0);
+}
+
+.anim-lab__handle {
+  width: 40px;
+  height: 4px;
+  margin: 2px auto 4px;
+  border-radius: 999px;
+  background: var(--bv-line);
+}
+
+.anim-lab__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.anim-lab__eyebrow {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.anim-lab__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: var(--bv-text);
+}
+
+.anim-lab__close {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--bv-fill);
+  color: var(--bv-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.anim-lab__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--bv-text-secondary);
+}
+
+.anim-lab__hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--bv-line);
+  background: var(--bv-fill);
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.anim-lab__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.anim-lab__section-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.anim-lab__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.anim-lab__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--bv-line);
+  border-radius: 14px;
+  background: var(--bv-card);
+  color: var(--bv-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--bv-ease),
+    background 0.2s var(--bv-ease),
+    box-shadow 0.2s var(--bv-ease);
+}
+
+.anim-lab__item:hover {
+  border-color: var(--bv-accent-border);
+  background: var(--bv-accent-soft);
+  box-shadow: 0 0 0 3px var(--bv-accent-glow);
+}
+
+.anim-lab__item-label {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.anim-lab__item-hint {
+  font-size: 12px;
+  color: var(--bv-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-lab,
+  .anim-lab__veil {
+    transition: none;
+  }
+}

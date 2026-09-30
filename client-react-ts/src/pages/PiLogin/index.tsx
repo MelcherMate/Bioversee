@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
-import Google from "../../img/google.png";
+import GoogleMark from "../../components/GoogleMark";
 import Logo from "../../utils/svgs/new_logo.svg";
 import SegmentedControl from "../../components/SegmentedControl";
 import { upsertStoredSession } from "../../lib/accountSessions";
@@ -140,7 +140,12 @@ function PiLogin() {
       }).toString()}`;
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo },
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: "select_account",
+          },
+        },
       });
       if (oauthError) throw oauthError;
     } catch (err) {
@@ -239,12 +244,14 @@ function PiLogin() {
 
           <button
             type="button"
-            className="auth-google"
+            className="auth-social auth-social--google"
             onClick={onGoogle}
             disabled={busy || !callback}
           >
-            <img src={Google} alt="" width={18} height={18} />
-            {t("auth.continueGoogle")}
+            <span className="auth-social__icon" aria-hidden>
+              <GoogleMark size={18} />
+            </span>
+            <span className="auth-social__label">{t("auth.continueGoogle")}</span>
           </button>
 
           <Link className="auth-note auth-note--link" to="/about">

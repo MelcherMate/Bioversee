@@ -9,6 +9,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import "./App.css";
+import AnimationLab from "./components/AnimationLab";
 import DevDataPanel from "./components/DevDataPanel";
 import MarketingHeader from "./components/MarketingHeader";
 import Navbar from "./components/Navbar";
@@ -274,6 +275,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
           user={user}
         />
       )}
+      <AnimationLab />
     </div>
   );
 }

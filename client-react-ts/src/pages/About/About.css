@@ -176,10 +176,10 @@
   overflow-x: clip;
 }
 
-/* First product block sits tight under the hero so the skeleton peeks on load */
+/* Keep vertical rhythm even so the skeleton sits mid-section */
 .landing-section--web-peek {
-  padding-top: 20px;
-  padding-bottom: 72px;
+  padding-top: 56px;
+  padding-bottom: 56px;
 }
 
 .landing-section--muted {
@@ -202,11 +202,24 @@
 
 .landing-section__inner--web {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+  grid-template-columns: minmax(0, 680px) minmax(240px, 320px);
   gap: 40px 48px;
   align-items: center;
+  justify-content: center;
+  justify-items: start;
   width: min(1040px, 100%);
   max-width: 100%;
+  margin-inline: auto;
+}
+
+.landing-section__inner--web .web-preview {
+  width: min(680px, 100%);
+  max-width: 100%;
+}
+
+.landing-section__inner--web .landing-app-copy {
+  width: auto;
+  max-width: 320px;
 }
 
 .landing-section__inner--pi {
@@ -491,8 +504,14 @@
 
 @media (max-width: 860px) {
   .landing-section__inner--app,
-  .landing-section__inner--web,
   .landing-section__inner--pi {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+    gap: 28px;
+  }
+
+  .landing-section__inner--web {
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
     text-align: center;
@@ -501,6 +520,8 @@
 
   .landing-section__inner--web .landing-app-copy {
     order: -1;
+    width: 100%;
+    max-width: 100%;
   }
 
   .landing-section__inner--pi .landing-app-copy {
@@ -561,8 +582,8 @@
   }
 
   .landing-section--web-peek {
-    padding-top: 12px;
-    padding-bottom: 48px;
+    padding-top: 36px;
+    padding-bottom: 36px;
   }
 
   .landing-section__inner,

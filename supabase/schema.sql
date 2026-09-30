@@ -284,6 +284,7 @@ begin
   values (
     new.id,
     coalesce(
+      nullif(trim(new.raw_user_meta_data->>'username'), ''),
       new.raw_user_meta_data->>'full_name',
       new.raw_user_meta_data->>'name',
       new.email
@@ -1490,6 +1491,7 @@ begin
   values (
     new.id,
     coalesce(
+      nullif(trim(new.raw_user_meta_data->>'username'), ''),
       new.raw_user_meta_data->>'full_name',
       new.raw_user_meta_data->>'name',
       new.email

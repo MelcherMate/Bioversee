@@ -31,36 +31,107 @@ function WebAppPreview() {
         <aside className="web-preview__controls">
           <div className="web-preview__panel">
             <span className="web-preview__section-label" />
-            <span className="web-preview__row">
-              <span className="web-preview__row-text" />
-              <span className="web-preview__toggle is-on" />
-            </span>
-            <span className="web-preview__row">
-              <span className="web-preview__row-text" />
-              <span className="web-preview__toggle" />
-            </span>
-            <span className="web-preview__row">
-              <span className="web-preview__row-text" />
-              <span className="web-preview__toggle" />
-            </span>
-            <span className="web-preview__row">
-              <span className="web-preview__row-text" />
-              <span className="web-preview__toggle" />
+            <span className="web-preview__switch-grid">
+              <span className="web-preview__switch-card">
+                <span className="web-preview__row-text" />
+                <span className="web-preview__switch-foot">
+                  <span className="web-preview__switch-status" />
+                  <span className="web-preview__toggle" />
+                </span>
+              </span>
+              <span className="web-preview__switch-card">
+                <span className="web-preview__row-text" />
+                <span className="web-preview__switch-foot">
+                  <span className="web-preview__switch-status" />
+                  <span className="web-preview__toggle" />
+                </span>
+              </span>
+              <span className="web-preview__switch-card">
+                <span className="web-preview__row-text" />
+                <span className="web-preview__switch-foot">
+                  <span className="web-preview__switch-status" />
+                  <span className="web-preview__toggle" />
+                </span>
+              </span>
+              <span className="web-preview__switch-card">
+                <span className="web-preview__row-text" />
+                <span className="web-preview__switch-foot">
+                  <span className="web-preview__switch-status" />
+                  <span className="web-preview__toggle" />
+                </span>
+              </span>
             </span>
 
             <span className="web-preview__section-label web-preview__section-label--spaced" />
-            <span className="web-preview__slider-block">
-              <span className="web-preview__row-text" />
-              <span className="web-preview__slider">
-                <span className="web-preview__slider-track" />
-                <span className="web-preview__slider-thumb web-preview__slider-thumb--a" />
+            <span className="web-preview__knob-grid">
+              <span className="web-preview__knob">
+                <span className="web-preview__knob-meta" />
+                <span className="web-preview__knob-value" />
+                <span className="web-preview__knob-dial">
+                  <svg viewBox="0 0 36 36" aria-hidden="true">
+                    <circle
+                      className="web-preview__knob-track"
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      pathLength="100"
+                    />
+                    <circle
+                      className="web-preview__knob-progress"
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      pathLength="100"
+                      strokeDasharray="25 100"
+                    />
+                  </svg>
+                </span>
               </span>
-            </span>
-            <span className="web-preview__slider-block">
-              <span className="web-preview__row-text" />
-              <span className="web-preview__slider">
-                <span className="web-preview__slider-track web-preview__slider-track--alt" />
-                <span className="web-preview__slider-thumb web-preview__slider-thumb--b" />
+              <span className="web-preview__knob">
+                <span className="web-preview__knob-meta" />
+                <span className="web-preview__knob-value" />
+                <span className="web-preview__knob-dial">
+                  <svg viewBox="0 0 36 36" aria-hidden="true">
+                    <circle
+                      className="web-preview__knob-track"
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      pathLength="100"
+                    />
+                    <circle
+                      className="web-preview__knob-progress"
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      pathLength="100"
+                      strokeDasharray="40 100"
+                    />
+                  </svg>
+                </span>
+              </span>
+              <span className="web-preview__knob">
+                <span className="web-preview__knob-meta" />
+                <span className="web-preview__knob-value" />
+                <span className="web-preview__knob-dial">
+                  <svg viewBox="0 0 36 36" aria-hidden="true">
+                    <circle
+                      className="web-preview__knob-track"
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      pathLength="100"
+                    />
+                    <circle
+                      className="web-preview__knob-progress"
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      pathLength="100"
+                      strokeDasharray="8 100"
+                    />
+                  </svg>
+                </span>
               </span>
             </span>
           </div>
@@ -73,7 +144,9 @@ function WebAppPreview() {
               <span className="web-preview__agitator" />
               <span className="web-preview__paddle web-preview__paddle--top" />
               <span className="web-preview__paddle web-preview__paddle--bottom" />
-              <span className="web-preview__probe" />
+              <span className="web-preview__probe web-preview__probe--a" />
+              <span className="web-preview__probe web-preview__probe--b" />
+              <span className="web-preview__pressure" />
             </span>
           </div>
         </div>
