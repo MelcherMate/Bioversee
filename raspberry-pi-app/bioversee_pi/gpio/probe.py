@@ -1,8 +1,9 @@
-"""GPIO / bus probing with simulation fallback for non-Pi hosts."""
+"""GPIO / bus probing with live pin levels and simulation for non-Pi hosts."""
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import time
 from dataclasses import asdict, dataclass, field
@@ -11,7 +12,9 @@ from typing import Any
 
 from bioversee_pi.config import should_simulate
 from bioversee_pi.gpio.catalog import CATALOG_BY_ID, Peripheral
-from bioversee_pi.gpio.header import physical_pins_for_bcm
+from bioversee_pi.gpio.header import HEADER_PINS, physical_pins_for_bcm
+
+log = logging.getLogger("bioversee.probe")
 
 
 @dataclass
@@ -46,6 +49,23 @@ class ProbeService:
         self._ignored_event_ids: set[str] = set()
         self._sim_step = 0
         self._lock = asyncio.Lock()
+        # physical -> level: power | gnd | id | high | low | idle | busy | unknown
+        self._pin_levels: dict[int, str] = {}
+        self._prev_bcm_levels: dict[int, int] = {}
+        self._lgpio_handle: int | None = None
+        self._claimed_inputs: set[int] = set()
+        self._init_static_levels()
+
+    def _init_static_levels(self) -> None:
+        for pin in HEADER_PINS:
+            if pin.kind in ("3v3", "5v"):
+                self._pin_levels[pin.physical] = "power"
+            elif pin.kind == "gnd":
+                self._pin_levels[pin.physical] = "gnd"
+            elif pin.kind == "id":
+                self._pin_levels[pin.physical] = "id"
+            else:
+                self._pin_levels[pin.physical] = "idle"
 
     def snapshot(self) -> dict[str, Any]:
         return {
@@ -54,16 +74,19 @@ class ProbeService:
             "active_physical": sorted(
                 {p for g in self._pending.values() for p in g.physical}
             ),
+            "pin_levels": dict(self._pin_levels),
         }
 
-    async def poll_once(self) -> list[ProbeGuess]:
+    async def poll_once(self, *, claimed_bcm: set[int] | None = None) -> list[ProbeGuess]:
+        claimed = claimed_bcm or set()
         async with self._lock:
+            self._sample_levels(claimed)
             if self.simulate:
                 return self._poll_simulate()
             new: list[ProbeGuess] = []
             new.extend(self._scan_onewire())
             new.extend(self._scan_i2c())
-            new.extend(self._scan_digital_activity())
+            new.extend(self._scan_digital_activity(claimed))
             return new
 
     def confirm(self, event_id: str, peripheral_id: str | None = None) -> ProbeGuess | None:
@@ -133,16 +156,93 @@ class ProbeService:
         return guess
 
     def _poll_simulate(self) -> list[ProbeGuess]:
-        # Auto-advance a demo sequence slowly so UI can be exercised without clicks.
         self._sim_step += 1
+        # Animate a few GPIO levels so the live board looks alive off-Pi.
+        for pin in HEADER_PINS:
+            if pin.bcm is None:
+                continue
+            wave = (self._sim_step + pin.bcm) % 8
+            if wave < 2:
+                self._pin_levels[pin.physical] = "high"
+            elif wave < 4:
+                self._pin_levels[pin.physical] = "low"
+            else:
+                self._pin_levels[pin.physical] = "idle"
         if self._sim_step == 3 and "sim-auto-temp" not in self._pending:
             g = self.inject_simulation("ds18b20")
-            # rewrite id for auto demo uniqueness control
             self._pending.pop(g.event_id, None)
             g.event_id = "sim-auto-temp"
             self._pending[g.event_id] = g
             return [g]
         return []
+
+    def _sample_levels(self, claimed_bcm: set[int]) -> None:
+        if self.simulate:
+            return
+        readings = self._read_gpio_levels(claimed_bcm)
+        for pin in HEADER_PINS:
+            if pin.bcm is None:
+                continue
+            if pin.bcm in claimed_bcm:
+                self._pin_levels[pin.physical] = "busy"
+                continue
+            level = readings.get(pin.bcm)
+            if level is None:
+                self._pin_levels[pin.physical] = "unknown"
+            elif level == 1:
+                self._pin_levels[pin.physical] = "high"
+            elif level == 0:
+                self._pin_levels[pin.physical] = "low"
+            else:
+                self._pin_levels[pin.physical] = "idle"
+
+    def _read_gpio_levels(self, claimed_bcm: set[int]) -> dict[int, int | None]:
+        """Best-effort sample of all header GPIOs as inputs."""
+        bcm_pins = [p.bcm for p in HEADER_PINS if p.bcm is not None]
+        out: dict[int, int | None] = {b: None for b in bcm_pins}
+
+        # Prefer lgpio (native on modern Pi OS).
+        try:
+            import lgpio  # type: ignore
+
+            if self._lgpio_handle is None:
+                self._lgpio_handle = lgpio.gpiochip_open(0)
+            handle = self._lgpio_handle
+            for bcm in bcm_pins:
+                if bcm in claimed_bcm:
+                    continue
+                try:
+                    if bcm not in self._claimed_inputs:
+                        # Pull-up so floating pins read high (idle-ish) when nothing drives low.
+                        lgpio.gpio_claim_input(handle, bcm, lgpio.SET_PULL_UP)
+                        self._claimed_inputs.add(bcm)
+                    out[bcm] = int(lgpio.gpio_read(handle, bcm))
+                except Exception:  # noqa: BLE001
+                    out[bcm] = None
+            return out
+        except Exception as exc:  # noqa: BLE001
+            log.debug("lgpio unavailable: %s", exc)
+
+        # Fallback: gpiozero DigitalInputDevice (one-shot, slower).
+        try:
+            from gpiozero import DigitalInputDevice  # type: ignore
+
+            for bcm in bcm_pins:
+                if bcm in claimed_bcm:
+                    continue
+                try:
+                    pin = DigitalInputDevice(bcm, pull_up=True)
+                    try:
+                        out[bcm] = 1 if pin.value else 0
+                    finally:
+                        pin.close()
+                except Exception:  # noqa: BLE001
+                    out[bcm] = None
+            return out
+        except Exception as exc:  # noqa: BLE001
+            log.debug("gpiozero unavailable: %s", exc)
+
+        return out
 
     def _scan_onewire(self) -> list[ProbeGuess]:
         root = Path("/sys/bus/w1/devices")
@@ -177,7 +277,6 @@ class ProbeService:
         if not bus_path.exists():
             return []
         try:
-            # Prefer smbus2 if available; otherwise parse i2cdetect output.
             addresses = self._i2c_scan_addresses()
         except OSError:
             return []
@@ -199,7 +298,6 @@ class ProbeService:
                 detail=f"I2C ACK at 0x{addr:02X}",
                 i2c_address=addr,
             )
-            # Also highlight SCL
             if 5 not in guess.physical:
                 guess.physical = sorted(set(guess.physical + physical_pins_for_bcm(3)))
             self._pending[event_id] = guess
@@ -222,7 +320,6 @@ class ProbeService:
         except ImportError:
             pass
 
-        # Fallback: i2cdetect -y 1
         import subprocess
 
         try:
@@ -253,30 +350,40 @@ class ProbeService:
                 return p
         return CATALOG_BY_ID["ph_i2c"]
 
-    def _scan_digital_activity(self) -> list[ProbeGuess]:
-        """Best-effort: watch exported GPIOs for unexpected pulls (optional)."""
-        # Without gpiozero / dedicated HAT, digital plug detection is weak.
-        # We only report pins that appear under /sys/class/gpio with value flips
-        # if BIOVERSEE_WATCH_GPIO is set.
-        watch = os.environ.get("BIOVERSEE_WATCH_GPIO", "")
-        if not watch:
-            return []
+    def _scan_digital_activity(self, claimed_bcm: set[int]) -> list[ProbeGuess]:
+        """Detect GPIOs that flip away from the idle pull-up (activity / connection)."""
+        watch_env = os.environ.get("BIOVERSEE_WATCH_GPIO", "")
+        watch_all = not watch_env.strip()  # default: watch all unclaimed GPIOs
+        watch_set: set[int] | None = None
+        if watch_env.strip():
+            watch_set = set()
+            for token in watch_env.split(","):
+                token = token.strip()
+                if token.isdigit():
+                    watch_set.add(int(token))
+
         found: list[ProbeGuess] = []
-        for token in watch.split(","):
-            token = token.strip()
-            if not token.isdigit():
+        for pin in HEADER_PINS:
+            bcm = pin.bcm
+            if bcm is None or bcm in claimed_bcm:
                 continue
-            bcm = int(token)
+            if watch_set is not None and bcm not in watch_set:
+                continue
+            if not watch_all and watch_set is None:
+                continue
+
+            level_name = self._pin_levels.get(pin.physical, "idle")
+            if level_name not in ("high", "low"):
+                continue
+            level = 1 if level_name == "high" else 0
+            prev = self._prev_bcm_levels.get(bcm)
+            self._prev_bcm_levels[bcm] = level
+
+            # With pull-up, idle ≈ high. Activity = driven low, or a transition.
+            active = level == 0 or (prev is not None and prev != level)
+            if not active:
+                continue
             if bcm in self._known_digital:
-                continue
-            value_path = Path(f"/sys/class/gpio/gpio{bcm}/value")
-            if not value_path.exists():
-                continue
-            try:
-                val = value_path.read_text().strip()
-            except OSError:
-                continue
-            if val not in ("0", "1"):
                 continue
             self._known_digital.add(bcm)
             event_id = f"dio-{bcm}"
@@ -287,8 +394,8 @@ class ProbeService:
                 p,
                 event_id=event_id,
                 bcm=bcm,
-                confidence=0.4,
-                detail=f"Digital level seen on BCM {bcm}",
+                confidence=0.45,
+                detail=f"Digital activity on BCM {bcm} (level {level})",
             )
             self._pending[event_id] = guess
             found.append(guess)
