@@ -1,3 +1,7 @@
+import {
+  EyeOffOutline,
+  EyeOutline,
+} from "react-ionicons";
 import { Lottie } from "lottie-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +16,11 @@ import Logo from "../../utils/svgs/new_logo.svg";
 import SegmentedControl from "../../components/SegmentedControl";
 import { ToastStack, useToasts } from "../../components/Toast";
 import { upsertStoredSession } from "../../lib/accountSessions";
+import {
+  getLastLoginMethod,
+  setLastLoginMethod,
+  type LastLoginMethod,
+} from "../../lib/lastLoginMethod";
 import { APP_HOME_PATH, legacyDashboardRedirect } from "../../lib/sharing";
 import { supabase } from "../../lib/supabase";
 import "./Login.css";
@@ -91,23 +100,9 @@ function passwordStrengthLevel(metCount: number): "empty" | "weak" | "fair" | "s
 }
 
 function EyeIcon({ open }: { open: boolean }) {
-  if (open) {
-    return (
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M12 5c-5 0-9.27 3.11-11 7 1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
-        />
-      </svg>
-    );
-  }
+  const Icon = open ? EyeOutline : EyeOffOutline;
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M3.16 3.88 1.9 5.14l3.05 3.05A12.6 12.6 0 0 0 1 12c1.73 3.89 6 7 11 7 1.86 0 3.6-.4 5.16-1.1l3.7 3.7 1.26-1.26L3.16 3.88zM12 17c-3.53 0-6.64-2.05-8.25-5a10.1 10.1 0 0 1 2.9-3.1l1.66 1.66A4.98 4.98 0 0 0 12 17zm0-10c3.53 0 6.64 2.05 8.25 5a10.2 10.2 0 0 1-1.72 2.3l-1.45-1.45A4.98 4.98 0 0 0 12 7zm-1.2 3.05 3.15 3.15A2.5 2.5 0 0 1 10.8 10.05z"
-      />
-    </svg>
+    <Icon color="currentColor" height="20px" width="20px" aria-hidden={true} />
   );
 }
 
@@ -129,7 +124,15 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
   const [verifyAnimKey, setVerifyAnimKey] = useState(0);
   const [verifyCopyVisible, setVerifyCopyVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [lastLoginMethod, setLastLoginMethodState] = useState<LastLoginMethod | null>(
+    () => getLastLoginMethod()
+  );
   const { toasts, push, dismiss } = useToasts();
+
+  const rememberLoginMethod = (method: LastLoginMethod) => {
+    setLastLoginMethod(method);
+    setLastLoginMethodState(method);
+  };
 
   const showAuthError = useCallback(
     (message: string) => {
@@ -233,6 +236,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           password,
         });
         if (signInError) throw signInError;
+        rememberLoginMethod("email");
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           upsertStoredSession(data.session, { resetSignedInAt: true });
@@ -257,6 +261,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
           },
         });
         if (signUpError) throw signUpError;
+        rememberLoginMethod("email");
         setPendingVerifyEmail(email.trim());
         setPassword("");
         setShowPassword(false);
@@ -277,6 +282,7 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
         upsertStoredSession(current.session, { resetSignedInAt: false });
       }
     }
+    rememberLoginMethod("google");
     const redirectTo = addingAccount
       ? `${window.location.origin}${APP_HOME_PATH}`
       : nextPath
@@ -525,7 +531,11 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
 
             <button
               type="submit"
-              className="auth-cta"
+              className={`auth-cta${
+                lastLoginMethod === "email" && mode === "signin"
+                  ? " auth-cta--with-badge"
+                  : ""
+              }`}
               disabled={busy || (mode === "signup" && !username.trim())}
             >
               {busy
@@ -535,6 +545,9 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
                     ? t("auth.addAccount")
                     : t("auth.signIn")
                   : t("auth.createAccount")}
+              {lastLoginMethod === "email" && mode === "signin" ? (
+                <span className="auth-last-used">{t("auth.lastUsed")}</span>
+              ) : null}
             </button>
           </form>
 
@@ -544,13 +557,18 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
 
           <button
             type="button"
-            className="auth-social auth-social--google"
+            className={`auth-social auth-social--google${
+              lastLoginMethod === "google" ? " auth-social--with-badge" : ""
+            }`}
             onClick={signInWithGoogle}
           >
             <span className="auth-social__icon" aria-hidden>
               <GoogleMark size={18} />
             </span>
             <span className="auth-social__label">{t("auth.continueGoogle")}</span>
+            {lastLoginMethod === "google" ? (
+              <span className="auth-last-used">{t("auth.lastUsed")}</span>
+            ) : null}
           </button>
 
           {addingAccount && (

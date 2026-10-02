@@ -41,6 +41,7 @@ import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice, APP
 import { DEVICES_CHANGED_EVENT, OPEN_ADD_DEVICE_EVENT } from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
+import AccountMenu from "../AccountMenu";
 import AddDevicePanel from "../AddDevicePanel";
 import AppSettingsPanel from "../AppSettingsPanel";
 import DeviceContextMenu from "../DeviceContextMenu";
@@ -700,104 +701,19 @@ const Navbar = ({ user }: NavbarProps) => {
               />
             </button>
             {showAccount && (
-              <div className="topbar__menu">
-                <p className="topbar__menu-label">{t("nav.currentAccount")}</p>
-                <div className="topbar__account-row topbar__account-row--active">
-                  <img
-                    src={avatarForAccount(user)}
-                    alt=""
-                    className="topbar__account-avatar"
-                  />
-                  <div className="topbar__account-copy">
-                    <p className="topbar__menu-name">{user.displayName}</p>
-                    <p className="topbar__menu-meta">{user.email}</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="topbar__account-logout"
-                    disabled={busy}
-                    onClick={() => void onLogout()}
-                  >
-                    {t("nav.logOut")}
-                  </button>
-                </div>
-
-                {otherAccounts.length > 0 && (
-                  <>
-                    <p className="topbar__menu-label topbar__menu-label--spaced">
-                      {t("nav.otherAccounts")}
-                    </p>
-                    <ul className="topbar__account-list">
-                      {otherAccounts.map((account) => {
-                        const signedIn = isAccountSignedIn(account);
-                        return (
-                          <li key={account.userId}>
-                            <button
-                              type="button"
-                              className={`topbar__account-row ${
-                                signedIn
-                                  ? ""
-                                  : "topbar__account-row--logged-out"
-                              }`}
-                              disabled={busy}
-                              onClick={() => onSwitch(account)}
-                            >
-                              <img
-                                src={avatarForAccount(account)}
-                                alt=""
-                                className="topbar__account-avatar"
-                              />
-                              <div className="topbar__account-copy">
-                                <p className="topbar__menu-name">
-                                  {account.displayName}
-                                </p>
-                                <p className="topbar__menu-meta">
-                                  {account.email}
-                                </p>
-                              </div>
-                              <span
-                                className={`topbar__account-status ${
-                                  signedIn
-                                    ? "topbar__account-status--in"
-                                    : "topbar__account-status--out"
-                                }`}
-                              >
-                                {signedIn ? t("nav.signedIn") : t("nav.loggedOut")}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  className="topbar__menu-secondary"
-                  disabled={busy}
-                  onClick={onAddAccount}
-                >
-                  {t("nav.addAccount")}
-                </button>
-                <button
-                  type="button"
-                  className="topbar__menu-logout"
-                  disabled={busy}
-                  onClick={() => void onLogoutAll()}
-                >
-                  {t("nav.logOutAll")}
-                </button>
-                <button
-                  type="button"
-                  className="topbar__menu-danger"
-                  disabled={busy}
-                  onClick={onRequestDeleteAccount}
-                >
-                  {t("nav.deleteAccount")}
-                </button>
-                {error && <p className="topbar__menu-error">{error}</p>}
-              </div>
+              <AccountMenu
+                user={user}
+                otherAccounts={otherAccounts}
+                busy={busy}
+                error={error}
+                onBusy={setBusy}
+                onError={setError}
+                onLogout={() => void onLogout()}
+                onLogoutAll={() => void onLogoutAll()}
+                onSwitch={(account) => void onSwitch(account)}
+                onAddAccount={() => void onAddAccount()}
+                onRequestDeleteAccount={onRequestDeleteAccount}
+              />
             )}
           </div>
         </div>

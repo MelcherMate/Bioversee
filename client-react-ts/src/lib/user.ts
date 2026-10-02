@@ -5,6 +5,7 @@ export type AppUser = {
   id: string;
   email: string | null;
   displayName: string;
+  username: string | null;
   givenName: string;
   familyName: string;
   avatarUrl: string | null;
@@ -12,8 +13,16 @@ export type AppUser = {
 
 export function toAppUser(user: User): AppUser {
   const meta = user.user_metadata ?? {};
+  const username =
+    typeof meta.username === "string" && meta.username.trim()
+      ? meta.username.trim()
+      : null;
   const fullName =
-    meta.full_name || meta.name || user.email?.split("@")[0] || "User";
+    username ||
+    meta.full_name ||
+    meta.name ||
+    user.email?.split("@")[0] ||
+    "User";
   const parts = String(fullName).trim().split(/\s+/);
   const givenName = meta.given_name || parts[0] || "";
   const familyName =
@@ -23,6 +32,7 @@ export function toAppUser(user: User): AppUser {
     id: user.id,
     email: user.email ?? null,
     displayName: fullName,
+    username,
     givenName,
     familyName,
     avatarUrl: meta.avatar_url || meta.picture || null,

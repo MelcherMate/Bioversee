@@ -5,6 +5,11 @@ import GoogleMark from "../../components/GoogleMark";
 import Logo from "../../utils/svgs/new_logo.svg";
 import SegmentedControl from "../../components/SegmentedControl";
 import { upsertStoredSession } from "../../lib/accountSessions";
+import {
+  getLastLoginMethod,
+  setLastLoginMethod,
+  type LastLoginMethod,
+} from "../../lib/lastLoginMethod";
 import { supabase } from "../../lib/supabase";
 import "../Login/Login.css";
 import "./PiLogin.css";
@@ -48,8 +53,16 @@ function PiLogin() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastLoginMethod, setLastLoginMethodState] = useState<LastLoginMethod | null>(
+    () => getLastLoginMethod()
+  );
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+
+  const rememberLoginMethod = (method: LastLoginMethod) => {
+    setLastLoginMethod(method);
+    setLastLoginMethodState(method);
+  };
 
   const returnToApp = async () => {
     if (!callback) {
@@ -104,6 +117,7 @@ function PiLogin() {
           password,
         });
         if (signUpError) throw signUpError;
+        rememberLoginMethod("email");
         if (data.session) {
           upsertStoredSession(data.session);
           await returnToApp();
@@ -114,6 +128,7 @@ function PiLogin() {
         const { data, error: signInError } =
           await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
+        rememberLoginMethod("email");
         if (data.session) {
           upsertStoredSession(data.session);
           await returnToApp();
@@ -134,6 +149,7 @@ function PiLogin() {
     setBusy(true);
     setError(null);
     try {
+      rememberLoginMethod("google");
       const redirectTo = `${window.location.origin}/pi-login?${new URLSearchParams({
         redirect: callback,
         state,
@@ -229,12 +245,23 @@ function PiLogin() {
             </label>
             {error && <p className="auth-error">{error}</p>}
             {message && <p className="auth-note">{message}</p>}
-            <button type="submit" className="auth-cta" disabled={busy || !callback}>
+            <button
+              type="submit"
+              className={`auth-cta${
+                lastLoginMethod === "email" && mode === "signin"
+                  ? " auth-cta--with-badge"
+                  : ""
+              }`}
+              disabled={busy || !callback}
+            >
               {busy
                 ? t("auth.pleaseWait")
                 : mode === "signin"
                   ? t("auth.signIn")
                   : t("auth.createAccount")}
+              {lastLoginMethod === "email" && mode === "signin" ? (
+                <span className="auth-last-used">{t("auth.lastUsed")}</span>
+              ) : null}
             </button>
           </form>
 
@@ -244,7 +271,9 @@ function PiLogin() {
 
           <button
             type="button"
-            className="auth-social auth-social--google"
+            className={`auth-social auth-social--google${
+              lastLoginMethod === "google" ? " auth-social--with-badge" : ""
+            }`}
             onClick={onGoogle}
             disabled={busy || !callback}
           >
@@ -252,6 +281,9 @@ function PiLogin() {
               <GoogleMark size={18} />
             </span>
             <span className="auth-social__label">{t("auth.continueGoogle")}</span>
+            {lastLoginMethod === "google" ? (
+              <span className="auth-last-used">{t("auth.lastUsed")}</span>
+            ) : null}
           </button>
 
           <Link className="auth-note auth-note--link" to="/about">

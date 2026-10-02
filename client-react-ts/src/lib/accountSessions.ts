@@ -189,6 +189,7 @@ export function storedAccountToAppUser(account: StoredAccount): AppUser {
     id: account.userId,
     email: account.email,
     displayName: account.displayName,
+    username: account.displayName,
     givenName: parts[0] || "",
     familyName: parts.length > 1 ? parts.slice(1).join(" ") : "",
     avatarUrl: account.avatarUrl,
