@@ -214,13 +214,18 @@ function buildJacketPipePath(
 /**
  * Pressure-vessel-style pipe water: solid slug with head advancing on pump-on
  * and tail clearing on pump-off.
+ *
+ * If the pump is already on at mount (page load / refresh), start in the
+ * steady full-flow state. Fill/drain animations still run for later toggles.
  */
 function usePipeSlug(active: boolean, pathLength: number, speed: number) {
   const [tail, setTail] = useState(0);
-  const [head, setHead] = useState(0);
-  const phaseRef = useRef<"idle" | "advance" | "steady" | "retreat">("idle");
+  const [head, setHead] = useState(() => (active ? pathLength : 0));
+  const phaseRef = useRef<"idle" | "advance" | "steady" | "retreat">(
+    active ? "steady" : "idle",
+  );
   const tailRef = useRef(0);
-  const headRef = useRef(0);
+  const headRef = useRef(active ? pathLength : 0);
   const activeRef = useRef(active);
   const pathLenRef = useRef(pathLength);
   const speedRef = useRef(speed);
@@ -600,8 +605,12 @@ function doseDripFallPx(fillUnits: number, layout: BioreactorLayout) {
  */
 function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps) {
   const prefix = useId().replace(/:/g, "");
-  const [liquidColor, setLiquidColor] = useState(DOSE_ACID);
-  const [feeding, setFeeding] = useState(false);
+  const [liquidColor, setLiquidColor] = useState(
+    () => doseColor(mode) ?? DOSE_ACID,
+  );
+  const [feeding, setFeeding] = useState(
+    () => mode === "acid" || mode === "base",
+  );
   const liquidColorRef = useRef(liquidColor);
   const pendingRef = useRef<"acid" | "base" | "idle">("idle");
   const headAmtRef = useRef(0);
@@ -1355,7 +1364,7 @@ function BioreactorCard(props: BioreactorCardProps) {
     [geometry.height_m, geometry.diameter_m],
   );
   const airActive = Boolean(equipment.aerator && aeratorVal > 0);
-  const [airAtSparger, setAirAtSparger] = useState(false);
+  const [airAtSparger, setAirAtSparger] = useState(airActive);
   useEffect(() => {
     if (!equipment.aerator || aeratorVal <= 0) setAirAtSparger(false);
   }, [equipment.aerator, aeratorVal]);

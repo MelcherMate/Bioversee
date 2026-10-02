@@ -6,7 +6,7 @@ import ControlClock from "../../components/ControlClock";
 import Knob from "../../components/Knob";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
-import { insertSwitchState } from "../../lib/actuators";
+import { getLatestSliderState, getLatestSwitchState, insertSwitchState } from "../../lib/actuators";
 import { canOperateDevice } from "../../lib/devices";
 import {
   defaultBioreactorGeometry,
@@ -59,6 +59,47 @@ function Bioreactor({ user }: BioreactorProps) {
   const [rotorVal, setRotorVal] = useState(0);
   const [aeratorVal, setAeratorVal] = useState(0);
   const [waterLevelVal, setWaterLevelVal] = useState(92);
+  const [pumpsHydrated, setPumpsHydrated] = useState(false);
+
+  // Load actuator states before mounting animations so already-on pumps /
+  // set levels start in their steady state instead of replaying fill.
+  useEffect(() => {
+    if (!device) {
+      setPumpsHydrated(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPumpsHydrated(false);
+
+    Promise.all([
+      getLatestSwitchState(device.id, "switchWarmWaterPump"),
+      getLatestSwitchState(device.id, "switchColdWaterPump"),
+      getLatestSwitchState(device.id, "switchAcidPump"),
+      getLatestSwitchState(device.id, "switchBasePump"),
+      getLatestSliderState(device.id, "water_level"),
+      getLatestSliderState(device.id, "aerator"),
+      getLatestSliderState(device.id, "rotor"),
+    ])
+      .then(([warm, cold, acid, base, waterLevel, aerator, rotor]) => {
+        if (cancelled) return;
+        setWarmWVal(Boolean(warm));
+        setColdWVal(Boolean(cold));
+        setAcidVal(Boolean(acid));
+        setBaseVal(Boolean(base));
+        setWaterLevelVal(Number(waterLevel));
+        setAeratorVal(Number(aerator));
+        setRotorVal(Number(rotor));
+      })
+      .catch((error) => console.log(error))
+      .finally(() => {
+        if (!cancelled) setPumpsHydrated(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [device?.id]);
 
   if (!ready) {
     return (
@@ -70,6 +111,14 @@ function Bioreactor({ user }: BioreactorProps) {
 
   if (!device) {
     return <EmptyDeviceState deviceType="bioreactor" />;
+  }
+
+  if (!pumpsHydrated) {
+    return (
+      <div className="container">
+        <div className="process-loading">{t("process.loadingBioreactor")}</div>
+      </div>
+    );
   }
 
   const readOnly = !canOperateDevice(device.role);
