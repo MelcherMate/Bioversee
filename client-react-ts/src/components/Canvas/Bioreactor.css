@@ -26,7 +26,7 @@
 
 /* Simple dashes traveling along the jacket flow */
 .thermal-jacket__flow-dash {
-  animation: thermal-jacket-flow-dash 1.4s linear infinite;
+  animation: thermal-jacket-flow-dash 0.7s linear infinite;
 }
 
 @keyframes thermal-jacket-flow-dash {
