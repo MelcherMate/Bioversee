@@ -95,6 +95,8 @@ export type BioreactorLayout = {
     /** Headspace pressure transmitter on the lid. */
     pressureLeft: number;
     pressureTop: number;
+    /** Fill % below which pH / temperature tips are dry. */
+    minFillPercent: number;
   };
   outflow: {
     centerX: number;
@@ -240,6 +242,9 @@ export function layoutFromGeometry(
   /** Headspace TX on the flat apex of the lid, left of the agitator. */
   const pressureLeft = vesselCenterX - 58;
   const pressureTop = chamberTop - 42;
+  /** Tip height from dish floor as a fraction of the full water column. */
+  const sensorTipFrac = Math.max(0, (waterBottomAbs - sensorTipY) / waterH);
+  const sensorsMinFillPercent = Math.ceil(sensorTipFrac * 100);
 
   const outflowDrop = 100;
   const outflowRun = 110;
@@ -414,6 +419,7 @@ export function layoutFromGeometry(
       right2: sensorRight2,
       pressureLeft,
       pressureTop,
+      minFillPercent: sensorsMinFillPercent,
     },
     outflow: {
       centerX: vesselCenterX,

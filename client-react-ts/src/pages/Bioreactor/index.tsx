@@ -112,6 +112,7 @@ function Bioreactor({ user }: BioreactorProps) {
   fillUnitsRef.current = fillUnits;
   const aeratorLowWarnedRef = useRef(false);
   const rotorLowWarnedRef = useRef(false);
+  const sensorLowWarnedRef = useRef(false);
   const { toasts, push, dismiss } = useToasts();
 
   const flowGeom = useMemo(() => {
@@ -127,6 +128,7 @@ function Bioreactor({ user }: BioreactorProps) {
       },
       aeratorMinFillPercent: layout.aerator.minFillPercent,
       rotorMinFillPercent: layout.impeller.minFillPercent,
+      sensorMinFillPercent: layout.sensors.minFillPercent,
     };
   }, []);
 
@@ -285,6 +287,43 @@ function Bioreactor({ user }: BioreactorProps) {
     rotorVal,
     t,
     user.id,
+  ]);
+
+  // Warn when pH / temperature probe tips sit above the liquid.
+  useEffect(() => {
+    if (!device || !pumpsHydrated) return;
+
+    const config = parseBioreactorConfig(device.config);
+    const hasTemp = config.equipment.sensor_temperature;
+    const hasPh = config.equipment.sensor_ph;
+    if (!hasTemp && !hasPh) return;
+
+    const levelPercent = fillUnitsToPercent(fillUnits);
+    const tooLow = levelPercent <= flowGeom.sensorMinFillPercent;
+
+    if (!tooLow) {
+      sensorLowWarnedRef.current = false;
+      return;
+    }
+
+    if (sensorLowWarnedRef.current) return;
+    sensorLowWarnedRef.current = true;
+
+    const titleKey =
+      hasTemp && hasPh
+        ? "process.sensorLevelTooLowBoth"
+        : hasTemp
+          ? "process.sensorLevelTooLowTemp"
+          : "process.sensorLevelTooLowPh";
+
+    push("warning", t(titleKey), t("process.sensorLevelTooLowDetail"));
+  }, [
+    device,
+    fillUnits,
+    flowGeom.sensorMinFillPercent,
+    pumpsHydrated,
+    push,
+    t,
   ]);
 
   if (!ready) {
