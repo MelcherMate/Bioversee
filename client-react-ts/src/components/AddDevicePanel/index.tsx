@@ -13,6 +13,7 @@ import {
   toBioreactorConfigPatch,
   type BioreactorConfig,
   type BioreactorEquipment,
+  type BioreactorFluid,
   type VolumeUnit,
 } from "../../lib/bioreactorGeometry";
 import {
@@ -21,6 +22,7 @@ import {
   type ShareRole,
 } from "../../lib/sharing";
 import EquipmentChecklist from "../EquipmentChecklist";
+import FluidPropertiesFields from "../FluidPropertiesFields";
 import "./AddDevicePanel.css";
 
 /** Creation is bioreactor-only for now. */
@@ -119,6 +121,10 @@ function AddDevicePanel({
 
   const setEquipment = (equipment: BioreactorEquipment) => {
     setConfig((prev) => ({ ...prev, equipment }));
+  };
+
+  const setFluid = (fluid: BioreactorFluid) => {
+    setConfig((prev) => ({ ...prev, fluid }));
   };
 
   const addMember = () => {
@@ -283,6 +289,13 @@ function AddDevicePanel({
               disabled={busy}
             />
           </section>
+
+          <FluidPropertiesFields
+            value={config.fluid}
+            onChange={setFluid}
+            disabled={busy}
+            variant="add"
+          />
 
           <section
             className="add-device__invite"

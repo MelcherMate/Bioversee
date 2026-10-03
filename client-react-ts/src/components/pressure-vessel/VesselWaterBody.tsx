@@ -17,6 +17,10 @@ type VesselWaterBodyProps = {
   fillUnits: number;
   fillVelocity: number;
   showSurface?: boolean;
+  /** Relative surface damping vs water (1 = water). */
+  waveDamping?: number;
+  /** Relative ripple speed vs water (1 = water). */
+  waveSpeed?: number;
   /**
    * Target steady-state bubble count for the sparger plume.
    * Omit for the default decorative looping set (pressure vessel).
@@ -79,6 +83,8 @@ export function VesselWaterBody({
   fillUnits,
   fillVelocity,
   showSurface = true,
+  waveDamping = 1,
+  waveSpeed = 1,
   bubbleCount,
   bubbleSwirl = 0,
   bubbleSpawnBottomPct,
@@ -142,7 +148,12 @@ export function VesselWaterBody({
       <div className="vessel-water" style={{ height: `${fillRatio * 100}%` }}>
         <div className="water-texture" />
         {showSurface ? (
-          <WaterSurfaceWave className="water-surface" fillVelocity={fillVelocity} />
+          <WaterSurfaceWave
+            className="water-surface"
+            fillVelocity={fillVelocity}
+            waveDamping={waveDamping}
+            waveSpeed={waveSpeed}
+          />
         ) : null}
         {bubbles.length > 0 ? (
           <div

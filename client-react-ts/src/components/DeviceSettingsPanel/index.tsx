@@ -17,10 +17,12 @@ import {
   toBioreactorConfigPatch,
   type BioreactorConfig,
   type BioreactorEquipment,
+  type BioreactorFluid,
   type VolumeUnit,
 } from "../../lib/bioreactorGeometry";
 import { notifyDeviceUpdated } from "../../lib/deviceEvents";
 import EquipmentChecklist from "../EquipmentChecklist";
+import FluidPropertiesFields from "../FluidPropertiesFields";
 import "./DeviceSettingsPanel.css";
 
 type DeviceSettingsPanelProps = {
@@ -146,6 +148,11 @@ function DeviceSettingsPanel({
 
   const setEquipment = (equipment: BioreactorEquipment) => {
     setConfig((prev) => ({ ...prev, equipment }));
+    setCfgSaved(false);
+  };
+
+  const setFluid = (fluid: BioreactorFluid) => {
+    setConfig((prev) => ({ ...prev, fluid }));
     setCfgSaved(false);
   };
 
@@ -295,6 +302,12 @@ function DeviceSettingsPanel({
             <EquipmentChecklist
               value={config.equipment}
               onChange={setEquipment}
+              disabled={!canRename || cfgBusy}
+            />
+
+            <FluidPropertiesFields
+              value={config.fluid}
+              onChange={setFluid}
               disabled={!canRename || cfgBusy}
             />
 

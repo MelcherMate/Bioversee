@@ -230,6 +230,19 @@
     "sensorPressure": "Nyomásérzékelő",
     "sensorPressureHint": "Fejtér-adó a fedélen és nyomásdiagram."
   },
+  "fluid": {
+    "title": "Folyadék",
+    "hint": "A tartályban lévő közeg tulajdonságai. Az előbeállítások kiindulópontok — bármely érték szerkeszthető egyedi folyadékhoz.",
+    "presets": "Folyadék előbeállítások",
+    "presetWater": "Víz",
+    "presetBuffer": "Puffer",
+    "presetCultureBroth": "Tenyésztőleves",
+    "presetViscous": "Viszkózus közeg",
+    "presetCustom": "Egyedi",
+    "viscosity": "Viszkozitás",
+    "density": "Sűrűség",
+    "surfaceTension": "Felületi feszültség"
+  },
   "deviceMenu": {
     "settings": "Eszközbeállítások",
     "rename": "Átnevezés",

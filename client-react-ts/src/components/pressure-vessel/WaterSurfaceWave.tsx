@@ -19,6 +19,10 @@ type WaterSurfaceWaveProps = {
   fillVelocity?: number;
   /** When set, uses this baseline instead of an internal spring (keeps paired surfaces in sync). */
   baselineY?: number;
+  /** Relative damping vs water (1 = water). Higher → quieter surface. */
+  waveDamping?: number;
+  /** Relative ripple speed vs water (1 = water). */
+  waveSpeed?: number;
   className?: string;
   /** Placement when nested inside another SVG scene. */
   x?: number;
@@ -31,6 +35,8 @@ export function WaterSurfaceWave({
   phase = 0,
   fillVelocity = 0,
   baselineY,
+  waveDamping = 1,
+  waveSpeed = 1,
   className = "",
   x,
   y,
@@ -42,6 +48,8 @@ export function WaterSurfaceWave({
   const surfaceSpringRef = useRef(createSpringState(WAVE_SURFACE_Y));
   const velocityRef = useRef(fillVelocity);
   const baselineYRef = useRef(baselineY);
+  const dampingRef = useRef(Math.max(0.35, waveDamping));
+  const speedRef = useRef(Math.max(0.25, waveSpeed));
 
   useEffect(() => {
     velocityRef.current = fillVelocity;
@@ -50,6 +58,14 @@ export function WaterSurfaceWave({
   useEffect(() => {
     baselineYRef.current = baselineY;
   }, [baselineY]);
+
+  useEffect(() => {
+    dampingRef.current = Math.max(0.35, waveDamping);
+  }, [waveDamping]);
+
+  useEffect(() => {
+    speedRef.current = Math.max(0.25, waveSpeed);
+  }, [waveSpeed]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -67,17 +83,21 @@ export function WaterSurfaceWave({
       if (!lastTime) lastTime = now;
       const deltaSeconds = Math.min(0.04, (now - lastTime) / 1000);
       lastTime = now;
-      const t = now / 1000 + phase;
+      const damp = dampingRef.current;
+      const speed = speedRef.current;
+      const t = (now / 1000) * speed + phase;
 
       const velocityBoost = waveVelocityBoost(velocityRef.current);
-      const amplitude = WAVE_IDLE_AMPLITUDE + velocityBoost * 12;
+      const amplitude =
+        (WAVE_IDLE_AMPLITUDE + velocityBoost * 12) / damp;
+      const springDamp = Math.min(0.92, 0.65 + (damp - 1) * 0.08);
       const baseline =
         baselineYRef.current ??
         surfaceSpringRef.current.step(
           waveSloshTarget(velocityRef.current),
           deltaSeconds,
           200,
-          0.65,
+          springDamp,
         );
 
       WAVE_LAYERS.forEach((layer, index) => {

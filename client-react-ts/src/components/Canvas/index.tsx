@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import type {
   BioreactorEquipment,
   BioreactorGeometry,
+  FluidMotionFactors,
 } from "../../lib/bioreactorGeometry";
 import type { InletFillVisualState } from "../pressure-vessel/useInletFillAnimation";
 import type { DrainVisualState } from "../pressure-vessel/useDrainAnimation";
@@ -27,6 +28,7 @@ type CanvasProps = {
   jacketMode?: JacketMode;
   doseMode?: DoseMode;
   equipment?: Partial<BioreactorEquipment>;
+  fluidMotion?: FluidMotionFactors;
   geometry?: BioreactorGeometry;
 };
 
@@ -98,6 +100,7 @@ function Canvas(props: CanvasProps) {
             jacketMode={props.jacketMode}
             doseMode={props.doseMode}
             equipment={props.equipment}
+            fluidMotion={props.fluidMotion}
             geometry={props.geometry}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}

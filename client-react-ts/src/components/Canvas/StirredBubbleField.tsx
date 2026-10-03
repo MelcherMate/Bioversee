@@ -29,6 +29,11 @@ type StirredBubbleFieldProps = {
   impellerUpperFromBottom?: number;
   /** Water-clip height at full fill (px). */
   clipHeightPx?: number;
+  /** Fluid motion scales vs water (= 1). */
+  bubbleSpeed?: number;
+  bubbleWander?: number;
+  bubbleSize?: number;
+  bubbleFollow?: number;
 };
 
 const MAX_PARTICLES = 1400;
@@ -209,6 +214,10 @@ export function StirredBubbleField({
   impellerLowerFromBottom = 103,
   impellerUpperFromBottom = 176,
   clipHeightPx = 510,
+  bubbleSpeed = 1,
+  bubbleWander = 1,
+  bubbleSize = 1,
+  bubbleFollow = 1,
 }: StirredBubbleFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
@@ -220,6 +229,10 @@ export function StirredBubbleField({
   const impellerLoRef = useRef(impellerLowerFromBottom);
   const impellerHiRef = useRef(impellerUpperFromBottom);
   const clipHRef = useRef(clipHeightPx);
+  const speedRef = useRef(bubbleSpeed);
+  const wanderRef = useRef(bubbleWander);
+  const sizeRef = useRef(bubbleSize);
+  const followRef = useRef(bubbleFollow);
 
   aeratorRef.current = aeratorVal;
   rotorRef.current = rotorNorm;
@@ -229,6 +242,10 @@ export function StirredBubbleField({
   impellerLoRef.current = impellerLowerFromBottom;
   impellerHiRef.current = impellerUpperFromBottom;
   clipHRef.current = clipHeightPx;
+  speedRef.current = bubbleSpeed;
+  wanderRef.current = bubbleWander;
+  sizeRef.current = bubbleSize;
+  followRef.current = bubbleFollow;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -272,14 +289,17 @@ export function StirredBubbleField({
     ) => {
       const list = particlesRef.current;
       if (list.length >= MAX_PARTICLES) return;
+      const size = sizeRef.current;
+      const speed = speedRef.current;
       list.push({
         x: Math.min(0.95, Math.max(0.05, x)),
         y: Math.min(0.95, Math.max(0.02, y)),
-        vx,
-        vy,
-        r: 0.9 + Math.random() * 1.55,
+        vx: vx * speed,
+        vy: vy * speed,
+        r: (0.9 + Math.random() * 1.55) * size,
         age: 0,
-        life: MEAN_LIFE_S * (0.75 + Math.random() * 0.5),
+        // Viscous fluids hold bubbles longer in the column.
+        life: (MEAN_LIFE_S / Math.max(0.35, speed)) * (0.75 + Math.random() * 0.5),
         phase: Math.random() * Math.PI * 2,
       });
     };
@@ -381,10 +401,16 @@ export function StirredBubbleField({
         Math.max(0, (rpm - 0.12) / (0.62 - 0.12)),
       );
       const stirSmooth = stir * stir * (3 - 2 * stir);
-      const follow = 1.35 + stirSmooth * 2.6;
-      const dampX = 1.15 - stirSmooth * 0.25;
-      const dampY = 1.05 - stirSmooth * 0.25;
-      const wanderAmp = 0.06 + stirSmooth * 0.14;
+      const fluidSpeed = speedRef.current;
+      const fluidWander = wanderRef.current;
+      const fluidFollow = followRef.current;
+      const follow = (1.35 + stirSmooth * 2.6) * fluidFollow;
+      // Higher viscosity → stronger velocity damping (stickier fluid).
+      const dampX = (1.15 - stirSmooth * 0.25) / Math.max(0.4, fluidSpeed);
+      const dampY = (1.05 - stirSmooth * 0.25) / Math.max(0.4, fluidSpeed);
+      const wanderAmp = (0.06 + stirSmooth * 0.14) * fluidWander;
+      // Buoyancy residual: denser liquid → stronger upward bias for gas bubbles.
+      const buoyancy = 0.012 * fluidSpeed;
 
       const next: Particle[] = [];
       for (const p of particlesRef.current) {
@@ -408,8 +434,10 @@ export function StirredBubbleField({
         const wy =
           Math.cos(tSec * 1.7 + p.phase * 1.3 - p.x * 6) * wanderAmp * 0.7;
 
-        p.vx = p.vx * (1 - dampX * dt) + (fx + wx) * dt * follow;
-        p.vy = p.vy * (1 - dampY * dt) + (fy + wy) * dt * follow;
+        p.vx = p.vx * (1 - dampX * dt) + (fx * fluidSpeed + wx) * dt * follow;
+        p.vy =
+          p.vy * (1 - dampY * dt) +
+          (fy * fluidSpeed + wy + buoyancy) * dt * follow;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
 

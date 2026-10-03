@@ -230,6 +230,19 @@
     "sensorPressure": "Pressure sensor",
     "sensorPressureHint": "Headspace transmitter on the lid and pressure chart."
   },
+  "fluid": {
+    "title": "Fluid",
+    "hint": "Medium properties for the tank contents. Presets are starting points — edit any value for a custom fluid.",
+    "presets": "Fluid presets",
+    "presetWater": "Water",
+    "presetBuffer": "Buffer",
+    "presetCultureBroth": "Culture broth",
+    "presetViscous": "Viscous media",
+    "presetCustom": "Custom",
+    "viscosity": "Viscosity",
+    "density": "Density",
+    "surfaceTension": "Surface tension"
+  },
   "deviceMenu": {
     "settings": "Device settings",
     "rename": "Rename",

@@ -30,12 +30,181 @@ export type BioreactorEquipment = {
   sensor_pressure: boolean;
 };
 
+/** Named media presets — “custom” when the user edits values by hand. */
+export type FluidPresetId =
+  | "water"
+  | "buffer"
+  | "culture_broth"
+  | "viscous"
+  | "custom";
+
+export type BioreactorFluid = {
+  preset: FluidPresetId;
+  /** Dynamic viscosity in centipoise (mPa·s). Water ≈ 1. */
+  viscosity_cP: number;
+  /** Density in kg/m³. Water ≈ 998. */
+  density_kg_m3: number;
+  /** Surface tension in mN/m. Water ≈ 72. */
+  surface_tension_mN_m: number;
+};
+
 export type BioreactorConfig = {
   /** Working volume in m³; null = unset (UI shows placeholder). */
   volume_m3: number | null;
   volume_unit: VolumeUnit;
   equipment: BioreactorEquipment;
+  fluid: BioreactorFluid;
 };
+
+export const FLUID_PRESET_OPTIONS: {
+  id: Exclude<FluidPresetId, "custom">;
+  labelKey: string;
+}[] = [
+  { id: "water", labelKey: "fluid.presetWater" },
+  { id: "buffer", labelKey: "fluid.presetBuffer" },
+  { id: "culture_broth", labelKey: "fluid.presetCultureBroth" },
+  { id: "viscous", labelKey: "fluid.presetViscous" },
+];
+
+export const FLUID_PRESETS: Record<
+  Exclude<FluidPresetId, "custom">,
+  Omit<BioreactorFluid, "preset">
+> = {
+  water: { viscosity_cP: 1, density_kg_m3: 998, surface_tension_mN_m: 72 },
+  buffer: { viscosity_cP: 1.1, density_kg_m3: 1010, surface_tension_mN_m: 70 },
+  culture_broth: {
+    viscosity_cP: 4,
+    density_kg_m3: 1025,
+    surface_tension_mN_m: 55,
+  },
+  viscous: { viscosity_cP: 80, density_kg_m3: 1100, surface_tension_mN_m: 45 },
+};
+
+export const FLUID_LIMITS = {
+  viscosity_cP: { min: 0.3, max: 1000 },
+  density_kg_m3: { min: 700, max: 2000 },
+  surface_tension_mN_m: { min: 20, max: 100 },
+} as const;
+
+export function defaultFluid(): BioreactorFluid {
+  return { preset: "water", ...FLUID_PRESETS.water };
+}
+
+export function fluidFromPreset(
+  preset: Exclude<FluidPresetId, "custom">,
+): BioreactorFluid {
+  return { preset, ...FLUID_PRESETS[preset] };
+}
+
+function clampFluidNumber(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, value));
+}
+
+export function parseBioreactorFluid(raw: unknown): BioreactorFluid {
+  const base = defaultFluid();
+  if (!raw || typeof raw !== "object") return base;
+  const o = raw as Record<string, unknown>;
+  const viscosity_cP = clampFluidNumber(
+    o.viscosity_cP,
+    FLUID_LIMITS.viscosity_cP.min,
+    FLUID_LIMITS.viscosity_cP.max,
+    base.viscosity_cP,
+  );
+  const density_kg_m3 = clampFluidNumber(
+    o.density_kg_m3,
+    FLUID_LIMITS.density_kg_m3.min,
+    FLUID_LIMITS.density_kg_m3.max,
+    base.density_kg_m3,
+  );
+  const surface_tension_mN_m = clampFluidNumber(
+    o.surface_tension_mN_m,
+    FLUID_LIMITS.surface_tension_mN_m.min,
+    FLUID_LIMITS.surface_tension_mN_m.max,
+    base.surface_tension_mN_m,
+  );
+  const presetRaw = o.preset;
+  const preset: FluidPresetId =
+    presetRaw === "water" ||
+    presetRaw === "buffer" ||
+    presetRaw === "culture_broth" ||
+    presetRaw === "viscous" ||
+    presetRaw === "custom"
+      ? presetRaw
+      : "custom";
+
+  return { preset, viscosity_cP, density_kg_m3, surface_tension_mN_m };
+}
+
+/** Relative damping vs water for free-surface motion (1 = water). */
+export function fluidWaveDamping(fluid: BioreactorFluid): number {
+  return fluidMotionFactors(fluid).waveDamping;
+}
+
+/**
+ * Motion scales for free-surface waves and bubble advection vs water (= 1).
+ * Viscosity slows / damps; density adds buoyancy drive; surface tension
+ * tunes ripple speed and bubble size.
+ */
+export type FluidMotionFactors = {
+  waveDamping: number;
+  waveSpeed: number;
+  bubbleSpeed: number;
+  bubbleWander: number;
+  bubbleSize: number;
+  bubbleFollow: number;
+};
+
+export function fluidMotionFactors(fluid: BioreactorFluid): FluidMotionFactors {
+  const visc = Math.max(0.3, fluid.viscosity_cP);
+  const dens = Math.max(700, fluid.density_kg_m3) / 998;
+  const st = Math.max(20, fluid.surface_tension_mN_m) / 72;
+
+  // Stokes-ish rise: ∝ buoyancy(ρ) / drag(μ)
+  const bubbleSpeed = clampRange(
+    Math.pow(dens, 0.55) / Math.pow(visc, 0.5),
+    0.18,
+    1.85,
+  );
+  const waveDamping = clampRange(
+    Math.pow(visc, 0.45) * Math.pow(dens, 0.2),
+    0.45,
+    8,
+  );
+  // Capillary ripples faster with surface tension; viscosity slows them.
+  const waveSpeed = clampRange(
+    Math.pow(st, 0.35) / Math.pow(visc, 0.25),
+    0.35,
+    1.6,
+  );
+  const bubbleWander = clampRange(1 / Math.pow(visc, 0.35), 0.2, 1.4);
+  // Higher ST → slightly larger stable bubbles; dense fluids a touch smaller.
+  const bubbleSize = clampRange(
+    Math.pow(st, 0.3) / Math.pow(dens, 0.15),
+    0.55,
+    1.55,
+  );
+  // Viscous fluids track the impeller field more sluggishly.
+  const bubbleFollow = clampRange(1 / Math.pow(visc, 0.3), 0.35, 1.35);
+
+  return {
+    waveDamping,
+    waveSpeed,
+    bubbleSpeed,
+    bubbleWander,
+    bubbleSize,
+    bubbleFollow,
+  };
+}
+
+function clampRange(n: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, n));
+}
 
 /** @deprecated Prefer BioreactorConfig — kept for layout callers that only need H/D. */
 export type BioreactorGeometry = {
@@ -138,6 +307,7 @@ export function defaultBioreactorConfig(): BioreactorConfig {
     volume_m3: null,
     volume_unit: "L",
     equipment: defaultEquipment(),
+    fluid: defaultFluid(),
   };
 }
 
@@ -180,7 +350,9 @@ export function parseBioreactorConfig(raw: unknown): BioreactorConfig {
     sensor_pressure: asBool(eqRaw.sensor_pressure, true),
   };
 
-  return { volume_m3, volume_unit, equipment };
+  const fluid = parseBioreactorFluid(nested.fluid);
+
+  return { volume_m3, volume_unit, equipment, fluid };
 }
 
 /** @deprecated Use parseBioreactorConfig — drawing always uses default capsule. */

@@ -25,6 +25,7 @@ import {
 import { canOperateDevice } from "../../lib/devices";
 import {
   defaultBioreactorGeometry,
+  fluidMotionFactors,
   parseBioreactorConfig,
 } from "../../lib/bioreactorGeometry";
 import { layoutFromGeometry } from "../../components/Canvas/bioreactorLayout";
@@ -309,6 +310,7 @@ function Bioreactor({ user }: BioreactorProps) {
   const readOnly = !canOperateDevice(device.role);
   const config = parseBioreactorConfig(device.config);
   const eq = config.equipment;
+  const fluidMotion = fluidMotionFactors(config.fluid);
   const jacketMode = eq.thermal_jacket
     ? warmWVal
       ? "warm"
@@ -533,6 +535,7 @@ function Bioreactor({ user }: BioreactorProps) {
           jacketMode={jacketMode}
           doseMode={doseMode}
           equipment={eq}
+          fluidMotion={fluidMotion}
           geometry={defaultBioreactorGeometry()}
         />
       </main>

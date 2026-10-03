@@ -230,6 +230,19 @@
     "sensorPressure": "Drucksensor",
     "sensorPressureHint": "Kopfraum-Transmitter am Deckel und Druckdiagramm."
   },
+  "fluid": {
+    "title": "Fluid",
+    "hint": "Mediumseigenschaften für den Tankinhalt. Vorgaben sind Startwerte — jeder Wert lässt sich für ein Custom-Fluid anpassen.",
+    "presets": "Fluid-Vorgaben",
+    "presetWater": "Wasser",
+    "presetBuffer": "Puffer",
+    "presetCultureBroth": "Kulturbrühe",
+    "presetViscous": "Viskoses Medium",
+    "presetCustom": "Custom",
+    "viscosity": "Viskosität",
+    "density": "Dichte",
+    "surfaceTension": "Oberflächenspannung"
+  },
   "deviceMenu": {
     "settings": "Geräteeinstellungen",
     "rename": "Umbenennen",

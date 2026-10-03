@@ -6,7 +6,11 @@ import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
 import type { InletFillVisualState } from "../pressure-vessel/useInletFillAnimation";
 import type { DrainVisualState } from "../pressure-vessel/useDrainAnimation";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
-import type { BioreactorEquipment, BioreactorGeometry } from "../../lib/bioreactorGeometry";
+import type {
+  BioreactorEquipment,
+  BioreactorGeometry,
+  FluidMotionFactors,
+} from "../../lib/bioreactorGeometry";
 import { defaultBioreactorGeometry, defaultEquipment } from "../../lib/bioreactorGeometry";
 import {
   layoutFromGeometry,
@@ -33,6 +37,8 @@ type BioreactorCardProps = {
   doseMode?: DoseMode;
   /** Optional fittings; omitted keys default to enabled. */
   equipment?: Partial<BioreactorEquipment>;
+  /** Wave + bubble motion scales vs water (from fluid config). */
+  fluidMotion?: FluidMotionFactors;
   geometry?: BioreactorGeometry;
   translateX: number;
   translateY: number;
@@ -1719,6 +1725,8 @@ function BioreactorCard(props: BioreactorCardProps) {
             fillUnits={displayFillUnits}
             fillVelocity={waveVelocity}
             showSurface={displayFillUnits / VESSEL_MAX_FILL_UNITS < 0.98}
+            waveDamping={props.fluidMotion?.waveDamping ?? 1}
+            waveSpeed={props.fluidMotion?.waveSpeed ?? 1}
             bubbleCount={0}
           />
           {equipment.aerator || equipment.stirrer ? (
@@ -1731,6 +1739,10 @@ function BioreactorCard(props: BioreactorCardProps) {
               impellerLowerFromBottom={layout.impeller.lowerFromBottom}
               impellerUpperFromBottom={layout.impeller.upperFromBottom}
               clipHeightPx={layout.impeller.clipHeight}
+              bubbleSpeed={props.fluidMotion?.bubbleSpeed ?? 1}
+              bubbleWander={props.fluidMotion?.bubbleWander ?? 1}
+              bubbleSize={props.fluidMotion?.bubbleSize ?? 1}
+              bubbleFollow={props.fluidMotion?.bubbleFollow ?? 1}
             />
           ) : null}
         </div>
