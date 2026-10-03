@@ -1,9 +1,13 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AppPhonePreview from "../../components/AppPhonePreview";
 import RaspberryPiPreview from "../../components/RaspberryPiPreview";
 import WebAppPreview from "../../components/WebAppPreview";
+import {
+  isStripeDonateConfigured,
+  StripeDonateButton,
+} from "../../components/StripeDonateButton";
 import Mate from "../../img/Mate.png";
 import Logo from "../../utils/svgs/new_logo.svg";
 import "./About.css";
@@ -217,56 +221,103 @@ function About() {
         data-reveal
         aria-labelledby="story-title"
       >
-        <div className="landing-section__inner">
+        <div className="landing-section__inner landing-section__inner--story">
           <p className="landing-kicker">{t("about.storyKicker")}</p>
           <h2 id="story-title" className="landing-title">
             {t("about.storyTitle")}
           </h2>
-          <div className="landing-story">
-            <article className="landing-story__block">
-              <img
-                className="landing-story__media landing-story__photo"
-                src={Mate}
-                alt={t("about.founderName")}
-                width={96}
-                height={96}
-              />
-              <div className="landing-story__copy">
-                <p className="landing-story__role">{t("about.founder")}</p>
-                <h3 className="landing-story__name">{t("about.founderName")}</h3>
-                <p className="landing-story__text">{t("about.founderBody")}</p>
-              </div>
-            </article>
-            <article className="landing-story__block">
-              <span
-                className="landing-story__media landing-story__logo-wrap"
-                aria-hidden="true"
-              >
-                <img src={Logo} alt="" width={48} height={48} />
-              </span>
-              <div className="landing-story__copy">
-                <p className="landing-story__role">{t("about.company")}</p>
-                <h3 className="landing-story__name">{t("common.brand")}</h3>
-                <p className="landing-story__text">{t("about.companyBody")}</p>
-              </div>
-            </article>
+          <p className="landing-lede landing-lede--story">{t("about.storyLede")}</p>
+
+          <ol className="landing-evidence" aria-label={t("about.evidenceLabel")}>
+            <li className="landing-evidence__item">
+              <h3 className="landing-evidence__title">{t("about.evidenceTeachTitle")}</h3>
+              <p className="landing-evidence__text">{t("about.evidenceTeachBody")}</p>
+            </li>
+            <li className="landing-evidence__item">
+              <h3 className="landing-evidence__title">{t("about.evidenceSafetyTitle")}</h3>
+              <p className="landing-evidence__text">{t("about.evidenceSafetyBody")}</p>
+            </li>
+            <li className="landing-evidence__item">
+              <h3 className="landing-evidence__title">{t("about.evidenceProcessTitle")}</h3>
+              <p className="landing-evidence__text">{t("about.evidenceProcessBody")}</p>
+            </li>
+          </ol>
+
+          <div className="landing-refs">
+            <h3 className="landing-refs__title">{t("about.refsTitle")}</h3>
+            <ol className="landing-refs__list">
+              <li>
+                <cite>{t("about.ref1")}</cite>
+              </li>
+              <li>
+                <cite>{t("about.ref2")}</cite>
+              </li>
+              <li>
+                <cite>{t("about.ref3")}</cite>
+              </li>
+              <li>
+                <cite>{t("about.ref4")}</cite>
+              </li>
+              <li>
+                <cite>{t("about.ref5")}</cite>
+              </li>
+              <li>
+                <cite>{t("about.ref6")}</cite>
+              </li>
+            </ol>
           </div>
         </div>
       </section>
 
-      <section className="landing-cta" data-reveal aria-labelledby="cta-title">
-        <div className="landing-cta__inner">
-          <h2 id="cta-title" className="landing-title landing-title--on-accent">
-            {t("about.ctaTitle")}
+      <section
+        id="team"
+        className="landing-section"
+        data-reveal
+        aria-labelledby="team-title"
+      >
+        <div className="landing-section__inner landing-section__inner--team">
+          <p className="landing-kicker">{t("about.teamKicker")}</p>
+          <h2 id="team-title" className="landing-title">
+            {t("about.teamTitle")}
           </h2>
-          <p className="landing-lede landing-lede--on-accent">
-            {t("about.ctaBody")}
-          </p>
-          <Link to="/login" className="landing-btn landing-btn--on-accent">
-            {t("auth.signIn")}
-          </Link>
+          <article className="landing-team-member">
+            <img
+              className="landing-team-member__photo"
+              src={Mate}
+              alt={t("about.founderName")}
+              width={96}
+              height={96}
+            />
+            <div className="landing-team-member__copy">
+              <p className="landing-team-member__role">{t("about.founder")}</p>
+              <h3 className="landing-team-member__name">{t("about.founderName")}</h3>
+              <p className="landing-team-member__text">{t("about.founderBody")}</p>
+            </div>
+          </article>
         </div>
       </section>
+
+      {isStripeDonateConfigured() ? (
+        <section
+          id="support"
+          className="landing-cta"
+          data-reveal
+          aria-labelledby="support-title"
+        >
+          <div className="landing-cta__inner">
+            <h2
+              id="support-title"
+              className="landing-title landing-title--on-accent"
+            >
+              {t("about.supportTitle")}
+            </h2>
+            <p className="landing-lede landing-lede--on-accent">
+              {t("about.supportBody")}
+            </p>
+            <StripeDonateButton />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
