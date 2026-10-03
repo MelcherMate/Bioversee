@@ -290,9 +290,11 @@ export function StirredBubbleField({
         (l0 + Math.random() * (l1 - l0) + (Math.random() - 0.5) * 2) / 100;
       const y =
         (spawnBottomRef.current + (Math.random() - 0.5) * 1.4) / 100;
+      // Keep spawn on the sparger plane (no low-y clamp — that slid the plume
+      // down when the filled column shrank and the sparger sat higher in %).
       pushParticle(
         x,
-        Math.min(0.35, Math.max(0.02, y)),
+        Math.min(0.92, Math.max(0.02, y)),
         (Math.random() - 0.5) * 0.06,
         0.03 + Math.random() * 0.03,
       );
@@ -330,7 +332,19 @@ export function StirredBubbleField({
 
       const air = Math.max(0, Math.min(1, aeratorRef.current / 100));
       const rpm = Math.max(0, Math.min(1, rotorRef.current));
-      const fill = Math.max(0.05, fillRef.current);
+      const fill = Math.max(0, fillRef.current);
+
+      // Keep the rAF loop alive across drain→refill; just pause spawning
+      // when the column is essentially empty.
+      if (fill < 0.005) {
+        particlesRef.current = [];
+        const cw = canvas.clientWidth;
+        const ch = canvas.clientHeight;
+        if (cw > 0 && ch > 0) ctx.clearRect(0, 0, cw, ch);
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+
       const target = air * TARGET_AT_FULL_AIR;
       const spawnPerSec = target <= 0 ? 0 : target / MEAN_LIFE_S;
 
@@ -468,8 +482,6 @@ export function StirredBubbleField({
       ro.disconnect();
     };
   }, []);
-
-  if (fillRatio < 0.005) return null;
 
   return (
     <canvas

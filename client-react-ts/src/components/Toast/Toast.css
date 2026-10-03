@@ -40,6 +40,19 @@
   border-color: #fecaca;
 }
 
+.bv-toast--warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.bv-toast--warning .bv-toast__title {
+  color: #92400e;
+}
+
+.bv-toast--warning .bv-toast__detail {
+  color: #a16207;
+}
+
 .bv-toast__body {
   flex: 1;
   min-width: 0;
@@ -96,6 +109,10 @@
 
 .bv-toast--error .bv-toast__timer::after {
   background: #ef4444;
+}
+
+.bv-toast--warning .bv-toast__timer::after {
+  background: #f59e0b;
 }
 
 @keyframes bv-toast-in {

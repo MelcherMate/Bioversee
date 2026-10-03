@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "./Toast.css";
 
-export type ToastTone = "info" | "success" | "error";
+export type ToastTone = "info" | "success" | "warning" | "error";
 
 export type ToastItem = {
   id: string;

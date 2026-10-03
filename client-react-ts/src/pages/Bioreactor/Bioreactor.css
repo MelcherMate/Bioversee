@@ -104,6 +104,40 @@ aside > * {
   justify-items: center;
 }
 
+.controlPanel__knob-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.controlPanel__section--level {
+  gap: 10px;
+}
+
+.controlPanel__level-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.controlPanel__level-head .boxTitle {
+  margin: 0;
+}
+
+.controlPanel__level-value {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--bv-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.controlPanel__level-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .chartBox {
   padding: 16px 14px 12px;
   min-width: 260px;

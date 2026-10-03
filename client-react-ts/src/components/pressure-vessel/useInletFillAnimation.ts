@@ -19,24 +19,38 @@ export type InletFillVisualState = {
   isAnimating: boolean;
 };
 
+/** Pipe + falling-column geometry for a vessel inlet. */
+export type InletFillGeometry = {
+  /** Metal pipe centerline length (open end → nozzle). */
+  pipePathLength: number;
+  /** Interior height used for the falling column to the free surface. */
+  columnHeight: number;
+};
+
+export const DEFAULT_INLET_FILL_GEOMETRY: InletFillGeometry = {
+  pipePathLength: INLET_PATH_LENGTH,
+  columnHeight: VESSEL_COMPOSITE_HEIGHT,
+};
+
 function clampFillUnits(value: number) {
   return Math.min(VESSEL_MAX_FILL_UNITS, Math.max(0, value));
 }
 
-function fallHeight(fillUnits: number) {
+function fallHeight(fillUnits: number, columnHeight: number) {
   const fillRatio = Math.min(1, Math.max(0, fillUnits / VESSEL_MAX_FILL_UNITS));
-  return (1 - fillRatio) * VESSEL_COMPOSITE_HEIGHT;
+  return (1 - fillRatio) * columnHeight;
 }
 
 /** Full path length: pipe centerline + falling column to the current surface. */
-function totalHead(fillUnits: number) {
-  return INLET_PATH_LENGTH + fallHeight(fillUnits);
+function totalHead(fillUnits: number, geom: InletFillGeometry) {
+  return geom.pipePathLength + fallHeight(fillUnits, geom.columnHeight);
 }
 
 export function useInletFillAnimation(
   fillUnits: number,
   onFillUnitsChange: (value: number) => void,
   isFillHeld: boolean,
+  geometry: InletFillGeometry = DEFAULT_INLET_FILL_GEOMETRY,
 ): InletFillVisualState {
   const [visual, setVisual] = useState<InletFillVisualState>({
     tail: 0,
@@ -52,10 +66,12 @@ export function useInletFillAnimation(
   const isHeldRef = useRef(isFillHeld);
   const fillUnitsRef = useRef(fillUnits);
   const onChangeRef = useRef(onFillUnitsChange);
+  const geomRef = useRef(geometry);
 
   isHeldRef.current = isFillHeld;
   fillUnitsRef.current = fillUnits;
   onChangeRef.current = onFillUnitsChange;
+  geomRef.current = geometry;
 
   useEffect(() => {
     let frame = 0;
@@ -94,8 +110,13 @@ export function useInletFillAnimation(
       lastTime = now;
 
       const held = isHeldRef.current;
+      const geom = geomRef.current;
       const atFull = fillUnitsRef.current >= VESSEL_MAX_FILL_UNITS;
-      const pathEnd = totalHead(fillUnitsRef.current);
+      const pathEnd = totalHead(fillUnitsRef.current, geom);
+      const pipeSpeed =
+        geom.columnHeight > 0
+          ? (INLET_PIPE_WATER_SPEED * geom.columnHeight) / VESSEL_COMPOSITE_HEIGHT
+          : INLET_PIPE_WATER_SPEED;
       let phase = phaseRef.current;
 
       if (phase === "idle" && held && !atFull) {
@@ -111,7 +132,7 @@ export function useInletFillAnimation(
           if (held) {
             headRef.current = Math.min(
               pathEnd,
-              headRef.current + INLET_PIPE_WATER_SPEED * deltaSeconds,
+              headRef.current + pipeSpeed * deltaSeconds,
             );
             if (headRef.current >= pathEnd - 0.5) {
               hasReachedSurfaceRef.current = true;
@@ -136,7 +157,7 @@ export function useInletFillAnimation(
           headRef.current = pathEnd;
           tailRef.current = Math.min(
             headRef.current,
-            tailRef.current + INLET_PIPE_WATER_SPEED * deltaSeconds,
+            tailRef.current + pipeSpeed * deltaSeconds,
           );
           transferToTank(deltaSeconds);
 

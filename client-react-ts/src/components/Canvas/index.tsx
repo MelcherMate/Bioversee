@@ -3,6 +3,8 @@ import type {
   BioreactorEquipment,
   BioreactorGeometry,
 } from "../../lib/bioreactorGeometry";
+import type { InletFillVisualState } from "../pressure-vessel/useInletFillAnimation";
+import type { DrainVisualState } from "../pressure-vessel/useDrainAnimation";
 import BioreactorCard, {
   type DoseMode,
   type JacketMode,
@@ -19,7 +21,9 @@ type CanvasProps = {
   cards: Card[];
   rotorVal?: number;
   aeratorVal?: number;
-  waterLevelVal?: number;
+  fillUnits?: number;
+  inletFill?: InletFillVisualState;
+  drainAnim?: DrainVisualState;
   jacketMode?: JacketMode;
   doseMode?: DoseMode;
   equipment?: Partial<BioreactorEquipment>;
@@ -88,7 +92,9 @@ function Canvas(props: CanvasProps) {
             key={card.id}
             rotorVal={props.rotorVal}
             aeratorVal={props.aeratorVal}
-            waterLevelVal={props.waterLevelVal}
+            fillUnits={props.fillUnits}
+            inletFill={props.inletFill}
+            drainAnim={props.drainAnim}
             jacketMode={props.jacketMode}
             doseMode={props.doseMode}
             equipment={props.equipment}

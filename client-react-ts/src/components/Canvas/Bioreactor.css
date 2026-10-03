@@ -75,6 +75,13 @@
   pointer-events: none;
 }
 
+.br-fill-stream {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  background: #41e0e0;
+}
+
 /* SENSORS — port fittings above the lid; probes reach ~top of upper impeller */
 .sensor {
   display: flex;
@@ -532,6 +539,20 @@
   .aerator-supply__flow-dash {
     animation: none;
   }
+}
+
+/* LID FILL INLET — nozzle on flat apex, clear of agitator shaft.
+ * Sits under the water clip so any submerged stub is covered by water. */
+.br-fill-inlet {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.br-fill-inlet__svg {
+  position: absolute;
+  overflow: visible;
 }
 
 /* BOTTOM OUTFLOW — elbow under the dish */

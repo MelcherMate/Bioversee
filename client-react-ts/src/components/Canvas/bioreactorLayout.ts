@@ -83,6 +83,8 @@ export type BioreactorLayout = {
     lowerFromBottom: number;
     upperFromBottom: number;
     clipHeight: number;
+    /** Fill % below which even the lower Rushton disc is dry. */
+    minFillPercent: number;
   };
   sensors: {
     top: number;
@@ -100,6 +102,10 @@ export type BioreactorLayout = {
     drop: number;
     run: number;
     pipeOd: number;
+    /** Metal pipe centerline length (nozzle → open end). */
+    pipePathLength: number;
+    /** Rising-column height scale (water clip height). */
+    columnHeight: number;
   };
   aerator: {
     spargerWidth: number;
@@ -113,6 +119,8 @@ export type BioreactorLayout = {
     svgWidth: number;
     svgHeight: number;
     spawnBottomPctAtFull: number;
+    /** Fill % below which the sparger is uncovered. */
+    minFillPercent: number;
   };
   dose: {
     tipX: number;
@@ -120,6 +128,33 @@ export type BioreactorLayout = {
     svgLeft: number;
     svgTop: number;
     dripTravel: number;
+  };
+  /**
+   * Lid fill nozzle — vertical penetration on the flat apex (inner + outer
+   * walls still horizontal), just clear of the agitator shaft.
+   */
+  fillInlet: {
+    /** Pipe centerline X in wrapper coords. */
+    centerX: number;
+    /** Y where the vertical run meets the outer lid. */
+    lidY: number;
+    /** Y of the open tip inside the headspace. */
+    tipY: number;
+    /** Y of the top elbow / horizontal run. */
+    elbowY: number;
+    /** Open square end of the horizontal supply run. */
+    runEndX: number;
+    pipeOd: number;
+    /** Metal pipe centerline length (open end → tip). */
+    pipePathLength: number;
+    /** Falling-column height scale (water clip height). */
+    columnHeight: number;
+    svgLeft: number;
+    svgTop: number;
+    svgWidth: number;
+    svgHeight: number;
+    viewBox: string;
+    centerline: string;
   };
   /** CSS custom properties for Bioreactor.css */
   cssVars: Record<string, string>;
@@ -218,10 +253,43 @@ export function layoutFromGeometry(
   const dropX = chamberLeft + border + innerW * 0.16;
   const pipeEndX = spargerLeft + 10;
   const spawnBottomPctAtFull = 10;
+  /** Minimum fill % so the sparger bar stays submerged. */
+  const aeratorMinFillPercent = spawnBottomPctAtFull;
 
   const doseTipX = vesselCenterX + innerW * 0.12;
   const doseTipY = 88; // in dose SVG coords — scaled below
   const dripTravel = waterH * 0.95;
+
+  // Flat lid apex (outer + inner): x ∈ [chamberLeft+radius, chamberRight−radius]
+  // = [189, 253]. Shaft is 6px wide at vesselCenterX — place fill OD clear of it.
+  const fillPipeOd = 16;
+  const shaftHalf = 3;
+  const fillGapFromShaft = 8;
+  const fillCenterX =
+    vesselCenterX + shaftHalf + fillGapFromShaft + fillPipeOd / 2;
+  const fillLidY = chamberTop;
+  // Stop the nozzle at the inner lid face — do not poke a metal tip into the water body.
+  const fillTipY = waterTop + 2;
+  const fillElbowY = chamberTop - 58;
+  const fillRunEndX = fillCenterX + 72;
+  const fillPad = 20;
+  const fillSvgLeft = fillCenterX - fillPad;
+  const fillSvgTop = fillElbowY - fillPad;
+  const fillSvgW = fillRunEndX - fillCenterX + fillPad * 2 + fillPipeOd;
+  const fillSvgH = fillTipY - fillElbowY + fillPad * 2;
+  const fillLocalX = fillPad;
+  const fillLocalElbowY = fillPad;
+  const fillLocalTipY = fillTipY - fillElbowY + fillPad;
+  const fillLocalRunEndX = fillRunEndX - fillCenterX + fillPad;
+  const fillHoriz = fillRunEndX - fillCenterX;
+  const fillVert = fillTipY - fillElbowY;
+  const fillPipePathLength = fillHoriz + fillVert;
+  // Open end → elbow → tip (matches inlet fill advance direction).
+  const fillCenterline = [
+    `M ${fillLocalRunEndX} ${fillLocalElbowY}`,
+    `L ${fillLocalX} ${fillLocalElbowY}`,
+    `L ${fillLocalX} ${fillLocalTipY}`,
+  ].join(" ");
 
   const wrapperMarginTop = 200;
   const wrapperMarginLeft = 175;
@@ -279,6 +347,10 @@ export function layoutFromGeometry(
     "--br-aerator-h": `${outerH + 60}px`,
     "--br-dose-left": `${chamberLeft - 128}px`,
     "--br-dose-top": `${chamberTop - 43}px`,
+    "--br-fill-left": `${fillSvgLeft}px`,
+    "--br-fill-top": `${fillSvgTop}px`,
+    "--br-fill-w": `${fillSvgW}px`,
+    "--br-fill-h": `${fillSvgH}px`,
   };
 
   return {
@@ -332,6 +404,7 @@ export function layoutFromGeometry(
       lowerFromBottom,
       upperFromBottom,
       clipHeight: waterH,
+      minFillPercent: Math.ceil(lowerFrac * 100),
     },
     sensors: {
       top: sensorTop,
@@ -348,6 +421,8 @@ export function layoutFromGeometry(
       drop: outflowDrop,
       run: outflowRun,
       pipeOd: outflowPipeOd,
+      pipePathLength: outflowDrop + outflowRun,
+      columnHeight: waterH,
     },
     aerator: {
       spargerWidth,
@@ -361,6 +436,7 @@ export function layoutFromGeometry(
       svgWidth: jacketSvgW * 0.7,
       svgHeight: outerH + 60,
       spawnBottomPctAtFull,
+      minFillPercent: aeratorMinFillPercent,
     },
     dose: {
       tipX: doseTipX,
@@ -368,6 +444,22 @@ export function layoutFromGeometry(
       svgLeft: chamberLeft - 128,
       svgTop: chamberTop - 43,
       dripTravel,
+    },
+    fillInlet: {
+      centerX: fillCenterX,
+      lidY: fillLidY,
+      tipY: fillTipY,
+      elbowY: fillElbowY,
+      runEndX: fillRunEndX,
+      pipeOd: fillPipeOd,
+      pipePathLength: fillPipePathLength,
+      columnHeight: waterH,
+      svgLeft: fillSvgLeft,
+      svgTop: fillSvgTop,
+      svgWidth: fillSvgW,
+      svgHeight: fillSvgH,
+      viewBox: `0 0 ${fillSvgW} ${fillSvgH}`,
+      centerline: fillCenterline,
     },
     cssVars,
   };

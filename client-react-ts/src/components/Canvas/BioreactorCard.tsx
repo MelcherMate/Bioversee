@@ -3,6 +3,8 @@ import { APPLE_DEPTH_COLORS } from "../pressure-vessel/apple-depth-style";
 import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
 import { PIPE_FILL, PIPE_METAL, PIPE_OD } from "../pressure-vessel/pipe-style";
 import { useSpringFillUnits } from "../pressure-vessel/useSpringFillUnits";
+import type { InletFillVisualState } from "../pressure-vessel/useInletFillAnimation";
+import type { DrainVisualState } from "../pressure-vessel/useDrainAnimation";
 import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
 import type { BioreactorEquipment, BioreactorGeometry } from "../../lib/bioreactorGeometry";
 import { defaultBioreactorGeometry, defaultEquipment } from "../../lib/bioreactorGeometry";
@@ -23,7 +25,10 @@ export const ROTOR_MAX_RPM = 300;
 type BioreactorCardProps = {
   rotorVal?: number;
   aeratorVal?: number;
-  waterLevelVal?: number;
+  /** Tank level in vessel fill units (same scale as pressure vessel). */
+  fillUnits?: number;
+  inletFill?: InletFillVisualState;
+  drainAnim?: DrainVisualState;
   jacketMode?: JacketMode;
   doseMode?: DoseMode;
   /** Optional fittings; omitted keys default to enabled. */
@@ -1082,14 +1087,175 @@ function AeratorSupply({
   );
 }
 
-type BottomOutflowProps = {
-  layout: BioreactorLayout;
-};
+/** Flange + collar where a vertical pipe penetrates the vessel shell. */
+function PipeShellJoint({
+  cx,
+  cy,
+  pipeOd,
+}: {
+  cx: number;
+  cy: number;
+  pipeOd: number;
+}) {
+  const flangeW = pipeOd + 10;
+  const flangeH = 7;
+  return (
+    <>
+      <rect
+        x={cx - flangeW / 2}
+        y={cy - flangeH / 2}
+        width={flangeW}
+        height={flangeH}
+        rx={1.5}
+        fill={PIPE_FILL}
+        stroke={PIPE_METAL.stroke}
+        strokeWidth={1.5}
+      />
+      <rect
+        x={cx - (pipeOd + 4) / 2}
+        y={cy - 2}
+        width={pipeOd + 4}
+        height={4}
+        rx={1}
+        fill={PIPE_METAL.mid}
+        stroke={PIPE_METAL.stroke}
+        strokeWidth={1}
+      />
+    </>
+  );
+}
 
-/** Bottom drain elbow — empty metal pipe with flowmeter on the run. */
-function BottomOutflow({ layout }: BottomOutflowProps) {
+const PIPE_WATER_WIDTH = PIPE_OD - 6;
+
+/** True when the water slug covers a point `sensorDist` along the pipe centerline. */
+function pipeFlowAtSensor(tail: number, head: number, sensorDist: number) {
+  return head > sensorDist + 0.5 && tail < sensorDist - 0.5;
+}
+
+/**
+ * Lid fill nozzle on the flat apex (inner + outer still horizontal),
+ * just clear of the agitator shaft — vertical drop + short horizontal run.
+ */
+function FillInletPipe({
+  layout,
+  waterTail = 0,
+  waterHead = 0,
+}: {
+  layout: BioreactorLayout;
+  waterTail?: number;
+  waterHead?: number;
+}) {
   const prefix = useId().replace(/:/g, "");
-  const { centerX, vesselBottom, drop, run, pipeOd } = layout.outflow;
+  const {
+    centerline,
+    pipeOd,
+    pipePathLength,
+    svgLeft,
+    svgTop,
+    svgWidth,
+    svgHeight,
+    viewBox,
+    lidY,
+    elbowY,
+    centerX,
+    runEndX,
+  } = layout.fillInlet;
+  const pad = 20;
+  const localX = pad;
+  const localLidY = lidY - elbowY + pad;
+  const localElbowY = pad;
+  const localRunEndX = runEndX - centerX + pad;
+  const horizLen = Math.max(1, runEndX - centerX);
+  // Flowmeter on the horizontal supply run (open end → elbow).
+  const sensorFrac = 0.55;
+  const sensorDist = horizLen * sensorFrac;
+  const txX = localRunEndX + (localX - localRunEndX) * sensorFrac;
+  const txY = localElbowY;
+  const pipeTail = Math.max(0, waterTail);
+  const pipeHead = Math.max(pipeTail, waterHead);
+  const segStart = Math.max(0, pipeTail);
+  const segEnd = Math.max(segStart, Math.min(pipeHead, pipePathLength));
+  const segLen = Math.max(0, segEnd - segStart);
+  const flowLit = pipeFlowAtSensor(pipeTail, pipeHead, sensorDist);
+
+  return (
+    <div className="br-fill-inlet" aria-hidden>
+      <svg
+        className="br-fill-inlet__svg"
+        viewBox={viewBox}
+        style={{ left: svgLeft, top: svgTop, width: svgWidth, height: svgHeight }}
+        overflow="visible"
+      >
+        <defs>
+          <filter
+            id={`${prefix}-metal`}
+            x="-40%"
+            y="-40%"
+            width="180%"
+            height="180%"
+          >
+            <feDropShadow
+              dx="1"
+              dy="2"
+              stdDeviation="1.1"
+              floodColor="#000"
+              floodOpacity="0.18"
+            />
+          </filter>
+        </defs>
+        <g filter={`url(#${prefix}-metal)`}>
+          <path
+            d={centerline}
+            fill="none"
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={pipeOd + 2}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={centerline}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={pipeOd}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <PipeShellJoint cx={localX} cy={localLidY} pipeOd={pipeOd} />
+        </g>
+        {segLen > 0 ? (
+          <path
+            d={centerline}
+            pathLength={pipePathLength}
+            fill="none"
+            stroke={APPLE_DEPTH_COLORS.cyan}
+            strokeWidth={PIPE_WATER_WIDTH}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+            strokeDasharray={`${segLen} ${pipePathLength}`}
+            strokeDashoffset={-segStart}
+          />
+        ) : null}
+        <PipeFlowmeter x={txX} y={txY} pipeOd={pipeOd} lit={flowLit} />
+      </svg>
+    </div>
+  );
+}
+
+/** Bottom drain elbow — metal pipe with flowmeter on the horizontal run. */
+function BottomOutflow({
+  layout,
+  waterTail = 0,
+  waterHead = 0,
+  riseLength = 0,
+}: {
+  layout: BioreactorLayout;
+  waterTail?: number;
+  waterHead?: number;
+  riseLength?: number;
+}) {
+  const prefix = useId().replace(/:/g, "");
+  const { centerX, vesselBottom, drop, run, pipeOd, pipePathLength } =
+    layout.outflow;
   const pad = 28;
   const svgLeft = centerX - pad;
   const svgTop = vesselBottom - 4;
@@ -1100,8 +1266,17 @@ function BottomOutflow({ layout }: BottomOutflowProps) {
   const y1 = y0 + drop;
   const x1 = x0 + run;
   const path = `M ${x0} ${y0} L ${x0} ${y1} L ${x1} ${y1}`;
-  const txX = x0 + run * 0.62;
+  const sensorFrac = 0.62;
+  const txX = x0 + run * sensorFrac;
   const txY = y1;
+  /** Distance along pipe centerline from vessel nozzle to the TX. */
+  const sensorDist = drop + run * sensorFrac;
+  const pipeTail = Math.max(riseLength, waterTail) - riseLength;
+  const pipeHead = waterHead - riseLength;
+  const segStart = Math.max(0, pipeTail);
+  const segEnd = Math.max(segStart, pipeHead);
+  const segLen = Math.max(0, Math.min(segEnd, pipePathLength) - segStart);
+  const flowLit = pipeFlowAtSensor(pipeTail, pipeHead, sensorDist);
 
   return (
     <div className="br-outflow" aria-hidden>
@@ -1145,8 +1320,22 @@ function BottomOutflow({ layout }: BottomOutflowProps) {
             strokeLinecap="butt"
             strokeLinejoin="round"
           />
+          <PipeShellJoint cx={x0} cy={y0} pipeOd={pipeOd} />
         </g>
-        <PipeFlowmeter x={txX} y={txY} pipeOd={pipeOd} lit />
+        {segLen > 0 ? (
+          <path
+            d={path}
+            pathLength={pipePathLength}
+            fill="none"
+            stroke={APPLE_DEPTH_COLORS.blue}
+            strokeWidth={Math.max(8, pipeOd - 10)}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+            strokeDasharray={`${segLen} ${pipePathLength}`}
+            strokeDashoffset={-segStart}
+          />
+        ) : null}
+        <PipeFlowmeter x={txX} y={txY} pipeOd={pipeOd} lit={flowLit} />
       </svg>
     </div>
   );
@@ -1356,7 +1545,6 @@ function BioreactorCard(props: BioreactorCardProps) {
   const aeratorVal = props.aeratorVal ?? 0;
   const jacketMode = props.jacketMode ?? "idle";
   const doseMode = props.doseMode ?? "idle";
-  const waterLevelVal = Math.min(100, Math.max(0, props.waterLevelVal ?? 92));
   const equipment = { ...defaultEquipment(), ...props.equipment };
   const geometry = props.geometry ?? defaultBioreactorGeometry();
   const layout = useMemo(
@@ -1369,10 +1557,17 @@ function BioreactorCard(props: BioreactorCardProps) {
     if (!equipment.aerator || aeratorVal <= 0) setAirAtSparger(false);
   }, [equipment.aerator, aeratorVal]);
   const bubbleAeratorVal = airActive && airAtSparger ? aeratorVal : 0;
-  const targetFillUnits = (waterLevelVal / 100) * VESSEL_MAX_FILL_UNITS;
+
+  const drainAnim = props.drainAnim;
+  const inletFill = props.inletFill;
+  const rawFillUnits = props.fillUnits ?? Math.round(VESSEL_MAX_FILL_UNITS * 0.92);
+  const levelFillUnits =
+    drainAnim?.isLevelFrozen && drainAnim.frozenFillUnits != null
+      ? drainAnim.frozenFillUnits
+      : rawFillUnits;
 
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
-    targetFillUnits,
+    levelFillUnits,
     { stiffness: 120, damping: 0.68 },
   );
 
@@ -1382,11 +1577,14 @@ function BioreactorCard(props: BioreactorCardProps) {
   const fillRatioRaw = displayFillUnits / VESSEL_MAX_FILL_UNITS;
   const fillRatio = Math.max(0.05, fillRatioRaw);
   const waterPct = Math.max(0, fillRatioRaw) * 100;
+  // Sparger sits at a fixed absolute height. The bubble canvas is only as tall as
+  // the current water column, so convert that absolute height into a % of the
+  // filled column — do not clamp down or the plume slides with the level.
   const spargerSpawnBottomPct = Math.min(
-    22,
+    92,
     Math.max(
-      9,
-      (layout.aerator.spawnBottomPctAtFull / fillRatio),
+      2,
+      layout.aerator.spawnBottomPctAtFull / Math.max(0.05, fillRatioRaw),
     ),
   );
   /** Soft foam on the discs — ≥40% fill and rotor above half speed. */
@@ -1394,6 +1592,39 @@ function BioreactorCard(props: BioreactorCardProps) {
     waterPct >= 40 && rotorNorm > 0.5
       ? Math.min(1, (rotorNorm - 0.5) / 0.5)
       : 0;
+
+  const showInletWater = Boolean(inletFill && inletFill.head > inletFill.tail);
+  const showDrainWater = Boolean(drainAnim && drainAnim.head > drainAnim.tail);
+  const drainRiseLength =
+    Math.min(1, Math.max(0, levelFillUnits / VESSEL_MAX_FILL_UNITS)) *
+    layout.outflow.columnHeight;
+  const inletPipeLen = layout.fillInlet.pipePathLength;
+  const columnH = layout.waterClip.height;
+  const surfaceYInClip = (1 - fillRatioRaw) * columnH;
+  const fillStreamX =
+    layout.fillInlet.centerX - layout.waterClip.left - 5;
+  const STREAM_W = 10;
+
+  // Falling fill column — air gap only (never draw through the water body).
+  let fillStream: { top: number; height: number } | null = null;
+  if (showInletWater && inletFill) {
+    const fallTail = Math.max(inletPipeLen, inletFill.tail);
+    const streamTop = Math.max(
+      0,
+      layout.fillInlet.tipY - layout.waterClip.top + (fallTail - inletPipeLen),
+    );
+    const leadingFall = inletFill.head - fallTail;
+    const airGap = surfaceYInClip - streamTop;
+    const streamHeight = inletFill.connectedToSurface
+      ? Math.max(0, airGap)
+      : Math.min(leadingFall, Math.max(0, airGap));
+    if (inletFill.head > inletPipeLen && streamHeight >= 2 && airGap > 1) {
+      fillStream = { top: streamTop, height: streamHeight };
+    }
+  }
+
+  // In-vessel drain column omitted — water in the outlet pipe is enough,
+  // and a cyan strip through the tank reads as a bug.
 
   return (
     <div
@@ -1415,6 +1646,12 @@ function BioreactorCard(props: BioreactorCardProps) {
         ) : null}
 
         <div className="reaction_chamber" />
+
+        <FillInletPipe
+          layout={layout}
+          waterTail={showInletWater && inletFill ? Math.min(inletFill.tail, inletPipeLen) : 0}
+          waterHead={showInletWater && inletFill ? Math.min(inletFill.head, inletPipeLen) : 0}
+        />
 
         {equipment.stirrer ? (
           <SpinningAgitator
@@ -1456,9 +1693,28 @@ function BioreactorCard(props: BioreactorCardProps) {
           </div>
         ) : null}
 
-        {equipment.outflow ? <BottomOutflow layout={layout} /> : null}
+        {equipment.outflow ? (
+          <BottomOutflow
+            layout={layout}
+            waterTail={showDrainWater && drainAnim ? drainAnim.tail : 0}
+            waterHead={showDrainWater && drainAnim ? drainAnim.head : 0}
+            riseLength={drainRiseLength}
+          />
+        ) : null}
 
         <div className="br-water-clip">
+          {fillStream ? (
+            <div
+              className="br-fill-stream"
+              style={{
+                left: fillStreamX,
+                top: fillStream.top,
+                width: STREAM_W,
+                height: fillStream.height,
+              }}
+              aria-hidden
+            />
+          ) : null}
           <VesselWaterBody
             fillUnits={displayFillUnits}
             fillVelocity={waveVelocity}

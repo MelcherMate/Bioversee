@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import Canvas from "../../components/Canvas";
 import Chart from "../../components/Chart/index";
@@ -6,16 +6,34 @@ import ControlClock from "../../components/ControlClock";
 import Knob from "../../components/Knob";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
-import { getLatestSliderState, getLatestSwitchState, insertSwitchState } from "../../lib/actuators";
+import AnimatedNumber from "../../components/AnimatedNumber";
+import { ToastStack, useToasts } from "../../components/Toast";
+import {
+  fillUnitsToPercent,
+  VESSEL_MAX_FILL_UNITS,
+} from "../../components/pressure-vessel/constants";
+import { useDrainAnimation } from "../../components/pressure-vessel/useDrainAnimation";
+import { useInletFillAnimation } from "../../components/pressure-vessel/useInletFillAnimation";
+import "../../components/pressure-vessel/WaterLevelPanel.css";
+import {
+  getLatestSliderState,
+  getLatestSwitchState,
+  insertSensorReading,
+  insertSliderState,
+  insertSwitchState,
+} from "../../lib/actuators";
 import { canOperateDevice } from "../../lib/devices";
 import {
   defaultBioreactorGeometry,
   parseBioreactorConfig,
 } from "../../lib/bioreactorGeometry";
+import { layoutFromGeometry } from "../../components/Canvas/bioreactorLayout";
 import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./Bioreactor.css";
+
+const WATER_LEVEL_KEY = "water_level";
 
 interface Card {
   id: string;
@@ -25,6 +43,31 @@ interface Card {
 
 interface BioreactorProps {
   user: AppUser;
+}
+
+function bindHoldButton(onHoldChange?: (held: boolean) => void, disabled = false) {
+  return {
+    type: "button" as const,
+    onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (disabled) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      onHoldChange?.(true);
+    },
+    onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      onHoldChange?.(false);
+    },
+    onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      onHoldChange?.(false);
+    },
+    onLostPointerCapture: () => onHoldChange?.(false),
+  };
 }
 
 function Bioreactor({ user }: BioreactorProps) {
@@ -58,8 +101,46 @@ function Bioreactor({ user }: BioreactorProps) {
   const [baseVal, setBaseVal] = useState(false);
   const [rotorVal, setRotorVal] = useState(0);
   const [aeratorVal, setAeratorVal] = useState(0);
-  const [waterLevelVal, setWaterLevelVal] = useState(92);
+  const [fillUnits, setFillUnits] = useState(
+    Math.round(VESSEL_MAX_FILL_UNITS * 0.92),
+  );
+  const [isFillHeld, setIsFillHeld] = useState(false);
+  const [isDrainHeld, setIsDrainHeld] = useState(false);
   const [pumpsHydrated, setPumpsHydrated] = useState(false);
+  const fillUnitsRef = useRef(fillUnits);
+  fillUnitsRef.current = fillUnits;
+  const aeratorLowWarnedRef = useRef(false);
+  const rotorLowWarnedRef = useRef(false);
+  const { toasts, push, dismiss } = useToasts();
+
+  const flowGeom = useMemo(() => {
+    const layout = layoutFromGeometry(defaultBioreactorGeometry());
+    return {
+      inlet: {
+        pipePathLength: layout.fillInlet.pipePathLength,
+        columnHeight: layout.fillInlet.columnHeight,
+      },
+      drain: {
+        pipePathLength: layout.outflow.pipePathLength,
+        columnHeight: layout.outflow.columnHeight,
+      },
+      aeratorMinFillPercent: layout.aerator.minFillPercent,
+      rotorMinFillPercent: layout.impeller.minFillPercent,
+    };
+  }, []);
+
+  const inletFill = useInletFillAnimation(
+    fillUnits,
+    setFillUnits,
+    isFillHeld,
+    flowGeom.inlet,
+  );
+  const drainAnim = useDrainAnimation(
+    fillUnits,
+    setFillUnits,
+    isDrainHeld,
+    flowGeom.drain,
+  );
 
   // Load actuator states before mounting animations so already-on pumps /
   // set levels start in their steady state instead of replaying fill.
@@ -77,7 +158,7 @@ function Bioreactor({ user }: BioreactorProps) {
       getLatestSwitchState(device.id, "switchColdWaterPump"),
       getLatestSwitchState(device.id, "switchAcidPump"),
       getLatestSwitchState(device.id, "switchBasePump"),
-      getLatestSliderState(device.id, "water_level"),
+      getLatestSliderState(device.id, WATER_LEVEL_KEY),
       getLatestSliderState(device.id, "aerator"),
       getLatestSliderState(device.id, "rotor"),
     ])
@@ -87,7 +168,8 @@ function Bioreactor({ user }: BioreactorProps) {
         setColdWVal(Boolean(cold));
         setAcidVal(Boolean(acid));
         setBaseVal(Boolean(base));
-        setWaterLevelVal(Number(waterLevel));
+        const percent = Math.min(100, Math.max(0, Number(waterLevel)));
+        setFillUnits(Math.round((percent / 100) * VESSEL_MAX_FILL_UNITS));
         setAeratorVal(Number(aerator));
         setRotorVal(Number(rotor));
       })
@@ -100,6 +182,109 @@ function Bioreactor({ user }: BioreactorProps) {
       cancelled = true;
     };
   }, [device?.id]);
+
+  const persistLevel = (units: number) => {
+    if (!device || !canOperateDevice(device.role)) return;
+    const percent = fillUnitsToPercent(units);
+    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+      console.error,
+    );
+    insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+      console.error,
+    );
+  };
+
+  const onFillHoldChange = (held: boolean) => {
+    if (!device || !canOperateDevice(device.role)) return;
+    setIsFillHeld(held);
+    if (!held) persistLevel(fillUnitsRef.current);
+  };
+
+  const onDrainHoldChange = (held: boolean) => {
+    if (!device || !canOperateDevice(device.role)) return;
+    setIsDrainHeld(held);
+    if (!held) persistLevel(fillUnitsRef.current);
+  };
+
+  // Shut off aeration when the sparger is uncovered.
+  useEffect(() => {
+    if (!device || !pumpsHydrated) return;
+    if (!canOperateDevice(device.role)) return;
+
+    const config = parseBioreactorConfig(device.config);
+    if (!config.equipment.aerator) return;
+
+    const levelPercent = fillUnitsToPercent(fillUnits);
+    const tooLow = levelPercent <= flowGeom.aeratorMinFillPercent;
+
+    if (!tooLow) {
+      aeratorLowWarnedRef.current = false;
+      return;
+    }
+
+    if (aeratorVal <= 0) return;
+
+    setAeratorVal(0);
+    insertSliderState(device.id, "aerator", 0, user.id).catch(console.error);
+
+    if (!aeratorLowWarnedRef.current) {
+      aeratorLowWarnedRef.current = true;
+      push(
+        "warning",
+        t("process.aeratorLevelTooLow"),
+        t("process.aeratorLevelTooLowDetail"),
+      );
+    }
+  }, [
+    aeratorVal,
+    device,
+    fillUnits,
+    flowGeom.aeratorMinFillPercent,
+    pumpsHydrated,
+    push,
+    t,
+    user.id,
+  ]);
+
+  // Shut off agitation when even the lower impeller is dry.
+  useEffect(() => {
+    if (!device || !pumpsHydrated) return;
+    if (!canOperateDevice(device.role)) return;
+
+    const config = parseBioreactorConfig(device.config);
+    if (!config.equipment.stirrer) return;
+
+    const levelPercent = fillUnitsToPercent(fillUnits);
+    const tooLow = levelPercent <= flowGeom.rotorMinFillPercent;
+
+    if (!tooLow) {
+      rotorLowWarnedRef.current = false;
+      return;
+    }
+
+    if (rotorVal <= 0) return;
+
+    setRotorVal(0);
+    insertSliderState(device.id, "rotor", 0, user.id).catch(console.error);
+
+    if (!rotorLowWarnedRef.current) {
+      rotorLowWarnedRef.current = true;
+      push(
+        "warning",
+        t("process.rotorLevelTooLow"),
+        t("process.rotorLevelTooLowDetail"),
+      );
+    }
+  }, [
+    device,
+    fillUnits,
+    flowGeom.rotorMinFillPercent,
+    pumpsHydrated,
+    push,
+    rotorVal,
+    t,
+    user.id,
+  ]);
 
   if (!ready) {
     return (
@@ -139,9 +324,12 @@ function Bioreactor({ user }: BioreactorProps) {
         : "idle"
     : "idle";
 
-  const showPumps =
-    eq.thermal_jacket || eq.dosing;
-  const showMotion = true; // water level always; rotor/aerator conditional inside
+  const showPumps = eq.thermal_jacket || eq.dosing;
+  const showMotion = eq.stirrer || eq.aerator;
+  const atFull = fillUnits >= VESSEL_MAX_FILL_UNITS;
+  const atEmpty = fillUnits <= 0;
+  const fillDisabled = readOnly || (inletFill.isAnimating && !isFillHeld);
+  const drainDisabled = readOnly || (drainAnim.isAnimating && !isDrainHeld);
 
   const setWarmExclusive = (next: boolean) => {
     setWarmWVal(next);
@@ -198,8 +386,15 @@ function Bioreactor({ user }: BioreactorProps) {
   const showCharts =
     eq.sensor_temperature || eq.sensor_ph || eq.sensor_pressure;
 
+  const panelFillUnits =
+    drainAnim.isLevelFrozen && drainAnim.frozenFillUnits != null
+      ? drainAnim.frozenFillUnits
+      : fillUnits;
+  const levelPercent = fillUnitsToPercent(panelFillUnits);
+
   return (
     <div className="container">
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
       <aside id="actuatorSide">
         <div className="controlPanel">
           <ControlClock />
@@ -257,12 +452,15 @@ function Bioreactor({ user }: BioreactorProps) {
           {showMotion ? (
             <section className="controlPanel__section">
               <h4 className="boxTitle">{t("process.motion")}</h4>
-              <div className="controlPanel__knob-grid">
+              <div className="controlPanel__knob-grid controlPanel__knob-grid--two">
                 {eq.stirrer ? (
                   <Knob
                     deviceId={device.id}
                     name="rotor"
-                    setVal={setRotorVal}
+                    setVal={(value) => {
+                      if (value > 0) rotorLowWarnedRef.current = false;
+                      setRotorVal(value);
+                    }}
                     val={rotorVal}
                     label={t("process.rotor")}
                     user={user}
@@ -272,22 +470,14 @@ function Bioreactor({ user }: BioreactorProps) {
                     disabled={readOnly}
                   />
                 ) : null}
-                <Knob
-                  deviceId={device.id}
-                  name="water_level"
-                  setVal={setWaterLevelVal}
-                  val={waterLevelVal}
-                  label={t("process.waterLevel")}
-                  user={user}
-                  unit="%"
-                  step={10}
-                  disabled={readOnly}
-                />
                 {eq.aerator ? (
                   <Knob
                     deviceId={device.id}
                     name="aerator"
-                    setVal={setAeratorVal}
+                    setVal={(value) => {
+                      if (value > 0) aeratorLowWarnedRef.current = false;
+                      setAeratorVal(value);
+                    }}
                     val={aeratorVal}
                     label={t("process.aerator")}
                     user={user}
@@ -299,6 +489,37 @@ function Bioreactor({ user }: BioreactorProps) {
               </div>
             </section>
           ) : null}
+          <section className="controlPanel__section controlPanel__section--level">
+            <div className="controlPanel__level-head">
+              <h4 className="boxTitle">{t("process.waterLevel")}</h4>
+              <AnimatedNumber
+                className="controlPanel__level-value"
+                value={levelPercent}
+                decimals={0}
+                suffix="%"
+              />
+            </div>
+            <div className="controlPanel__level-actions">
+              <button
+                {...bindHoldButton(onFillHoldChange, readOnly)}
+                disabled={readOnly || atFull || fillDisabled}
+                aria-label={t("process.fill")}
+                aria-pressed={isFillHeld}
+                className={`pv-panel__btn pv-panel__btn--fill${isFillHeld ? " is-active" : ""}`}
+              >
+                {t("process.fill")}
+              </button>
+              <button
+                {...bindHoldButton(onDrainHoldChange, readOnly)}
+                disabled={readOnly || atEmpty || drainDisabled}
+                aria-label={t("process.drain")}
+                aria-pressed={isDrainHeld}
+                className={`pv-panel__btn pv-panel__btn--drain${isDrainHeld ? " is-active" : ""}`}
+              >
+                {t("process.drain")}
+              </button>
+            </div>
+          </section>
         </div>
       </aside>
       <main id="reactorBox" ref={canvasRef}>
@@ -306,7 +527,9 @@ function Bioreactor({ user }: BioreactorProps) {
           cards={cards}
           rotorVal={eq.stirrer ? rotorVal : 0}
           aeratorVal={eq.aerator ? aeratorVal : 0}
-          waterLevelVal={waterLevelVal}
+          fillUnits={fillUnits}
+          inletFill={inletFill}
+          drainAnim={drainAnim}
           jacketMode={jacketMode}
           doseMode={doseMode}
           equipment={eq}
