@@ -35,7 +35,13 @@ enum AppTab: Hashable {
 
 struct MainTabView: View {
     @EnvironmentObject private var inbox: InboxStore
+    @ObservedObject private var appearance = AppearanceStore.shared
+    @ObservedObject private var tabChrome = TabBarChrome.shared
     @State private var tab: AppTab = .devices
+
+    private var tabBarHidden: Bool {
+        appearance.autoHideTabBar && tabChrome.isCollapsed
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -56,6 +62,13 @@ struct MainTabView: View {
             BVTabBar(selection: $tab, unread: inbox.unread)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)
+                .offset(y: tabBarHidden ? 110 : 0)
+                .opacity(tabBarHidden ? 0 : 1)
+                .allowsHitTesting(!tabBarHidden)
+                .accessibilityHidden(tabBarHidden)
+        }
+        .onChange(of: tab) { _, _ in
+            TabBarChrome.shared.reset()
         }
         .task {
             await inbox.refresh(announceNew: false)

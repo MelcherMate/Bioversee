@@ -44,31 +44,7 @@ struct DeviceControlsView: View {
         ZStack {
             BVTheme.surface.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(BVTheme.text)
-                            .frame(width: 36, height: 36)
-                            .background(BVTheme.fill)
-                            .clipShape(Circle())
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(device.name)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(BVTheme.text)
-                        Text("\(device.type.title) · \(device.role)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(BVTheme.textSecondary)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-
+            ZStack(alignment: .top) {
                 if loading && switchStates.isEmpty && chartPoints.isEmpty {
                     ProgressView()
                         .tint(BVTheme.accent)
@@ -102,10 +78,14 @@ struct DeviceControlsView: View {
                             }
                         }
                         .padding(.horizontal, 16)
+                        .padding(.top, 72)
                         .padding(.bottom, 110)
                     }
                     .refreshable { await reloadAll() }
+                    .trackTabBarScroll()
                 }
+
+                deviceHeader
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -149,6 +129,54 @@ struct DeviceControlsView: View {
     }
 
     private var readOnly: Bool { !device.canOperate }
+
+    private var deviceHeader: some View {
+        HStack(spacing: 12) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(BVTheme.text)
+                    .frame(width: 36, height: 36)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.55), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Go back")
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(device.name)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(BVTheme.text)
+                    .lineLimit(1)
+                Text("\(device.type.title) · \(device.role)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(BVTheme.textSecondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            ZStack {
+                // 50% frosted glass: material + half-opaque surface.
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(BVTheme.surface.opacity(0.50))
+            }
+            .ignoresSafeArea(edges: .top)
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(BVTheme.line)
+                .frame(height: 1)
+        }
+    }
 
     private var shouldApplyRemoteRefresh: Bool {
         busyName == nil

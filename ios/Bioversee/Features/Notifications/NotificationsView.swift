@@ -76,6 +76,7 @@ struct NotificationsView: View {
                         .scrollContentBackground(.hidden)
                         .padding(.bottom, 90)
                         .refreshable { await inbox.refresh(announceNew: false) }
+                        .trackTabBarScroll()
                     }
                 }
             }

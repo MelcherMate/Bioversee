@@ -7,9 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		021295164B290F30AB37AFE7 /* TabBarChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF798454B4D05630F18B2422 /* TabBarChrome.swift */; };
 		0D0A70F4AE3A3BC8C4C716DF /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75483D571C891A65DD1D1880 /* LoginView.swift */; };
 		118A1760968D2F62E929B850 /* SensorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFF04A18FD5E1F0031E924 /* SensorService.swift */; };
 		1E862420DB2B56F9B70DA25F /* DeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */; };
+		20B5E3995923A2E3003DD835 /* DeviceOverviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA345BF023F94C47FF23099 /* DeviceOverviewService.swift */; };
 		2195199886027AE1A28080E7 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5F3361006DF679D11251F73 /* PushNotificationManager.swift */; };
 		3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5903150B9DE6593F72927D /* DeviceListView.swift */; };
 		32D03374E6C876A3756E2E28 /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E655FAA6672908F3000615 /* SupabaseManager.swift */; };
@@ -18,7 +20,6 @@
 		40BC4D0557542A360E0E9D5A /* AccountVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7937A7F3453161CE51B0C8F5 /* AccountVault.swift */; };
 		59B35324EB5F5C68FA4E0545 /* BVTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4813BBF6872F04558239752 /* BVTheme.swift */; };
 		66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB6EB4B11C80B349588ED65 /* DeviceService.swift */; };
-		A1B2C3D4E5F60718293A4B5C /* DeviceOverviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718293B4C5D /* DeviceOverviewService.swift */; };
 		7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DFB522D85CADF4B5967022F /* RootView.swift */; };
 		778A8A0769672AFFA63DFDD0 /* DeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EF9482D0C37EAD50216988A /* DeviceStore.swift */; };
 		82C54E9D12724DCF4CE8067C /* AppearanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7B397E847936F5A700F54D /* AppearanceStore.swift */; };
@@ -41,9 +42,10 @@
 		0B99312979798A458ACE8E94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1E5903150B9DE6593F72927D /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
 		1EF9482D0C37EAD50216988A /* DeviceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStore.swift; sourceTree = "<group>"; };
-		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		229160E588736F15739055D3 /* Bioversee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bioversee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37E655FAA6672908F3000615 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		3C7B397E847936F5A700F54D /* AppearanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceStore.swift; sourceTree = "<group>"; };
+		3DA345BF023F94C47FF23099 /* DeviceOverviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOverviewService.swift; sourceTree = "<group>"; };
 		626F9D2FB79F69EDE99395A0 /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
 		75483D571C891A65DD1D1880 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		7937A7F3453161CE51B0C8F5 /* AccountVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountVault.swift; sourceTree = "<group>"; };
@@ -58,12 +60,12 @@
 		BDC2514BD6E87ADAE23B04E0 /* InboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxStore.swift; sourceTree = "<group>"; };
 		CD8864E7FF5A99069D387231 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		CDEFF04A18FD5E1F0031E924 /* SensorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorService.swift; sourceTree = "<group>"; };
+		DF798454B4D05630F18B2422 /* TabBarChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarChrome.swift; sourceTree = "<group>"; };
 		E0A49E73C3D4889BEF4A2489 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		E4813BBF6872F04558239752 /* BVTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BVTheme.swift; sourceTree = "<group>"; };
 		E73ABD1E317C7F40419AE451 /* Bioversee.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Bioversee.entitlements; sourceTree = "<group>"; };
 		EA1CD5F9670AA699281F8276 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		EAB6EB4B11C80B349588ED65 /* DeviceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceService.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5A60718293B4C5D /* DeviceOverviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOverviewService.swift; sourceTree = "<group>"; };
 		F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActuatorService.swift; sourceTree = "<group>"; };
 		F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F5F3361006DF679D11251F73 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
@@ -125,6 +127,7 @@
 				827A1C2F14DBB487FDB045FE /* AppSession.swift */,
 				9577FD736A876CB295C82F00 /* BioverseeApp.swift */,
 				7DFB522D85CADF4B5967022F /* RootView.swift */,
+				DF798454B4D05630F18B2422 /* TabBarChrome.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -165,8 +168,8 @@
 				7937A7F3453161CE51B0C8F5 /* AccountVault.swift */,
 				F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */,
 				3C7B397E847936F5A700F54D /* AppearanceStore.swift */,
+				3DA345BF023F94C47FF23099 /* DeviceOverviewService.swift */,
 				EAB6EB4B11C80B349588ED65 /* DeviceService.swift */,
-				B1C2D3E4F5A60718293B4C5D /* DeviceOverviewService.swift */,
 				1EF9482D0C37EAD50216988A /* DeviceStore.swift */,
 				BDC2514BD6E87ADAE23B04E0 /* InboxStore.swift */,
 				F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */,
@@ -252,9 +255,10 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2660;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					7ADD8C5B051AF1B56F27FFAF = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -310,8 +314,8 @@
 				E821D129828F217BF5CE7D68 /* DeviceControlsView.swift in Sources */,
 				3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */,
 				1E862420DB2B56F9B70DA25F /* DeviceModels.swift in Sources */,
+				20B5E3995923A2E3003DD835 /* DeviceOverviewService.swift in Sources */,
 				66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */,
-				A1B2C3D4E5F60718293A4B5C /* DeviceOverviewService.swift in Sources */,
 				778A8A0769672AFFA63DFDD0 /* DeviceStore.swift in Sources */,
 				4073D09668C8AAA16679F664 /* InboxStore.swift in Sources */,
 				0D0A70F4AE3A3BC8C4C716DF /* LoginView.swift in Sources */,
@@ -323,6 +327,7 @@
 				8F02490CB52DDE0D59726A34 /* SensorChartCard.swift in Sources */,
 				118A1760968D2F62E929B850 /* SensorService.swift in Sources */,
 				32D03374E6C876A3756E2E28 /* SupabaseManager.swift in Sources */,
+				021295164B290F30AB37AFE7 /* TabBarChrome.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,7 +338,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -365,10 +369,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -382,7 +384,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -393,7 +394,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -425,10 +425,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 8SP5C45AB2;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -449,7 +447,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -466,6 +463,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -492,6 +490,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bioversee/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -539,8 +538,6 @@
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.5.0;
 			};
-			traits = (
-			);
 		};
 /* End XCRemoteSwiftPackageReference section */
 
