@@ -40,6 +40,11 @@ type BioreactorCardProps = {
   /** Wave + bubble motion scales vs water (from fluid config). */
   fluidMotion?: FluidMotionFactors;
   geometry?: BioreactorGeometry;
+  /** Probe lamps flash red while uncovered. */
+  sensorAlarms?: {
+    temperature?: boolean;
+    ph?: boolean;
+  };
   translateX: number;
   translateY: number;
   scale: number;
@@ -1669,7 +1674,13 @@ function BioreactorCard(props: BioreactorCardProps) {
         {equipment.sensor_temperature ? (
           <div className="sensor sensor1 sensor--temp" aria-hidden>
             <div className="sensor__port">
-              <span className="sensor__lamp sensor__lamp--ok" />
+              <span
+                className={`sensor__lamp${
+                  props.sensorAlarms?.temperature
+                    ? " sensor__lamp--alarm is-flashing"
+                    : " sensor__lamp--ok"
+                }`}
+              />
             </div>
             <div className="sensor__collar" />
             <div className="sensor__shaft" />
@@ -1679,7 +1690,13 @@ function BioreactorCard(props: BioreactorCardProps) {
         {equipment.sensor_ph ? (
           <div className="sensor sensor2 sensor--ph" aria-hidden>
             <div className="sensor__port">
-              <span className="sensor__lamp sensor__lamp--ok" />
+              <span
+                className={`sensor__lamp${
+                  props.sensorAlarms?.ph
+                    ? " sensor__lamp--alarm is-flashing"
+                    : " sensor__lamp--ok"
+                }`}
+              />
             </div>
             <div className="sensor__collar" />
             <div className="sensor__shaft" />

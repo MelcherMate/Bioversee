@@ -182,6 +182,17 @@ aside > * {
   line-height: 1;
   color: var(--bv-accent-hover);
   font-variant-numeric: tabular-nums;
+  --bv-num-duration: 420ms;
+}
+
+.br-level__pct.bv-num,
+.br-level__pct .bv-num__visual,
+.br-level__pct .bv-num__digit {
+  overflow: hidden;
+}
+
+.br-level__pct .bv-num__digit {
+  height: 1em;
 }
 
 .br-level__meter {
@@ -209,11 +220,35 @@ aside > * {
 
 .br-level__volume {
   margin: -2px 0 0;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
   color: var(--bv-text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.br-level__volume-current {
+  font-weight: 650;
+  color: var(--bv-text-secondary);
+  --bv-num-duration: 420ms;
+}
+
+.br-level__volume-current.bv-num,
+.br-level__volume-current .bv-num__visual,
+.br-level__volume-current .bv-num__digit {
+  overflow: hidden;
+}
+
+.br-level__volume-current .bv-num__digit {
+  height: 1.2em;
+}
+
+.br-level__volume-rest {
+  white-space: pre;
 }
 
 .br-level__dose {

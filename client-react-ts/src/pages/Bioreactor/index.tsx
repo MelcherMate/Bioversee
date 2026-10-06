@@ -63,8 +63,44 @@ function fillUnitsFromLiters(liters: number, capacityL: number): number {
   return clampFillUnits((liters / capacityL) * VESSEL_MAX_FILL_UNITS);
 }
 
+function litersFromFillUnits(fillUnits: number, capacityL: number): number {
+  return (fillUnits / VESSEL_MAX_FILL_UNITS) * capacityL;
+}
+
+function formatLiters(value: number, locale: string): string {
+  return value.toLocaleString(locale, {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
+}
+
+/** Keep transfer amount editable while typing, but never above tank capacity. */
+function clampTransferAmountInput(raw: string, capacityL: number): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return raw;
+  // Allow in-progress decimals like "12." / "12,"
+  if (/^\d+[.,]$/.test(trimmed)) return raw;
+  const normalized = trimmed.replace(",", ".");
+  const value = Number(normalized);
+  if (!Number.isFinite(value)) return raw;
+  if (value < 0) return "0";
+  if (capacityL > 0 && value > capacityL) {
+    return Number.isInteger(capacityL)
+      ? String(capacityL)
+      : String(Math.round(capacityL * 10) / 10);
+  }
+  return raw;
+}
+
+type TransferJob = {
+  kind: "fill" | "drain";
+  startUnits: number;
+  requestedLiters: number;
+  capacityL: number;
+};
+
 function Bioreactor({ user }: BioreactorProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [canvasRef, canvasSize] = useDimensions();
   const { device, ready } = useProcessDevice("bioreactor", user.id);
   const [cards, setCards] = useState<Card[]>([
@@ -94,7 +130,7 @@ function Bioreactor({ user }: BioreactorProps) {
   const [baseVal, setBaseVal] = useState(false);
   const [rotorVal, setRotorVal] = useState(0);
   const [aeratorVal, setAeratorVal] = useState(0);
-  const [fillUnits, setFillUnits] = useState(
+  const [fillUnits, setFillUnitsState] = useState(
     Math.round(VESSEL_MAX_FILL_UNITS * 0.92),
   );
   const [isFillHeld, setIsFillHeld] = useState(false);
@@ -104,10 +140,17 @@ function Bioreactor({ user }: BioreactorProps) {
   const [transferAmountText, setTransferAmountText] = useState("");
   const [pumpsHydrated, setPumpsHydrated] = useState(false);
   const fillUnitsRef = useRef(fillUnits);
-  fillUnitsRef.current = fillUnits;
+  const setFillUnits = useCallback((value: number) => {
+    fillUnitsRef.current = value;
+    setFillUnitsState(value);
+  }, []);
+  const transferJobRef = useRef<TransferJob | null>(null);
   const aeratorLowWarnedRef = useRef(false);
   const rotorLowWarnedRef = useRef(false);
   const sensorLowWarnedRef = useRef(false);
+  const aeratorWasLowRef = useRef<boolean | null>(null);
+  const rotorWasLowRef = useRef<boolean | null>(null);
+  const sensorWasLowRef = useRef<boolean | null>(null);
   const { toasts, push, dismiss } = useToasts();
 
   const flowGeom = useMemo(() => {
@@ -127,9 +170,71 @@ function Bioreactor({ user }: BioreactorProps) {
     };
   }, []);
 
+  const notifyTransferComplete = useCallback(
+    (kind: "fill" | "drain") => {
+      const job = transferJobRef.current;
+      transferJobRef.current = null;
+      if (!job || job.kind !== kind) return;
+
+      const endUnits = fillUnitsRef.current;
+      const deltaUnits =
+        kind === "fill"
+          ? Math.max(0, endUnits - job.startUnits)
+          : Math.max(0, job.startUnits - endUnits);
+      const actualL = litersFromFillUnits(deltaUnits, job.capacityL);
+      const locale = i18n.language || "en";
+      const actualLabel = formatLiters(actualL, locale);
+      const requestedLabel = formatLiters(job.requestedLiters, locale);
+      const clipped =
+        job.requestedLiters - actualL > 0.05 ||
+        (kind === "fill" && endUnits >= VESSEL_MAX_FILL_UNITS - 0.05) ||
+        (kind === "drain" && endUnits <= 0.05);
+
+      // Only warn when the request could not be fully fulfilled.
+      if (clipped && job.requestedLiters - actualL > 0.05) {
+        if (kind === "fill") {
+          push(
+            "warning",
+            t("process.fillLimitedTitle"),
+            t("process.fillLimitedDetail", {
+              actual: actualLabel,
+              requested: requestedLabel,
+            }),
+          );
+        } else {
+          push(
+            "warning",
+            t("process.drainLimitedTitle"),
+            t("process.drainLimitedDetail", {
+              actual: actualLabel,
+              requested: requestedLabel,
+            }),
+          );
+        }
+        return;
+      }
+
+      if (kind === "fill") {
+        push(
+          "success",
+          t("process.fillCompleteTitle"),
+          t("process.fillCompleteDetail", { actual: actualLabel }),
+        );
+      } else {
+        push(
+          "success",
+          t("process.drainCompleteTitle"),
+          t("process.drainCompleteDetail", { actual: actualLabel }),
+        );
+      }
+    },
+    [i18n.language, push, t],
+  );
+
   const finishFillJob = useCallback(() => {
     setIsFillHeld(false);
     setFillTargetUnits(null);
+    notifyTransferComplete("fill");
     if (!device || !canOperateDevice(device.role)) return;
     const percent = fillUnitsToPercent(fillUnitsRef.current);
     insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
@@ -138,11 +243,12 @@ function Bioreactor({ user }: BioreactorProps) {
     insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
       console.error,
     );
-  }, [device, user.id]);
+  }, [device, notifyTransferComplete, user.id]);
 
   const finishDrainJob = useCallback(() => {
     setIsDrainHeld(false);
     setDrainTargetUnits(null);
+    notifyTransferComplete("drain");
     if (!device || !canOperateDevice(device.role)) return;
     const percent = fillUnitsToPercent(fillUnitsRef.current);
     insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
@@ -151,7 +257,7 @@ function Bioreactor({ user }: BioreactorProps) {
     insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
       console.error,
     );
-  }, [device, user.id]);
+  }, [device, notifyTransferComplete, user.id]);
 
   const inletFill = useInletFillAnimation(
     fillUnits,
@@ -215,12 +321,20 @@ function Bioreactor({ user }: BioreactorProps) {
     };
   }, [device?.id]);
 
-  const parseTransferLiters = (): number | null => {
+  const parseTransferLiters = (capacityL: number): number | null => {
     const normalized = transferAmountText.trim().replace(",", ".");
     if (!normalized) return null;
     const value = Number(normalized);
     if (!Number.isFinite(value) || value <= 0) return null;
+    if (capacityL > 0) return Math.min(value, capacityL);
     return value;
+  };
+
+  const onTransferAmountChange = (value: string) => {
+    const capacityL = device
+      ? tankCapacityLiters(parseBioreactorConfig(device.config).volume_m3)
+      : DEFAULT_TANK_CAPACITY_L;
+    setTransferAmountText(clampTransferAmountInput(value, capacityL));
   };
 
   const startFill = () => {
@@ -228,15 +342,29 @@ function Bioreactor({ user }: BioreactorProps) {
     if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
       return;
     }
-    const liters = parseTransferLiters();
-    if (liters == null) return;
     const capacityL = tankCapacityLiters(
       parseBioreactorConfig(device.config).volume_m3,
     );
+    const liters = parseTransferLiters(capacityL);
+    if (liters == null) return;
+    const startUnits = fillUnitsRef.current;
+    if (startUnits >= VESSEL_MAX_FILL_UNITS - 0.05) {
+      push("warning", t("process.tankFullTitle"), t("process.tankFullDetail"));
+      return;
+    }
     const deltaUnits = fillUnitsFromLiters(liters, capacityL);
     if (deltaUnits <= 0) return;
-    const target = clampFillUnits(fillUnitsRef.current + deltaUnits);
-    if (target <= fillUnitsRef.current + 0.05) return;
+    const target = clampFillUnits(startUnits + deltaUnits);
+    if (target <= startUnits + 0.05) {
+      push("warning", t("process.tankFullTitle"), t("process.tankFullDetail"));
+      return;
+    }
+    transferJobRef.current = {
+      kind: "fill",
+      startUnits,
+      requestedLiters: liters,
+      capacityL,
+    };
     setDrainTargetUnits(null);
     setIsDrainHeld(false);
     setFillTargetUnits(target);
@@ -248,22 +376,36 @@ function Bioreactor({ user }: BioreactorProps) {
     if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
       return;
     }
-    const liters = parseTransferLiters();
-    if (liters == null) return;
     const capacityL = tankCapacityLiters(
       parseBioreactorConfig(device.config).volume_m3,
     );
+    const liters = parseTransferLiters(capacityL);
+    if (liters == null) return;
+    const startUnits = fillUnitsRef.current;
+    if (startUnits <= 0.05) {
+      push("warning", t("process.tankEmptyTitle"), t("process.tankEmptyDetail"));
+      return;
+    }
     const deltaUnits = fillUnitsFromLiters(liters, capacityL);
     if (deltaUnits <= 0) return;
-    const target = clampFillUnits(fillUnitsRef.current - deltaUnits);
-    if (target >= fillUnitsRef.current - 0.05) return;
+    const target = clampFillUnits(startUnits - deltaUnits);
+    if (target >= startUnits - 0.05) {
+      push("warning", t("process.tankEmptyTitle"), t("process.tankEmptyDetail"));
+      return;
+    }
+    transferJobRef.current = {
+      kind: "drain",
+      startUnits,
+      requestedLiters: liters,
+      capacityL,
+    };
     setFillTargetUnits(null);
     setIsFillHeld(false);
     setDrainTargetUnits(target);
     setIsDrainHeld(true);
   };
 
-  // Shut off aeration when the sparger is uncovered.
+  // Shut off aeration when the sparger is uncovered; toast when level recovers.
   useEffect(() => {
     if (!device || !pumpsHydrated) return;
     if (!canOperateDevice(device.role)) return;
@@ -273,6 +415,18 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.aeratorMinFillPercent;
+
+    if (aeratorWasLowRef.current === null) {
+      aeratorWasLowRef.current = tooLow;
+    } else if (aeratorWasLowRef.current && !tooLow) {
+      push(
+        "success",
+        t("process.aeratorLevelOk"),
+        t("process.aeratorLevelOkDetail"),
+      );
+      aeratorLowWarnedRef.current = false;
+    }
+    aeratorWasLowRef.current = tooLow;
 
     if (!tooLow) {
       aeratorLowWarnedRef.current = false;
@@ -303,7 +457,7 @@ function Bioreactor({ user }: BioreactorProps) {
     user.id,
   ]);
 
-  // Shut off agitation when even the lower impeller is dry.
+  // Shut off agitation when the lower impeller is dry; toast when level recovers.
   useEffect(() => {
     if (!device || !pumpsHydrated) return;
     if (!canOperateDevice(device.role)) return;
@@ -313,6 +467,18 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.rotorMinFillPercent;
+
+    if (rotorWasLowRef.current === null) {
+      rotorWasLowRef.current = tooLow;
+    } else if (rotorWasLowRef.current && !tooLow) {
+      push(
+        "success",
+        t("process.rotorLevelOk"),
+        t("process.rotorLevelOkDetail"),
+      );
+      rotorLowWarnedRef.current = false;
+    }
+    rotorWasLowRef.current = tooLow;
 
     if (!tooLow) {
       rotorLowWarnedRef.current = false;
@@ -343,7 +509,7 @@ function Bioreactor({ user }: BioreactorProps) {
     user.id,
   ]);
 
-  // Warn when pH / temperature probe tips sit above the liquid.
+  // Warn when pH / temperature probe tips sit above the liquid; toast when recovered.
   useEffect(() => {
     if (!device || !pumpsHydrated) return;
 
@@ -354,6 +520,20 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.sensorMinFillPercent;
+
+    if (sensorWasLowRef.current === null) {
+      sensorWasLowRef.current = tooLow;
+    } else if (sensorWasLowRef.current && !tooLow) {
+      const okKey =
+        hasTemp && hasPh
+          ? "process.sensorLevelOkBoth"
+          : hasTemp
+            ? "process.sensorLevelOkTemp"
+            : "process.sensorLevelOkPh";
+      push("success", t(okKey), t("process.sensorLevelOkDetail"));
+      sensorLowWarnedRef.current = false;
+    }
+    sensorWasLowRef.current = tooLow;
 
     if (!tooLow) {
       sensorLowWarnedRef.current = false;
@@ -428,12 +608,18 @@ function Bioreactor({ user }: BioreactorProps) {
     isDrainHeld ||
     inletFill.isAnimating ||
     drainAnim.isAnimating;
-  const transferLiters = parseTransferLiters();
+  const capacityL = tankCapacityLiters(config.volume_m3);
+  const transferLiters = parseTransferLiters(capacityL);
   const fillDisabled = readOnly || levelBusy || atFull || transferLiters == null;
   const drainDisabled =
     readOnly || levelBusy || atEmpty || transferLiters == null;
+  const levelPercent = fillUnitsToPercent(fillUnits);
+  const sensorLevelAlarm = levelPercent <= flowGeom.sensorMinFillPercent;
+  const sensorAlarms = {
+    temperature: Boolean(eq.sensor_temperature && sensorLevelAlarm),
+    ph: Boolean(eq.sensor_ph && sensorLevelAlarm),
+  };
 
-  const capacityL = tankCapacityLiters(config.volume_m3);
   const getLiveFillUnits = () => {
     if (isFillHeld || inletFill.isAnimating) return inletFill.getLiveFillUnits();
     if (isDrainHeld || drainAnim.isAnimating) return drainAnim.getLiveFillUnits();
@@ -607,7 +793,7 @@ function Bioreactor({ user }: BioreactorProps) {
               capacityLiters={capacityL}
               busy={levelBusy}
               transferAmountText={transferAmountText}
-              onTransferAmountChange={setTransferAmountText}
+              onTransferAmountChange={onTransferAmountChange}
               onFill={startFill}
               onDrain={startDrain}
               fillDisabled={fillDisabled}
@@ -632,6 +818,7 @@ function Bioreactor({ user }: BioreactorProps) {
           equipment={eq}
           fluidMotion={fluidMotion}
           geometry={defaultBioreactorGeometry()}
+          sensorAlarms={sensorAlarms}
         />
       </main>
       {showCharts ? (

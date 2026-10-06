@@ -248,6 +248,35 @@
   --sensor-lamp: #f04438;
 }
 
+.sensor__lamp.is-flashing {
+  animation: sensor-lamp-flash 0.75s ease-in-out infinite;
+}
+
+@keyframes sensor-lamp-flash {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      0 0 10px color-mix(in srgb, var(--sensor-lamp, #f04438) 85%, transparent),
+      inset 0 1px 1px rgba(255, 255, 255, 0.45);
+  }
+  50% {
+    opacity: 0.22;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      0 0 2px color-mix(in srgb, var(--sensor-lamp, #f04438) 35%, transparent),
+      inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sensor__lamp.is-flashing {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 .sensor__collar {
   flex: 0 0 auto;
   width: 12px;

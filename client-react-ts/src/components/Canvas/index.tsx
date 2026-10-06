@@ -30,6 +30,11 @@ type CanvasProps = {
   equipment?: Partial<BioreactorEquipment>;
   fluidMotion?: FluidMotionFactors;
   geometry?: BioreactorGeometry;
+  /** Probe lamps flash red while uncovered. */
+  sensorAlarms?: {
+    temperature?: boolean;
+    ph?: boolean;
+  };
 };
 
 function Canvas(props: CanvasProps) {
@@ -102,6 +107,7 @@ function Canvas(props: CanvasProps) {
             equipment={props.equipment}
             fluidMotion={props.fluidMotion}
             geometry={props.geometry}
+            sensorAlarms={props.sensorAlarms}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}
             scale={zoomLevel}
