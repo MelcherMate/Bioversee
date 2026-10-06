@@ -74,9 +74,9 @@ struct NotificationsView: View {
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
+                        .trackTabBarScroll()
                         .padding(.bottom, 90)
                         .refreshable { await inbox.refresh(announceNew: false) }
-                        .trackTabBarScroll()
                     }
                 }
             }

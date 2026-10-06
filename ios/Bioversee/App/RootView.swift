@@ -66,9 +66,22 @@ struct MainTabView: View {
                 .opacity(tabBarHidden ? 0 : 1)
                 .allowsHitTesting(!tabBarHidden)
                 .accessibilityHidden(tabBarHidden)
+                .animation(.easeInOut(duration: 0.28), value: tabBarHidden)
         }
+        // Reliable path: vertical drag direction (List scroll discovery is flaky in SwiftUI).
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12, coordinateSpace: .global)
+                .onChanged { value in
+                    TabBarChrome.shared.handleDragTranslation(value.translation.height)
+                }
+        )
         .onChange(of: tab) { _, _ in
             TabBarChrome.shared.reset()
+        }
+        .onChange(of: appearance.autoHideTabBar) { _, enabled in
+            if !enabled {
+                TabBarChrome.shared.reset()
+            }
         }
         .task {
             await inbox.refresh(announceNew: false)

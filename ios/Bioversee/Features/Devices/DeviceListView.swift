@@ -55,9 +55,9 @@ struct DeviceListView: View {
                             }
                             .listStyle(.plain)
                             .scrollContentBackground(.hidden)
+                            .trackTabBarScroll()
                             .padding(.bottom, 90)
                             .refreshable { await devicesStore.refresh(silent: false) }
-                            .trackTabBarScroll()
                         }
                     }
                 }
