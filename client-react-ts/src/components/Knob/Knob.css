@@ -112,6 +112,11 @@
 
 .bv-knob__arc-progress {
   stroke: var(--bv-accent);
+  transition: stroke-dasharray 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bv-knob.is-dragging .bv-knob__arc-progress {
+  transition: none;
 }
 
 .bv-knob__ticks {
@@ -138,6 +143,7 @@
 .bv-knob__tick.is-active {
   background: var(--bv-accent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--bv-accent) 35%, transparent);
+  transition: background 180ms ease, box-shadow 180ms ease;
 }
 
 .bv-knob__face {
@@ -170,6 +176,7 @@
   border-radius: 999px;
   background: var(--bv-accent);
   pointer-events: none;
+  will-change: transform;
 }
 
 .bv-knob__cap {

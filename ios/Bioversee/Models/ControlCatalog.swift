@@ -13,6 +13,8 @@ struct DeviceControl: Identifiable, Hashable {
     let min: Double
     let max: Double
     let unit: String?
+    /// Slider snap interval (e.g. 10 for aerator %).
+    let step: Double
 
     init(
         kind: ControlKind,
@@ -20,7 +22,8 @@ struct DeviceControl: Identifiable, Hashable {
         label: String,
         min: Double = 0,
         max: Double = 100,
-        unit: String? = nil
+        unit: String? = nil,
+        step: Double = 1
     ) {
         self.id = name
         self.kind = kind
@@ -29,6 +32,7 @@ struct DeviceControl: Identifiable, Hashable {
         self.min = min
         self.max = max
         self.unit = unit
+        self.step = step
     }
 }
 
@@ -42,7 +46,7 @@ enum ControlCatalog {
                 .init(kind: .switchControl, name: "switchAcidPump", label: "Acid"),
                 .init(kind: .switchControl, name: "switchBasePump", label: "Base"),
                 .init(kind: .slider, name: "rotor", label: "Mixer", min: 0, max: 300, unit: "rpm"),
-                .init(kind: .slider, name: "aerator", label: "Aerator"),
+                .init(kind: .slider, name: "aerator", label: "Aerator", step: 10),
             ]
         case .pressureVessel:
             return [

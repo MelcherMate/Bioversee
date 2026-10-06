@@ -315,29 +315,33 @@ struct DeviceControlsView: View {
     private func sliderRow(_ control: DeviceControl) -> some View {
         let value = sliderStates[control.name] ?? control.min
         let inactive = sliderInactive(control)
+        let step = max(control.step, 0.001)
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(control.label)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(inactive ? BVTheme.textTertiary : BVTheme.text)
                 Spacer(minLength: 8)
-                Text("\(Int(value))\(control.unit.map { " \($0)" } ?? "")")
+                Text("\(Int(value.rounded()))\(control.unit.map { " \($0)" } ?? "")")
                     .font(.system(size: 13, weight: .bold).monospacedDigit())
                     .foregroundStyle(inactive ? BVTheme.textTertiary : BVTheme.accent)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(inactive ? BVTheme.line.opacity(0.55) : BVTheme.accentSoft)
                     .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusXS, style: .continuous))
-                    .contentTransition(.identity)
+                    .contentTransition(.numericText())
             }
 
             Slider(
                 value: Binding(
                     get: { sliderStates[control.name] ?? control.min },
-                    set: { sliderStates[control.name] = $0 }
+                    set: { raw in
+                        let snapped = Self.snapSlider(raw, control: control)
+                        sliderStates[control.name] = snapped
+                    }
                 ),
                 in: control.min...control.max,
-                step: 1
+                step: step
             ) { editing in
                 if editing {
                     editingSliderName = control.name
@@ -348,6 +352,7 @@ struct DeviceControlsView: View {
             }
             .tint(inactive ? BVTheme.textTertiary : BVTheme.accent)
             .disabled(inactive)
+            .animation(.easeInOut(duration: 0.45), value: value)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -357,9 +362,18 @@ struct DeviceControlsView: View {
                 .stroke(BVTheme.line, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
-        .transaction { $0.animation = nil }
         .opacity(inactive ? 0.55 : 1)
         .allowsHitTesting(!inactive)
+    }
+
+    private static func snapSlider(_ raw: Double, control: DeviceControl) -> Double {
+        let step = control.step
+        guard step > 0 else {
+            return min(control.max, max(control.min, raw))
+        }
+        let snapped = (raw - control.min) / step
+        let rounded = snapped.rounded() * step + control.min
+        return min(control.max, max(control.min, rounded))
     }
 
     // MARK: - Water level (dose Fill / Drain)
@@ -770,7 +784,9 @@ struct DeviceControlsView: View {
                 switchStates = nextSwitches
             }
             if nextSliders != sliderStates {
-                sliderStates = nextSliders
+                withAnimation(.easeInOut(duration: 0.45)) {
+                    sliderStates = nextSliders
+                }
             }
             if includeWaterLevel {
                 await refreshWaterLevel()
@@ -801,7 +817,9 @@ struct DeviceControlsView: View {
             guard isLevelTooLow(for: control) else { continue }
             let current = sliderStates[control.name] ?? 0
             guard current > 0 else { continue }
-            sliderStates[control.name] = 0
+            withAnimation(.easeInOut(duration: 0.45)) {
+                sliderStates[control.name] = 0
+            }
             ignoreRemoteUntil = Date().addingTimeInterval(1.6)
             do {
                 try await ActuatorService.setSlider(
@@ -898,10 +916,13 @@ struct DeviceControlsView: View {
     private func commitSlider(_ control: DeviceControl) async {
         guard device.canOperate, let userId = session.userId else { return }
         if isLevelTooLow(for: control) {
-            sliderStates[control.name] = 0
+            withAnimation(.easeInOut(duration: 0.35)) {
+                sliderStates[control.name] = 0
+            }
             return
         }
-        let value = sliderStates[control.name] ?? 0
+        let value = Self.snapSlider(sliderStates[control.name] ?? 0, control: control)
+        sliderStates[control.name] = value
         ignoreRemoteUntil = Date().addingTimeInterval(1.6)
         busyName = control.name
         defer { busyName = nil }

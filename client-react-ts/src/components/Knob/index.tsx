@@ -80,7 +80,6 @@ function Knob(props: KnobProps) {
   const step = props.step;
   const freeSpin = !(step && step > 0);
   const value = Number.isFinite(props.val) ? props.val : min;
-  const angle = valueToAngle(value, min, max);
 
   const ticks = useMemo(() => {
     if (freeSpin || !step) return [];
@@ -93,12 +92,68 @@ function Knob(props: KnobProps) {
   }, [freeSpin, step, min, max]);
 
   const [dragging, setDragging] = useState(false);
+  const [displayValue, setDisplayValue] = useState(value);
   const setValRef = useRef(props.setVal);
   setValRef.current = props.setVal;
   const draggingRef = useRef(false);
   const localWriteUntilRef = useRef(0);
   const dialRef = useRef<HTMLDivElement | null>(null);
   const dragValueRef = useRef(value);
+  const displayValueRef = useRef(value);
+  const easeRafRef = useRef(0);
+
+  // Ease the dial toward remote / committed values; stay instant while dragging.
+  useEffect(() => {
+    if (dragging) {
+      if (easeRafRef.current) {
+        cancelAnimationFrame(easeRafRef.current);
+        easeRafRef.current = 0;
+      }
+      displayValueRef.current = value;
+      setDisplayValue(value);
+      return;
+    }
+
+    const from = displayValueRef.current;
+    const to = value;
+    if (Math.abs(from - to) < 0.001) {
+      displayValueRef.current = to;
+      setDisplayValue(to);
+      return;
+    }
+
+    if (easeRafRef.current) cancelAnimationFrame(easeRafRef.current);
+    const start = performance.now();
+    const duration = 480;
+    const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
+
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      const next = from + (to - from) * easeOutCubic(p);
+      displayValueRef.current = next;
+      setDisplayValue(next);
+      if (p < 1) {
+        easeRafRef.current = requestAnimationFrame(tick);
+      } else {
+        easeRafRef.current = 0;
+        displayValueRef.current = to;
+        setDisplayValue(to);
+      }
+    };
+    easeRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (easeRafRef.current) {
+        cancelAnimationFrame(easeRafRef.current);
+        easeRafRef.current = 0;
+      }
+    };
+  }, [value, dragging]);
+
+  const visualValue = dragging ? value : displayValue;
+  const angle = valueToAngle(visualValue, min, max);
+  const t =
+    max === min ? 0 : (visualValue - min) / (max - min);
 
   useEffect(() => {
     if (!props.deviceId) return;
@@ -238,8 +293,6 @@ function Knob(props: KnobProps) {
     }, 180);
   };
 
-  const t = max === min ? 0 : (value - min) / (max - min);
-
   // SVG ring geometry (viewBox 0–100). Stroke starts at 3 o'clock; rotate to match START_DEG.
   // Match stepped-knob dot diameter (5px on a 62px dial → viewBox units).
   const arcR = 42;
@@ -328,7 +381,8 @@ function Knob(props: KnobProps) {
           <div className="bv-knob__ticks" aria-hidden="true">
             {ticks.map((tick) => {
               const tickAngle = valueToAngle(tick, min, max);
-              const active = Math.abs(tick - value) < (step ?? 0) / 2 + 0.001;
+              const active =
+                Math.abs(tick - visualValue) < (step ?? 0) / 2 + 0.001;
               return (
                 <span
                   key={tick}
