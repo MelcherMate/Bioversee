@@ -112,11 +112,6 @@
 
 .bv-knob__arc-progress {
   stroke: var(--bv-accent);
-  transition: stroke-dasharray 480ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.bv-knob.is-dragging .bv-knob__arc-progress {
-  transition: none;
 }
 
 .bv-knob__ticks {
