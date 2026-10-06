@@ -1,6 +1,7 @@
 import Realtime
 import Supabase
 import SwiftUI
+import UIKit
 
 struct DeviceControlsView: View {
     @EnvironmentObject private var session: AppSession
@@ -43,11 +44,26 @@ struct DeviceControlsView: View {
         SensorCatalog.charts(for: device.type)
     }
 
+    private var sidePadding: CGFloat { 16 }
+
+    /// Keyboard overlap with the scroll view (excludes home-indicator already outside the view).
+    private var keyboardScrollInset: CGFloat {
+        guard keyboard.isVisible, keyboard.height > 0 else { return 0 }
+        let safeBottom = Self.keyWindowSafeAreaBottom
+        return max(0, keyboard.height - safeBottom)
+    }
+
     private var scrollBottomPadding: CGFloat {
-        if keyboard.isVisible {
-            return max(24, keyboard.height - 24)
-        }
-        return MainTabView.tabBarClearance + 16
+        // Match horizontal page padding so the gap above the number pad equals the sides.
+        keyboard.isVisible ? sidePadding : MainTabView.tabBarClearance + sidePadding
+    }
+
+    private static var keyWindowSafeAreaBottom: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .safeAreaInsets.bottom ?? 0
     }
 
     var body: some View {
@@ -88,25 +104,25 @@ struct DeviceControlsView: View {
                                         .foregroundStyle(BVTheme.danger)
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, sidePadding)
                             .padding(.top, 72)
                             .padding(.bottom, scrollBottomPadding)
                         }
+                        // Swipe down/up on the scroll view dismisses the pad (not a Done button).
                         .scrollDismissesKeyboard(.interactively)
                         .refreshable { await reloadAll() }
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            Color.clear
+                                .frame(height: keyboardScrollInset)
+                                .accessibilityHidden(true)
+                        }
                         .onChange(of: amountFieldFocused) { _, focused in
                             guard focused else { return }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    proxy.scrollTo(waterLevelActionsId, anchor: .bottom)
-                                }
-                            }
+                            pinWaterLevelAboveKeyboard(proxy)
                         }
                         .onChange(of: keyboard.height) { _, height in
                             guard amountFieldFocused, height > 0 else { return }
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                proxy.scrollTo(waterLevelActionsId, anchor: .bottom)
-                            }
+                            pinWaterLevelAboveKeyboard(proxy)
                         }
                     }
                 }
@@ -124,6 +140,7 @@ struct DeviceControlsView: View {
             levelTransferTask?.cancel()
             levelTransferTask = nil
             levelBusy = false
+            amountFieldFocused = false
         }
         .onChange(of: waterLevelPercent) { oldValue, newValue in
             // Only shut off mixer/aerator when the level drops — never when
@@ -217,6 +234,15 @@ struct DeviceControlsView: View {
 
     private var tankCapacityLiters: Double {
         max(1, device.tankCapacityLiters)
+    }
+
+    private func pinWaterLevelAboveKeyboard(_ proxy: ScrollViewProxy) {
+        // Wait one tick so safeAreaInset has applied the keyboard height.
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: 0.22)) {
+                proxy.scrollTo(waterLevelActionsId, anchor: .bottom)
+            }
+        }
     }
 
     @ViewBuilder
@@ -489,20 +515,10 @@ struct DeviceControlsView: View {
             .contentTransition(.numericText())
 
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("AMOUNT")
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(0.8)
-                        .foregroundStyle(BVTheme.textTertiary)
-                    Spacer(minLength: 8)
-                    if amountFieldFocused {
-                        Button("Done") {
-                            amountFieldFocused = false
-                        }
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(BVTheme.accent)
-                    }
-                }
+                Text("AMOUNT")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundStyle(BVTheme.textTertiary)
                 HStack(spacing: 0) {
                     TextField("0", text: Binding(
                         get: { transferAmountText },
