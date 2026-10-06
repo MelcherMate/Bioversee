@@ -104,6 +104,14 @@ export function useDrainAnimation(
   targetRef.current =
     options.targetFillUnits === undefined ? null : options.targetFillUnits;
   onTargetReachedRef.current = options.onTargetReached;
+  // Remote streams lower the target mid-dose — allow another onTargetReached later.
+  if (
+    targetRef.current != null &&
+    targetRef.current < fillUnitsRef.current - 0.05 &&
+    targetNotifiedRef.current
+  ) {
+    targetNotifiedRef.current = false;
+  }
   // While animating, the rAF loop owns fillUnitsRef — don't clobber it with
   // a possibly-stale React state value mid-transfer.
   if (phaseRef.current === "idle") {
@@ -233,6 +241,19 @@ export function useDrainAnimation(
         hasReachedNozzleRef.current = false;
       }
 
+      // Remote stream extended the drain target after valve close started — resume.
+      if (
+        active &&
+        !atEmpty &&
+        (phase === "valveClose" || phase === "retreat")
+      ) {
+        frozenFillUnitsRef.current = null;
+        hasReachedNozzleRef.current = true;
+        phase = "steady";
+        tailRef.current = 0;
+        headRef.current = pathEnd;
+      }
+
       if ((reached || atEmpty) && held) {
         notifyTarget();
       }
@@ -253,6 +274,8 @@ export function useDrainAnimation(
             } else if (hasReachedNozzleRef.current) {
               transferFromTank(deltaSeconds);
             }
+          } else if (held && targetRef.current != null) {
+            // Waiting for a remote stream to extend the target.
           } else if (hasReachedNozzleRef.current) {
             phase = closeValve();
           } else {
@@ -267,6 +290,10 @@ export function useDrainAnimation(
             if (!atEmpty) {
               transferFromTank(deltaSeconds);
             }
+          } else if (held && targetRef.current != null) {
+            // Hold the drain column open while a remote dose may still stream.
+            tailRef.current = 0;
+            headRef.current = pathEnd;
           } else {
             phase = closeValve();
           }

@@ -682,14 +682,15 @@ struct DeviceControlsView: View {
         levelTransferTask?.cancel()
         levelBusy = true
         levelFeedback = nil
-        // levelBusy already blocks remote actuator echoes; keep ignore short.
-        ignoreRemoteUntil = Date().addingTimeInterval(1.6)
 
         // Match web fill (~7.5 %/s) and drain (~14 %/s) rates.
         let ratePercentPerSec: Double = kind == .fill ? 7.5 : 14.0
+        let streamInterval: TimeInterval = 0.28
 
         levelTransferTask = Task { @MainActor in
             var current = startPercent
+            var lastStreamAt = Date.distantPast
+            var lastStreamedPercent = startPercent
             let stepDirection: Double = kind == .fill ? 1 : -1
             while !Task.isCancelled {
                 let remaining = abs(targetPercent - current)
@@ -701,6 +702,17 @@ struct DeviceControlsView: View {
                 withAnimation(.linear(duration: dt)) {
                     waterLevelPercent = current
                 }
+
+                // Stream live level so the website can animate in parallel.
+                let now = Date()
+                if now.timeIntervalSince(lastStreamAt) >= streamInterval,
+                   abs(current - lastStreamedPercent) >= 0.5 {
+                    lastStreamAt = now
+                    lastStreamedPercent = current
+                    let snapshot = current
+                    Task { await persistWaterLevel(percent: snapshot, includeSensor: false) }
+                }
+
                 try? await Task.sleep(nanoseconds: UInt64(dt * 1_000_000_000))
             }
 
@@ -712,7 +724,7 @@ struct DeviceControlsView: View {
             waterLevelPercent = targetPercent
             let actualLiters = abs(targetPercent - startPercent) / 100 * tankCapacityLiters
             let clipped = requestedLiters - actualLiters > 0.05
-            await persistWaterLevel(percent: targetPercent)
+            await persistWaterLevel(percent: targetPercent, includeSensor: true)
 
             if Task.isCancelled {
                 levelBusy = false
@@ -744,7 +756,7 @@ struct DeviceControlsView: View {
             }
 
             levelBusy = false
-            ignoreRemoteUntil = Date().addingTimeInterval(1.6)
+            ignoreRemoteUntil = Date().addingTimeInterval(1.2)
         }
     }
 
@@ -753,7 +765,7 @@ struct DeviceControlsView: View {
         levelFeedback = message
     }
 
-    private func persistWaterLevel(percent: Double) async {
+    private func persistWaterLevel(percent: Double, includeSensor: Bool = true) async {
         guard device.canOperate, let userId = session.userId else { return }
         let value = min(100, max(0, percent.rounded()))
         do {
@@ -763,12 +775,14 @@ struct DeviceControlsView: View {
                 state: value,
                 userId: userId
             )
-            try await SensorService.insertReading(
-                deviceId: device.id,
-                name: waterLevelKey,
-                value: value,
-                userId: userId
-            )
+            if includeSensor {
+                try await SensorService.insertReading(
+                    deviceId: device.id,
+                    name: waterLevelKey,
+                    value: value,
+                    userId: userId
+                )
+            }
         } catch {
             if !Self.isCancellation(error) {
                 errorMessage = error.localizedDescription
@@ -832,22 +846,33 @@ struct DeviceControlsView: View {
     }
 
     /// Pull water level without waiting for the actuator ignore window.
+    /// Ease toward remote values so website fill/drain streams look smooth.
     private func refreshWaterLevel() async {
         guard showsWaterLevelDose, !levelBusy else { return }
+        guard Date() >= ignoreRemoteUntil else { return }
         do {
             if let loaded = try await ActuatorService.latestSliderIfPresent(
                 deviceId: device.id,
                 name: waterLevelKey
             ) {
-                let next = min(100, max(0, loaded))
-                if abs(next - waterLevelPercent) > 0.05 {
-                    waterLevelPercent = next
-                }
+                applyRemoteWaterLevel(loaded)
             }
         } catch {
             if !Self.isCancellation(error) {
                 errorMessage = error.localizedDescription
             }
+        }
+    }
+
+    private func applyRemoteWaterLevel(_ percent: Double) {
+        let next = min(100, max(0, percent))
+        let delta = abs(next - waterLevelPercent)
+        guard delta > 0.05 else { return }
+        // Match web fill (~7.5 %/s) / drain (~14 %/s); cap so big jumps still finish quickly.
+        let rate = next > waterLevelPercent ? 7.5 : 14.0
+        let duration = min(1.2, max(0.12, delta / rate))
+        withAnimation(.linear(duration: duration)) {
+            waterLevelPercent = next
         }
     }
 

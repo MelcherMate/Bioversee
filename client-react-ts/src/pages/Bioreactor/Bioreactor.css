@@ -244,7 +244,8 @@ aside > * {
 }
 
 .br-level__volume-current .bv-num__digit {
-  height: 1.2em;
+  /* Must match .bv-num__glyph (1em) or the next reel digit peeks under as dashes. */
+  height: 1em;
 }
 
 .br-level__volume-rest {

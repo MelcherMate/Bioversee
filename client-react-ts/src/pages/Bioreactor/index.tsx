@@ -150,6 +150,13 @@ function Bioreactor({ user }: BioreactorProps) {
     setFillUnitsState(value);
   }, []);
   const transferJobRef = useRef<TransferJob | null>(null);
+  /** True while fill/drain was started from a remote water_level write (phone / other tab). */
+  const remoteLevelAnimRef = useRef(false);
+  const remoteEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastStreamPersistAtRef = useRef(0);
+  const lastStreamPercentRef = useRef<number | null>(null);
+  const inletAnimatingRef = useRef(false);
+  const drainAnimatingRef = useRef(false);
   const aeratorLowWarnedRef = useRef(false);
   const rotorLowWarnedRef = useRef(false);
   const sensorLowWarnedRef = useRef(false);
@@ -236,7 +243,25 @@ function Bioreactor({ user }: BioreactorProps) {
     [i18n.language, push, t],
   );
 
+  const clearRemoteEndTimer = useCallback(() => {
+    if (remoteEndTimerRef.current != null) {
+      clearTimeout(remoteEndTimerRef.current);
+      remoteEndTimerRef.current = null;
+    }
+  }, []);
+
   const finishFillJob = useCallback(() => {
+    if (remoteLevelAnimRef.current) {
+      // Phone may still be streaming — wait briefly before closing the inlet.
+      clearRemoteEndTimer();
+      remoteEndTimerRef.current = setTimeout(() => {
+        remoteEndTimerRef.current = null;
+        setIsFillHeld(false);
+        setFillTargetUnits(null);
+        remoteLevelAnimRef.current = false;
+      }, 550);
+      return;
+    }
     setIsFillHeld(false);
     setFillTargetUnits(null);
     notifyTransferComplete("fill");
@@ -248,9 +273,19 @@ function Bioreactor({ user }: BioreactorProps) {
     insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
       console.error,
     );
-  }, [device, notifyTransferComplete, user.id]);
+  }, [clearRemoteEndTimer, device, notifyTransferComplete, user.id]);
 
   const finishDrainJob = useCallback(() => {
+    if (remoteLevelAnimRef.current) {
+      clearRemoteEndTimer();
+      remoteEndTimerRef.current = setTimeout(() => {
+        remoteEndTimerRef.current = null;
+        setIsDrainHeld(false);
+        setDrainTargetUnits(null);
+        remoteLevelAnimRef.current = false;
+      }, 550);
+      return;
+    }
     setIsDrainHeld(false);
     setDrainTargetUnits(null);
     notifyTransferComplete("drain");
@@ -262,7 +297,7 @@ function Bioreactor({ user }: BioreactorProps) {
     insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
       console.error,
     );
-  }, [device, notifyTransferComplete, user.id]);
+  }, [clearRemoteEndTimer, device, notifyTransferComplete, user.id]);
 
   const inletFill = useInletFillAnimation(
     fillUnits,
@@ -284,6 +319,8 @@ function Bioreactor({ user }: BioreactorProps) {
       onTargetReached: finishDrainJob,
     },
   );
+  inletAnimatingRef.current = inletFill.isAnimating;
+  drainAnimatingRef.current = drainAnim.isAnimating;
 
   // Load actuator states before mounting animations so already-on pumps /
   // set levels start in their steady state instead of replaying fill.
@@ -327,6 +364,7 @@ function Bioreactor({ user }: BioreactorProps) {
   }, [device?.id]);
 
   // Keep vessel fill in sync with mobile / other tabs so level guards agree.
+  // Remote level changes play the same inlet fill / drain animation as a local dose.
   useEffect(() => {
     if (!device || !pumpsHydrated) return;
 
@@ -334,14 +372,53 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const applyWaterPercent = (percent: number) => {
       if (cancelled) return;
-      if (isFillHeldRef.current || isDrainHeldRef.current) return;
       const next = clampFillUnits(
         Math.round(
           (Math.min(100, Math.max(0, percent)) / 100) * VESSEL_MAX_FILL_UNITS,
         ),
       );
-      if (Math.abs(next - fillUnitsRef.current) < 0.5) return;
-      setFillUnits(next);
+      const current = fillUnitsRef.current;
+
+      // Already following a remote stream — chase the latest published level.
+      if (remoteLevelAnimRef.current) {
+        if (isFillHeldRef.current && next > current + 0.4) {
+          clearRemoteEndTimer();
+          setFillTargetUnits(next);
+          return;
+        }
+        if (isDrainHeldRef.current && next < current - 0.4) {
+          clearRemoteEndTimer();
+          setDrainTargetUnits(next);
+          return;
+        }
+        if (isFillHeldRef.current || isDrainHeldRef.current) return;
+      }
+
+      // Don't interrupt a transfer this tab started.
+      if (
+        isFillHeldRef.current ||
+        isDrainHeldRef.current ||
+        inletAnimatingRef.current ||
+        drainAnimatingRef.current
+      ) {
+        return;
+      }
+      if (Math.abs(next - current) < 0.5) return;
+
+      remoteLevelAnimRef.current = true;
+      transferJobRef.current = null;
+      clearRemoteEndTimer();
+      if (next > current) {
+        setDrainTargetUnits(null);
+        setIsDrainHeld(false);
+        setFillTargetUnits(next);
+        setIsFillHeld(true);
+      } else {
+        setFillTargetUnits(null);
+        setIsFillHeld(false);
+        setDrainTargetUnits(next);
+        setIsDrainHeld(true);
+      }
     };
 
     const pull = () => {
@@ -364,9 +441,33 @@ function Bioreactor({ user }: BioreactorProps) {
 
     return () => {
       cancelled = true;
+      clearRemoteEndTimer();
       unsubscribe();
     };
-  }, [device, pumpsHydrated, setFillUnits]);
+  }, [clearRemoteEndTimer, device, pumpsHydrated]);
+
+  // Publish live water_level while this tab runs a local fill/drain so the phone
+  // can animate in parallel (sensor history still written once at the end).
+  useEffect(() => {
+    if (!device || !canOperateDevice(device.role)) return;
+    if (remoteLevelAnimRef.current) return;
+    if (!isFillHeld && !isDrainHeld) return;
+
+    const percent = fillUnitsToPercent(fillUnits);
+    const now = performance.now();
+    if (now - lastStreamPersistAtRef.current < 280) return;
+    if (
+      lastStreamPercentRef.current != null &&
+      Math.abs(percent - lastStreamPercentRef.current) < 1
+    ) {
+      return;
+    }
+    lastStreamPersistAtRef.current = now;
+    lastStreamPercentRef.current = percent;
+    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+      console.error,
+    );
+  }, [device, fillUnits, isDrainHeld, isFillHeld, user.id]);
 
   const parseTransferLiters = (capacityL: number): number | null => {
     const normalized = transferAmountText.trim().replace(",", ".");
@@ -406,6 +507,10 @@ function Bioreactor({ user }: BioreactorProps) {
       push("warning", t("process.tankFullTitle"), t("process.tankFullDetail"));
       return;
     }
+    remoteLevelAnimRef.current = false;
+    clearRemoteEndTimer();
+    lastStreamPersistAtRef.current = 0;
+    lastStreamPercentRef.current = null;
     transferJobRef.current = {
       kind: "fill",
       startUnits,
@@ -440,6 +545,10 @@ function Bioreactor({ user }: BioreactorProps) {
       push("warning", t("process.tankEmptyTitle"), t("process.tankEmptyDetail"));
       return;
     }
+    remoteLevelAnimRef.current = false;
+    clearRemoteEndTimer();
+    lastStreamPersistAtRef.current = 0;
+    lastStreamPercentRef.current = null;
     transferJobRef.current = {
       kind: "drain",
       startUnits,

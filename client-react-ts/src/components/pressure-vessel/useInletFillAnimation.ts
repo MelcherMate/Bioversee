@@ -90,6 +90,14 @@ export function useInletFillAnimation(
   targetRef.current =
     options.targetFillUnits === undefined ? null : options.targetFillUnits;
   onTargetReachedRef.current = options.onTargetReached;
+  // Remote streams raise the target mid-dose — allow another onTargetReached later.
+  if (
+    targetRef.current != null &&
+    targetRef.current > fillUnitsRef.current + 0.05 &&
+    targetNotifiedRef.current
+  ) {
+    targetNotifiedRef.current = false;
+  }
   // While animating, the rAF loop owns fillUnitsRef — don't clobber it with
   // a possibly-stale React state value mid-transfer.
   if (phaseRef.current === "idle") {
@@ -180,6 +188,18 @@ export function useInletFillAnimation(
         hasReachedSurfaceRef.current = false;
       }
 
+      // Remote stream extended the target after we started retreating — resume fill.
+      if (
+        active &&
+        !atFull &&
+        phase === "retreat" &&
+        hasReachedSurfaceRef.current
+      ) {
+        phase = "steady";
+        tailRef.current = 0;
+        headRef.current = pathEnd;
+      }
+
       if ((reached || atFull) && held) {
         notifyTarget();
       }
@@ -196,6 +216,8 @@ export function useInletFillAnimation(
               hasReachedSurfaceRef.current = true;
               phase = "steady";
             }
+          } else if (held && target != null) {
+            // Waiting for a remote stream to extend the target.
           } else {
             phase = "retreat";
           }
@@ -204,10 +226,12 @@ export function useInletFillAnimation(
         case "steady": {
           tailRef.current = 0;
           headRef.current = pathEnd;
-          if (!active) {
-            phase = "retreat";
-          } else if (!atFull) {
+          if (active && !atFull) {
             transferToTank(deltaSeconds);
+          } else if (held && target != null) {
+            // Hold the inlet column open while a remote dose may still stream.
+          } else if (!active) {
+            phase = "retreat";
           }
           break;
         }
