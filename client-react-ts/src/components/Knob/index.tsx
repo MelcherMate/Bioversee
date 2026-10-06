@@ -106,14 +106,17 @@ function Knob(props: KnobProps) {
     let cancelled = false;
 
     const pull = () => {
-      if (draggingRef.current || Date.now() < localWriteUntilRef.current) return;
+      if (draggingRef.current) return;
       getLatestSliderState(props.deviceId, props.name)
         .then((state) => {
           if (cancelled) return;
-          if (draggingRef.current || Date.now() < localWriteUntilRef.current) {
-            return;
+          if (draggingRef.current) return;
+          const next = Number(state);
+          // During our own write echo window, ignore only matching values we just sent.
+          if (Date.now() < localWriteUntilRef.current) {
+            if (Math.abs(next - dragValueRef.current) < 0.001) return;
           }
-          setValRef.current(Number(state));
+          setValRef.current(next);
         })
         .catch((error) => console.log(error));
     };
@@ -122,11 +125,23 @@ function Knob(props: KnobProps) {
 
     const unsubscribe = subscribeDeviceActuators(props.deviceId, (change) => {
       if (cancelled) return;
-      if (draggingRef.current || Date.now() < localWriteUntilRef.current) return;
+      if (draggingRef.current) return;
 
       if (change) {
         if (change.kind !== "slider" || change.name !== props.name) return;
-        setValRef.current(Number(change.state));
+        const next = Number(change.state);
+        // Accept other users/devices immediately; only skip our own echo briefly.
+        const fromSelf =
+          change.userId != null &&
+          change.userId.toLowerCase() === props.user.id.toLowerCase();
+        if (
+          fromSelf &&
+          Date.now() < localWriteUntilRef.current &&
+          Math.abs(next - dragValueRef.current) < 0.001
+        ) {
+          return;
+        }
+        setValRef.current(next);
         return;
       }
 
@@ -154,6 +169,7 @@ function Knob(props: KnobProps) {
   const commit = (next: number) => {
     if (disabled) return;
     const clamped = roundDisplay(next);
+    dragValueRef.current = clamped;
     localWriteUntilRef.current = Date.now() + 1500;
     props.setVal(clamped);
     insertSliderState(

@@ -119,11 +119,10 @@ struct DeviceControlsView: View {
             levelTransferTask = nil
             levelBusy = false
         }
-        .onChange(of: waterLevelPercent) { _, _ in
-            let needsGuard = sliderControls.contains { control in
-                isLevelTooLow(for: control) && (sliderStates[control.name] ?? 0) > 0
-            }
-            guard needsGuard else { return }
+        .onChange(of: waterLevelPercent) { oldValue, newValue in
+            // Only shut off mixer/aerator when the level drops — never when
+            // applying a remote setpoint, or the two clients fight over 0.
+            guard newValue + 0.05 < oldValue else { return }
             Task { await enforceLevelGuards() }
         }
         .task {
@@ -695,7 +694,8 @@ struct DeviceControlsView: View {
             group.addTask { @MainActor in
                 for await _ in switchChanges {
                     guard !Task.isCancelled else { break }
-                    if shouldApplyRemoteRefresh {
+                    // Apply remote switches unless a local toggle is in-flight.
+                    if busyName == nil {
                         await loadStates(includeWaterLevel: false)
                     }
                 }
@@ -703,9 +703,10 @@ struct DeviceControlsView: View {
             group.addTask { @MainActor in
                 for await _ in sliderChanges {
                     guard !Task.isCancelled else { break }
-                    // Always pick up remote water_level so mixer/aerator unlock promptly.
                     await refreshWaterLevel()
-                    if shouldApplyRemoteRefresh {
+                    // Always take remote mixer/aerator setpoints from the website.
+                    // Only skip while the user is dragging or dosing water locally.
+                    if editingSliderName == nil && !levelBusy {
                         await loadStates(includeWaterLevel: false)
                     }
                 }
@@ -774,8 +775,8 @@ struct DeviceControlsView: View {
             if includeWaterLevel {
                 await refreshWaterLevel()
             }
-            await enforceLevelGuards()
-            // Clear stale errors after a successful refresh.
+            // Do not call enforceLevelGuards on every remote poll — that overwrites
+            // website setpoints whenever this device briefly sees a stale low level.
             if errorMessage != nil {
                 errorMessage = nil
             }

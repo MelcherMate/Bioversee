@@ -24,6 +24,7 @@ function Switch(props: SwitchProps) {
   const setValRef = useRef(props.setVal);
   setValRef.current = props.setVal;
   const localWriteUntilRef = useRef(0);
+  const lastLocalValueRef = useRef(props.val);
 
   useEffect(() => {
     if (!props.deviceId) return;
@@ -34,8 +35,14 @@ function Switch(props: SwitchProps) {
       getLatestSwitchState(props.deviceId, props.name)
         .then((state) => {
           if (cancelled) return;
-          if (Date.now() < localWriteUntilRef.current) return;
-          setValRef.current(Boolean(state));
+          const next = Boolean(state);
+          if (
+            Date.now() < localWriteUntilRef.current &&
+            next === lastLocalValueRef.current
+          ) {
+            return;
+          }
+          setValRef.current(next);
         })
         .catch((error) => console.log(error));
     };
@@ -44,11 +51,21 @@ function Switch(props: SwitchProps) {
 
     const unsubscribe = subscribeDeviceActuators(props.deviceId, (change) => {
       if (cancelled) return;
-      if (Date.now() < localWriteUntilRef.current) return;
 
       if (change) {
         if (change.kind !== "switch" || change.name !== props.name) return;
-        setValRef.current(Boolean(change.state));
+        const next = Boolean(change.state);
+        const fromSelf =
+          change.userId != null &&
+          change.userId.toLowerCase() === props.user.id.toLowerCase();
+        if (
+          fromSelf &&
+          Date.now() < localWriteUntilRef.current &&
+          next === lastLocalValueRef.current
+        ) {
+          return;
+        }
+        setValRef.current(next);
         return;
       }
 
@@ -63,6 +80,7 @@ function Switch(props: SwitchProps) {
 
   const sendSwitchStateToDatabase = (newValue: boolean) => {
     if (disabled) return;
+    lastLocalValueRef.current = newValue;
     localWriteUntilRef.current = Date.now() + 1500;
     insertSwitchState(
       props.deviceId,

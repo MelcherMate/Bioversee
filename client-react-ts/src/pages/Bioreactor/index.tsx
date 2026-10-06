@@ -21,6 +21,7 @@ import {
   insertSliderState,
   insertSwitchState,
 } from "../../lib/actuators";
+import { subscribeDeviceActuators } from "../../lib/actuatorsSync";
 import { canOperateDevice } from "../../lib/devices";
 import {
   defaultBioreactorGeometry,
@@ -135,6 +136,10 @@ function Bioreactor({ user }: BioreactorProps) {
   );
   const [isFillHeld, setIsFillHeld] = useState(false);
   const [isDrainHeld, setIsDrainHeld] = useState(false);
+  const isFillHeldRef = useRef(false);
+  const isDrainHeldRef = useRef(false);
+  isFillHeldRef.current = isFillHeld;
+  isDrainHeldRef.current = isDrainHeld;
   const [fillTargetUnits, setFillTargetUnits] = useState<number | null>(null);
   const [drainTargetUnits, setDrainTargetUnits] = useState<number | null>(null);
   const [transferAmountText, setTransferAmountText] = useState("");
@@ -321,6 +326,48 @@ function Bioreactor({ user }: BioreactorProps) {
     };
   }, [device?.id]);
 
+  // Keep vessel fill in sync with mobile / other tabs so level guards agree.
+  useEffect(() => {
+    if (!device || !pumpsHydrated) return;
+
+    let cancelled = false;
+
+    const applyWaterPercent = (percent: number) => {
+      if (cancelled) return;
+      if (isFillHeldRef.current || isDrainHeldRef.current) return;
+      const next = clampFillUnits(
+        Math.round(
+          (Math.min(100, Math.max(0, percent)) / 100) * VESSEL_MAX_FILL_UNITS,
+        ),
+      );
+      if (Math.abs(next - fillUnitsRef.current) < 0.5) return;
+      setFillUnits(next);
+    };
+
+    const pull = () => {
+      getLatestSliderState(device.id, WATER_LEVEL_KEY)
+        .then((state) => {
+          applyWaterPercent(Number(state));
+        })
+        .catch((error) => console.log(error));
+    };
+
+    const unsubscribe = subscribeDeviceActuators(device.id, (change) => {
+      if (cancelled) return;
+      if (change) {
+        if (change.kind !== "slider" || change.name !== WATER_LEVEL_KEY) return;
+        applyWaterPercent(Number(change.state));
+        return;
+      }
+      pull();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [device, pumpsHydrated, setFillUnits]);
+
   const parseTransferLiters = (capacityL: number): number | null => {
     const normalized = transferAmountText.trim().replace(",", ".");
     if (!normalized) return null;
@@ -405,7 +452,8 @@ function Bioreactor({ user }: BioreactorProps) {
     setIsDrainHeld(true);
   };
 
-  // Shut off aeration when the sparger is uncovered; toast when level recovers.
+  // Shut off aeration only when the level drops below the sparger (edge), so
+  // clients don't keep writing 0 and fighting remote setpoints.
   useEffect(() => {
     if (!device || !pumpsHydrated) return;
     if (!canOperateDevice(device.role)) return;
@@ -415,22 +463,28 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.aeratorMinFillPercent;
+    const wasLow = aeratorWasLowRef.current;
 
-    if (aeratorWasLowRef.current === null) {
+    if (wasLow === null) {
       aeratorWasLowRef.current = tooLow;
-    } else if (aeratorWasLowRef.current && !tooLow) {
+      if (!tooLow || aeratorVal <= 0) return;
+      // Hydrated already-low with aerator on — shut off once.
+    } else if (wasLow && !tooLow) {
+      aeratorWasLowRef.current = false;
+      aeratorLowWarnedRef.current = false;
       push(
         "success",
         t("process.aeratorLevelOk"),
         t("process.aeratorLevelOkDetail"),
       );
-      aeratorLowWarnedRef.current = false;
-    }
-    aeratorWasLowRef.current = tooLow;
-
-    if (!tooLow) {
-      aeratorLowWarnedRef.current = false;
       return;
+    } else {
+      aeratorWasLowRef.current = tooLow;
+      // Already low, or still high: don't re-zero on remote aerator writes.
+      if (!tooLow || wasLow === true) {
+        if (!tooLow) aeratorLowWarnedRef.current = false;
+        return;
+      }
     }
 
     if (aeratorVal <= 0) return;
@@ -447,7 +501,6 @@ function Bioreactor({ user }: BioreactorProps) {
       );
     }
   }, [
-    aeratorVal,
     device,
     fillUnits,
     flowGeom.aeratorMinFillPercent,
@@ -455,9 +508,10 @@ function Bioreactor({ user }: BioreactorProps) {
     push,
     t,
     user.id,
+    aeratorVal,
   ]);
 
-  // Shut off agitation when the lower impeller is dry; toast when level recovers.
+  // Shut off mixing only when the level drops below the lower impeller (edge).
   useEffect(() => {
     if (!device || !pumpsHydrated) return;
     if (!canOperateDevice(device.role)) return;
@@ -467,22 +521,26 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.rotorMinFillPercent;
+    const wasLow = rotorWasLowRef.current;
 
-    if (rotorWasLowRef.current === null) {
+    if (wasLow === null) {
       rotorWasLowRef.current = tooLow;
-    } else if (rotorWasLowRef.current && !tooLow) {
+      if (!tooLow || rotorVal <= 0) return;
+    } else if (wasLow && !tooLow) {
+      rotorWasLowRef.current = false;
+      rotorLowWarnedRef.current = false;
       push(
         "success",
         t("process.rotorLevelOk"),
         t("process.rotorLevelOkDetail"),
       );
-      rotorLowWarnedRef.current = false;
-    }
-    rotorWasLowRef.current = tooLow;
-
-    if (!tooLow) {
-      rotorLowWarnedRef.current = false;
       return;
+    } else {
+      rotorWasLowRef.current = tooLow;
+      if (!tooLow || wasLow === true) {
+        if (!tooLow) rotorLowWarnedRef.current = false;
+        return;
+      }
     }
 
     if (rotorVal <= 0) return;
