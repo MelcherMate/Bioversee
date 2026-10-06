@@ -226,5 +226,14 @@ extension View {
             TabBarScrollObserver()
                 .allowsHitTesting(false)
         }
+        // Drag fallback — keep this on list screens only (not text fields),
+        // or it delays keyboard focus by waiting on the gesture.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 16, coordinateSpace: .global)
+                .onChanged { value in
+                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
+                    TabBarChrome.shared.handleDragTranslation(value.translation.height)
+                }
+        )
     }
 }

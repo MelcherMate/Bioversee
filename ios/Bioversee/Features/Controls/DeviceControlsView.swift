@@ -82,18 +82,15 @@ struct DeviceControlsView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 72)
-                            .padding(.bottom, amountFieldFocused ? 320 : 110)
+                            .padding(.bottom, amountFieldFocused ? 160 : 40)
                         }
                         .scrollDismissesKeyboard(.interactively)
                         .refreshable { await reloadAll() }
-                        .trackTabBarScroll()
                         .onChange(of: amountFieldFocused) { _, focused in
                             guard focused else { return }
-                            // Let the keyboard start presenting, then pin water level above it.
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                                withAnimation(.easeInOut(duration: 0.28)) {
-                                    proxy.scrollTo(waterLevelScrollId, anchor: UnitPoint(x: 0.5, y: 0.18))
-                                }
+                            // Gentle nudge so the amount field sits above the keyboard.
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(waterLevelScrollId, anchor: .center)
                             }
                         }
                     }
@@ -516,11 +513,6 @@ struct DeviceControlsView: View {
                         )
                 )
                 .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    guard !readOnly && !levelBusy else { return }
-                    amountFieldFocused = true
-                }
             }
 
             HStack(spacing: 8) {

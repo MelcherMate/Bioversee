@@ -70,15 +70,6 @@ struct MainTabView: View {
                 .accessibilityHidden(tabBarHidden)
                 .animation(.easeInOut(duration: 0.28), value: tabBarHidden)
         }
-        // Reliable path: vertical drag direction (List scroll discovery is flaky in SwiftUI).
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 16, coordinateSpace: .global)
-                .onChanged { value in
-                    // Ignore mostly-horizontal pans (e.g. row swipe).
-                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                    TabBarChrome.shared.handleDragTranslation(value.translation.height)
-                }
-        )
         .onChange(of: tab) { _, _ in
             TabBarChrome.shared.reset()
         }
