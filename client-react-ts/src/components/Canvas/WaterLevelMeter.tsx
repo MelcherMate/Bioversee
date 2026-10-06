@@ -1,7 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AnimatedNumber from "../AnimatedNumber";
-import { VESSEL_MAX_FILL_UNITS } from "../pressure-vessel/constants";
+import {
+  fillUnitsToPercent,
+  VESSEL_MAX_FILL_UNITS,
+} from "../pressure-vessel/constants";
 
 type WaterLevelMeterProps = {
   /** Fallback when no animation getter is active. */
@@ -21,11 +24,8 @@ type WaterLevelMeterProps = {
   readOnly?: boolean;
 };
 
-function litersFromFillUnits(fillUnits: number, capacityL: number): number {
-  return (fillUnits / VESSEL_MAX_FILL_UNITS) * capacityL;
-}
-
-function levelPercent(fillUnits: number): number {
+/** Continuous % for the bar (smooth while animating). */
+function levelPercentContinuous(fillUnits: number): number {
   return Math.min(100, Math.max(0, (fillUnits / VESSEL_MAX_FILL_UNITS) * 100));
 }
 
@@ -59,7 +59,7 @@ export function WaterLevelMeter({
   fillUnitsPropRef.current = fillUnits;
 
   const paintBar = (units: number) => {
-    const pct = levelPercent(units);
+    const pct = levelPercentContinuous(units);
     if (barRef.current) barRef.current.style.width = `${pct}%`;
     if (meterRef.current) {
       meterRef.current.setAttribute("aria-valuenow", String(Math.round(pct)));
@@ -98,10 +98,10 @@ export function WaterLevelMeter({
     setDisplayUnits(fillUnits);
   }, [fillUnits, busy]);
 
-  const pctValue = levelPercent(displayUnits);
-  const currentLiters = Math.round(
-    litersFromFillUnits(displayUnits, capacityLiters),
-  );
+  // Readouts use the same integer % we persist to actuators — matches iOS
+  // (percent/100)*capacity. Deriving liters from raw fill-units caused 49 vs 50.
+  const pctRounded = fillUnitsToPercent(displayUnits);
+  const currentLiters = Math.round((pctRounded / 100) * capacityLiters);
   const capacityLabel = Math.round(capacityLiters).toLocaleString();
 
   return (
@@ -110,7 +110,7 @@ export function WaterLevelMeter({
         <h4 className="br-level__title">{t("process.waterLevel")}</h4>
         <AnimatedNumber
           className="br-level__pct"
-          value={pctValue}
+          value={pctRounded}
           decimals={1}
           suffix="%"
         />
@@ -121,7 +121,7 @@ export function WaterLevelMeter({
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={Math.round(pctValue)}
+        aria-valuenow={pctRounded}
         aria-label={t("process.waterLevel")}
       >
         <div ref={barRef} className="br-level__meter-fill" />

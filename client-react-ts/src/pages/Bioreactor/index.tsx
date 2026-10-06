@@ -349,7 +349,9 @@ function Bioreactor({ user }: BioreactorProps) {
         setAcidVal(Boolean(acid));
         setBaseVal(Boolean(base));
         const percent = Math.min(100, Math.max(0, Number(waterLevel)));
-        setFillUnits(Math.round((percent / 100) * VESSEL_MAX_FILL_UNITS));
+        // Keep fractional fill units so percent↔units↔liters round-trips cleanly
+        // (integer rounding here made 5% → 21 units → 49 L on web vs 50 L on iOS).
+        setFillUnits((percent / 100) * VESSEL_MAX_FILL_UNITS);
         setAeratorVal(Number(aerator));
         setRotorVal(Number(rotor));
       })
@@ -373,9 +375,7 @@ function Bioreactor({ user }: BioreactorProps) {
     const applyWaterPercent = (percent: number) => {
       if (cancelled) return;
       const next = clampFillUnits(
-        Math.round(
-          (Math.min(100, Math.max(0, percent)) / 100) * VESSEL_MAX_FILL_UNITS,
-        ),
+        (Math.min(100, Math.max(0, percent)) / 100) * VESSEL_MAX_FILL_UNITS,
       );
       const current = fillUnitsRef.current;
 
