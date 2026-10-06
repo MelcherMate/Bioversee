@@ -760,7 +760,10 @@ function Bioreactor({ user }: BioreactorProps) {
                         min={0}
                         max={300}
                         unit="rpm"
-                        disabled={readOnly}
+                        disabled={
+                          readOnly ||
+                          levelPercent <= flowGeom.rotorMinFillPercent
+                        }
                       />
                     </div>
                   ) : null}
@@ -778,7 +781,10 @@ function Bioreactor({ user }: BioreactorProps) {
                         user={user}
                         unit="%"
                         step={10}
-                        disabled={readOnly}
+                        disabled={
+                          readOnly ||
+                          levelPercent <= flowGeom.aeratorMinFillPercent
+                        }
                       />
                     </div>
                   ) : null}

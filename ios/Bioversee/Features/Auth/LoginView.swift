@@ -23,10 +23,10 @@ struct LoginView: View {
                     // Header
                     HStack(alignment: .top, spacing: 14) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                                 .fill(Color.white)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                                         .stroke(BVTheme.accentBorder, lineWidth: 1)
                                 )
                             Image("BioverseeLogo")

@@ -73,9 +73,9 @@ struct AccountView: View {
                                                     .resizable()
                                                     .scaledToFill()
                                                     .frame(width: 60, height: 60)
-                                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                                    .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous))
                                                     .overlay(
-                                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                        RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                                                             .strokeBorder(
                                                                 selected ? BVTheme.text : BVTheme.line,
                                                                 lineWidth: selected ? 2.5 : 1

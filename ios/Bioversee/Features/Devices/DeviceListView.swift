@@ -132,10 +132,10 @@ struct DeviceListView: View {
         .padding(.vertical, 10)
         .background(.ultraThinMaterial)
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: BVTheme.radiusNav, style: .continuous)
                 .stroke(Color.white.opacity(0.55), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusNav, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         .padding(.horizontal, 14)
         .padding(.top, 8)
@@ -278,9 +278,9 @@ private struct OverviewChip: View {
             .padding(.vertical, 4)
             .background(emphasized ? BVTheme.accentSoft : BVTheme.fill)
             .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                RoundedRectangle(cornerRadius: BVTheme.radiusSM, style: .continuous)
                     .stroke(emphasized ? BVTheme.accentBorder : BVTheme.line, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusSM, style: .continuous))
     }
 }

@@ -27,6 +27,10 @@ struct DeviceControlsView: View {
     @State private var levelTransferTask: Task<Void, Never>?
 
     private let waterLevelKey = "water_level"
+    /// Matches web `layout.impeller.minFillPercent` (ceil(0.202 * 100)).
+    private let rotorMinFillPercent: Double = 21
+    /// Matches web `layout.aerator.minFillPercent` (sparger at 10%).
+    private let aeratorMinFillPercent: Double = 10
 
     private var controls: [DeviceControl] {
         ControlCatalog.controls(for: device.type)
@@ -114,6 +118,13 @@ struct DeviceControlsView: View {
             levelTransferTask?.cancel()
             levelBusy = false
         }
+        .onChange(of: waterLevelPercent) { _, _ in
+            let needsGuard = sliderControls.contains { control in
+                isLevelTooLow(for: control) && (sliderStates[control.name] ?? 0) > 0
+            }
+            guard needsGuard else { return }
+            Task { await enforceLevelGuards() }
+        }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
@@ -164,7 +175,7 @@ struct DeviceControlsView: View {
                     .tracking(0.6)
 
                 if !switchControls.isEmpty {
-                    panelSection(title: switchSectionTitle) {
+                    nestedControlPanel(title: switchSectionTitle) {
                         LazyVGrid(
                             columns: [
                                 GridItem(.flexible(), spacing: 8),
@@ -180,12 +191,7 @@ struct DeviceControlsView: View {
                 }
 
                 if !sliderControls.isEmpty {
-                    if !switchControls.isEmpty {
-                        Rectangle()
-                            .fill(BVTheme.line)
-                            .frame(height: 1)
-                    }
-                    panelSection(title: sliderSectionTitle) {
+                    nestedControlPanel(title: sliderSectionTitle) {
                         VStack(spacing: 10) {
                             ForEach(sliderControls) { control in
                                 sliderRow(control)
@@ -195,11 +201,6 @@ struct DeviceControlsView: View {
                 }
 
                 if showsWaterLevelDose {
-                    if !switchControls.isEmpty || !sliderControls.isEmpty {
-                        Rectangle()
-                            .fill(BVTheme.line)
-                            .frame(height: 1)
-                    }
                     waterLevelDoseSection
                 }
             }
@@ -226,17 +227,42 @@ struct DeviceControlsView: View {
         }
     }
 
+    /// Nested fill panel matching website Mixing / Pumps / Water level cards.
     @ViewBuilder
-    private func panelSection<Content: View>(
+    private func nestedControlPanel<Content: View>(
         title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(BVTheme.textTertiary)
             content()
         }
+        .padding(12)
+        .background(BVTheme.fill)
+        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
+                .stroke(BVTheme.line, lineWidth: 1)
+        )
+    }
+
+    private func minFillPercent(for control: DeviceControl) -> Double? {
+        switch control.name {
+        case "rotor": return rotorMinFillPercent
+        case "aerator": return aeratorMinFillPercent
+        default: return nil
+        }
+    }
+
+    private func isLevelTooLow(for control: DeviceControl) -> Bool {
+        guard let minFill = minFillPercent(for: control) else { return false }
+        return waterLevelPercent <= minFill
+    }
+
+    private func sliderInactive(_ control: DeviceControl) -> Bool {
+        readOnly || isLevelTooLow(for: control)
     }
 
     private func switchCell(_ control: DeviceControl) -> some View {
@@ -272,7 +298,7 @@ struct DeviceControlsView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-        .background(isOn ? BVTheme.accentSoft : BVTheme.fill)
+        .background(isOn ? BVTheme.accentSoft : BVTheme.card)
         .overlay(
             RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous)
                 .stroke(isOn ? BVTheme.accentBorder : BVTheme.line, lineWidth: 1)
@@ -285,19 +311,20 @@ struct DeviceControlsView: View {
 
     private func sliderRow(_ control: DeviceControl) -> some View {
         let value = sliderStates[control.name] ?? control.min
+        let inactive = sliderInactive(control)
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(control.label)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(BVTheme.text)
+                    .foregroundStyle(inactive ? BVTheme.textTertiary : BVTheme.text)
                 Spacer(minLength: 8)
                 Text("\(Int(value))\(control.unit.map { " \($0)" } ?? "")")
                     .font(.system(size: 13, weight: .bold).monospacedDigit())
-                    .foregroundStyle(BVTheme.accent)
+                    .foregroundStyle(inactive ? BVTheme.textTertiary : BVTheme.accent)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(BVTheme.accentSoft)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .background(inactive ? BVTheme.line.opacity(0.55) : BVTheme.accentSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusXS, style: .continuous))
                     .contentTransition(.identity)
             }
 
@@ -316,15 +343,20 @@ struct DeviceControlsView: View {
                     Task { await commitSlider(control) }
                 }
             }
-            .tint(BVTheme.accent)
-            .disabled(readOnly)
+            .tint(inactive ? BVTheme.textTertiary : BVTheme.accent)
+            .disabled(inactive)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(BVTheme.fill)
+        .background(BVTheme.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous)
+                .stroke(BVTheme.line, lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
         .transaction { $0.animation = nil }
-        .opacity(readOnly ? 0.55 : 1)
+        .opacity(inactive ? 0.55 : 1)
+        .allowsHitTesting(!inactive)
     }
 
     // MARK: - Water level (dose Fill / Drain)
@@ -457,9 +489,9 @@ struct DeviceControlsView: View {
         }
         .padding(12)
         .background(BVTheme.fill)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                 .stroke(BVTheme.line, lineWidth: 1)
         )
     }
@@ -708,8 +740,31 @@ struct DeviceControlsView: View {
                     waterLevelPercent = min(100, max(0, loaded))
                 }
             }
+            await enforceLevelGuards()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Zero rotor/aerator when the liquid sits below the equipment threshold (matches web).
+    private func enforceLevelGuards() async {
+        guard device.canOperate, let userId = session.userId else { return }
+        for control in sliderControls {
+            guard isLevelTooLow(for: control) else { continue }
+            let current = sliderStates[control.name] ?? 0
+            guard current > 0 else { continue }
+            sliderStates[control.name] = 0
+            ignoreRemoteUntil = Date().addingTimeInterval(1.6)
+            do {
+                try await ActuatorService.setSlider(
+                    deviceId: device.id,
+                    name: control.name,
+                    state: 0,
+                    userId: userId
+                )
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -788,6 +843,10 @@ struct DeviceControlsView: View {
 
     private func commitSlider(_ control: DeviceControl) async {
         guard device.canOperate, let userId = session.userId else { return }
+        if isLevelTooLow(for: control) {
+            sliderStates[control.name] = 0
+            return
+        }
         let value = sliderStates[control.name] ?? 0
         ignoreRemoteUntil = Date().addingTimeInterval(1.6)
         busyName = control.name

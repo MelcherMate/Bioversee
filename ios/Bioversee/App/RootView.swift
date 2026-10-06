@@ -88,10 +88,10 @@ private struct BVTabBar: View {
         .padding(6)
         .background(.ultraThinMaterial)
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: BVTheme.radiusNav, style: .continuous)
                 .stroke(Color.white.opacity(0.55), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusNav, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 16, y: 6)
     }
 
@@ -128,7 +128,7 @@ private struct BVTabBar: View {
             .padding(.vertical, 10)
             .background {
                 if active {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                         .fill(BVTheme.accentSoft)
                         .matchedGeometryEffect(id: "tabThumb", in: tabThumb)
                 }

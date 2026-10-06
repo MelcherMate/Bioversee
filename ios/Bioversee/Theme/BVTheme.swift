@@ -19,8 +19,18 @@ enum BVTheme {
     static let cta = Color(red: 0.114, green: 0.114, blue: 0.122)
     static let danger = Color(red: 0.706, green: 0.137, blue: 0.094) // #b42318
     static let success = Color(red: 0.008, green: 0.478, blue: 0.282) // #027a48
+
+    /// Matches website `--bv-radius-lg` (cards).
     static let radiusLG: CGFloat = 20
+    /// Nested section panels (Mixing / Pumps / Water level) — website 14px.
+    static let radiusPanel: CGFloat = 14
+    /// Matches website `--bv-radius-md` (controls, inputs, inner cards).
     static let radiusMD: CGFloat = 12
+    /// Floating nav chrome — website navbar 18px.
+    static let radiusNav: CGFloat = 18
+    /// Compact chips / badges.
+    static let radiusSM: CGFloat = 8
+    static let radiusXS: CGFloat = 6
 }
 
 struct BVCardModifier: ViewModifier {
