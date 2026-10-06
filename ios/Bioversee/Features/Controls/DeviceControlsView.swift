@@ -18,6 +18,15 @@ struct DeviceControlsView: View {
     /// Ignore remote refreshes briefly after a local write (echo / race).
     @State private var ignoreRemoteUntil: Date = .distantPast
 
+    // Bioreactor water level (dose Fill/Drain — matches web).
+    @State private var waterLevelPercent: Double = 92
+    @State private var transferAmountText = ""
+    @State private var levelBusy = false
+    @State private var levelFeedback: String?
+    @State private var levelFeedbackIsWarning = false
+    @State private var levelTransferTask: Task<Void, Never>?
+
+    private let waterLevelKey = "water_level"
 
     private var controls: [DeviceControl] {
         ControlCatalog.controls(for: device.type)
@@ -101,6 +110,10 @@ struct DeviceControlsView: View {
             await reloadAll()
             await listenForActuatorChanges()
         }
+        .onDisappear {
+            levelTransferTask?.cancel()
+            levelBusy = false
+        }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
@@ -126,12 +139,21 @@ struct DeviceControlsView: View {
     private var shouldApplyRemoteRefresh: Bool {
         busyName == nil
             && editingSliderName == nil
+            && !levelBusy
             && Date() >= ignoreRemoteUntil
+    }
+
+    private var showsWaterLevelDose: Bool {
+        device.type == .bioreactor
+    }
+
+    private var tankCapacityLiters: Double {
+        max(1, device.tankCapacityLiters)
     }
 
     @ViewBuilder
     private var controlPanel: some View {
-        if switchControls.isEmpty, sliderControls.isEmpty {
+        if switchControls.isEmpty, sliderControls.isEmpty, !showsWaterLevelDose {
             EmptyView()
         } else {
             VStack(alignment: .leading, spacing: 14) {
@@ -171,6 +193,15 @@ struct DeviceControlsView: View {
                         }
                     }
                 }
+
+                if showsWaterLevelDose {
+                    if !switchControls.isEmpty || !sliderControls.isEmpty {
+                        Rectangle()
+                            .fill(BVTheme.line)
+                            .frame(height: 1)
+                    }
+                    waterLevelDoseSection
+                }
             }
             .padding(14)
             .bvCard()
@@ -188,7 +219,7 @@ struct DeviceControlsView: View {
 
     private var sliderSectionTitle: String {
         switch device.type {
-        case .bioreactor: return "Motion"
+        case .bioreactor: return "Mixing"
         case .pressureVessel: return "Level"
         case .membraneBioreactor: return "Intensity"
         case .waterPurifier: return "Agitation"
@@ -296,6 +327,297 @@ struct DeviceControlsView: View {
         .opacity(readOnly ? 0.55 : 1)
     }
 
+    // MARK: - Water level (dose Fill / Drain)
+
+    private var currentLiters: Double {
+        (waterLevelPercent / 100) * tankCapacityLiters
+    }
+
+    private var parsedTransferLiters: Double? {
+        let normalized = transferAmountText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        guard !normalized.isEmpty, let value = Double(normalized), value > 0 else {
+            return nil
+        }
+        return min(value, tankCapacityLiters)
+    }
+
+    private var atFull: Bool { waterLevelPercent >= 99.95 }
+    private var atEmpty: Bool { waterLevelPercent <= 0.05 }
+
+    private var fillDisabled: Bool {
+        readOnly || levelBusy || atFull || parsedTransferLiters == nil
+    }
+
+    private var drainDisabled: Bool {
+        readOnly || levelBusy || atEmpty || parsedTransferLiters == nil
+    }
+
+    private var waterLevelDoseSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Water level")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(BVTheme.textTertiary)
+                Spacer(minLength: 8)
+                Text(String(format: "%.1f%%", waterLevelPercent))
+                    .font(.system(size: 18, weight: .bold).monospacedDigit())
+                    .foregroundStyle(BVTheme.accent)
+                    .contentTransition(.numericText())
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(BVTheme.text.opacity(0.08))
+                    Capsule()
+                        .fill(BVTheme.accent)
+                        .frame(width: max(0, geo.size.width * CGFloat(waterLevelPercent / 100)))
+                }
+            }
+            .frame(height: 10)
+
+            Text(
+                "\(formatLiters(currentLiters)) liter / \(formatLiters(tankCapacityLiters)) liter"
+            )
+            .font(.system(size: 13, weight: .semibold).monospacedDigit())
+            .foregroundStyle(BVTheme.textSecondary)
+            .contentTransition(.numericText())
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("AMOUNT")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundStyle(BVTheme.textTertiary)
+                HStack(spacing: 0) {
+                    TextField("0", text: Binding(
+                        get: { transferAmountText },
+                        set: { transferAmountText = clampTransferAmount($0) }
+                    ))
+                    .keyboardType(.decimalPad)
+                    .font(.system(size: 15, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(BVTheme.text)
+                    .disabled(readOnly || levelBusy)
+                    Text("L")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(BVTheme.textTertiary)
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 40)
+                .background(BVTheme.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous)
+                        .stroke(BVTheme.line, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    startFillDose()
+                } label: {
+                    Text("Fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .foregroundStyle(.white)
+                        .background(BVTheme.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(fillDisabled)
+                .opacity(fillDisabled ? 0.38 : 1)
+
+                Button {
+                    startDrainDose()
+                } label: {
+                    Text("Drain")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .foregroundStyle(BVTheme.text)
+                        .background(BVTheme.card)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous)
+                                .stroke(BVTheme.line, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(drainDisabled)
+                .opacity(drainDisabled ? 0.38 : 1)
+            }
+
+            if let levelFeedback {
+                Text(levelFeedback)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(levelFeedbackIsWarning ? BVTheme.danger : BVTheme.success)
+            }
+        }
+        .padding(12)
+        .background(BVTheme.fill)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(BVTheme.line, lineWidth: 1)
+        )
+    }
+
+    private func formatLiters(_ value: Double) -> String {
+        let rounded = Int(value.rounded())
+        return rounded.formatted()
+    }
+
+    private func clampTransferAmount(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return raw }
+        if trimmed.range(of: #"^\d+[.,]$"#, options: .regularExpression) != nil {
+            return raw
+        }
+        let normalized = trimmed.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value.isFinite else { return raw }
+        if value < 0 { return "0" }
+        if value > tankCapacityLiters {
+            return String(Int(tankCapacityLiters.rounded()))
+        }
+        return raw
+    }
+
+    private func startFillDose() {
+        guard !levelBusy, let liters = parsedTransferLiters else { return }
+        if atFull {
+            showLevelFeedback("Tank is full. No more liquid can be added.", warning: true)
+            return
+        }
+        let start = waterLevelPercent
+        let deltaPercent = (liters / tankCapacityLiters) * 100
+        let target = min(100, start + deltaPercent)
+        if target <= start + 0.05 {
+            showLevelFeedback("Tank is full. No more liquid can be added.", warning: true)
+            return
+        }
+        runLevelTransfer(
+            kind: .fill,
+            startPercent: start,
+            targetPercent: target,
+            requestedLiters: liters
+        )
+    }
+
+    private func startDrainDose() {
+        guard !levelBusy, let liters = parsedTransferLiters else { return }
+        if atEmpty {
+            showLevelFeedback("Tank is empty. No more liquid can be drained.", warning: true)
+            return
+        }
+        let start = waterLevelPercent
+        let deltaPercent = (liters / tankCapacityLiters) * 100
+        let target = max(0, start - deltaPercent)
+        if target >= start - 0.05 {
+            showLevelFeedback("Tank is empty. No more liquid can be drained.", warning: true)
+            return
+        }
+        runLevelTransfer(
+            kind: .drain,
+            startPercent: start,
+            targetPercent: target,
+            requestedLiters: liters
+        )
+    }
+
+    private enum LevelTransferKind { case fill, drain }
+
+    private func runLevelTransfer(
+        kind: LevelTransferKind,
+        startPercent: Double,
+        targetPercent: Double,
+        requestedLiters: Double
+    ) {
+        levelTransferTask?.cancel()
+        levelBusy = true
+        levelFeedback = nil
+        ignoreRemoteUntil = Date().addingTimeInterval(30)
+
+        // Match web fill (~7.5 %/s) and drain (~14 %/s) rates.
+        let ratePercentPerSec: Double = kind == .fill ? 7.5 : 14.0
+
+        levelTransferTask = Task { @MainActor in
+            var current = startPercent
+            let stepDirection: Double = kind == .fill ? 1 : -1
+            while !Task.isCancelled {
+                let remaining = abs(targetPercent - current)
+                if remaining <= 0.05 { break }
+                let dt = 1.0 / 30.0
+                let step = min(remaining, ratePercentPerSec * dt)
+                current += step * stepDirection
+                current = min(100, max(0, current))
+                withAnimation(.linear(duration: dt)) {
+                    waterLevelPercent = current
+                }
+                try? await Task.sleep(nanoseconds: UInt64(dt * 1_000_000_000))
+            }
+
+            waterLevelPercent = targetPercent
+            let actualLiters = abs(targetPercent - startPercent) / 100 * tankCapacityLiters
+            let clipped = requestedLiters - actualLiters > 0.05
+            await persistWaterLevel(percent: targetPercent)
+
+            if clipped {
+                if kind == .fill {
+                    showLevelFeedback(
+                        "Only \(formatLiters(actualLiters)) liter could be added (you asked for \(formatLiters(requestedLiters)) liter). The tank is full.",
+                        warning: true
+                    )
+                } else {
+                    showLevelFeedback(
+                        "Only \(formatLiters(actualLiters)) liter could be drained (you asked for \(formatLiters(requestedLiters)) liter). The tank is empty.",
+                        warning: true
+                    )
+                }
+            } else if kind == .fill {
+                showLevelFeedback(
+                    "Added \(formatLiters(actualLiters)) liter to the tank.",
+                    warning: false
+                )
+            } else {
+                showLevelFeedback(
+                    "Removed \(formatLiters(actualLiters)) liter from the tank.",
+                    warning: false
+                )
+            }
+
+            levelBusy = false
+            ignoreRemoteUntil = Date().addingTimeInterval(1.6)
+        }
+    }
+
+    private func showLevelFeedback(_ message: String, warning: Bool) {
+        levelFeedbackIsWarning = warning
+        levelFeedback = message
+    }
+
+    private func persistWaterLevel(percent: Double) async {
+        guard device.canOperate, let userId = session.userId else { return }
+        let value = min(100, max(0, percent.rounded()))
+        do {
+            try await ActuatorService.setSlider(
+                deviceId: device.id,
+                name: waterLevelKey,
+                state: value,
+                userId: userId
+            )
+            try await SensorService.insertReading(
+                deviceId: device.id,
+                name: waterLevelKey,
+                value: value,
+                userId: userId
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func listenForActuatorChanges() async {
         let client = SupabaseManager.client
         let channel = client.channel("actuators:\(device.id.uuidString)")
@@ -377,6 +699,14 @@ struct DeviceControlsView: View {
             }
             if nextSliders != sliderStates {
                 sliderStates = nextSliders
+            }
+            if showsWaterLevelDose, !levelBusy {
+                if let loaded = try await ActuatorService.latestSliderIfPresent(
+                    deviceId: device.id,
+                    name: waterLevelKey
+                ) {
+                    waterLevelPercent = min(100, max(0, loaded))
+                }
             }
         } catch {
             errorMessage = error.localizedDescription

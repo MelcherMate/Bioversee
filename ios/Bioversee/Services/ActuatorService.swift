@@ -17,6 +17,10 @@ enum ActuatorService {
     }
 
     static func latestSlider(deviceId: UUID, name: String) async throws -> Double {
+        try await latestSliderIfPresent(deviceId: deviceId, name: name) ?? 0
+    }
+
+    static func latestSliderIfPresent(deviceId: UUID, name: String) async throws -> Double? {
         struct Row: Decodable { let state: Double }
         let rows: [Row] = try await SupabaseManager.client
             .from("actuator_sliders")
@@ -27,7 +31,7 @@ enum ActuatorService {
             .limit(1)
             .execute()
             .value
-        return rows.first?.state ?? 0
+        return rows.first?.state
     }
 
     static func setSwitch(

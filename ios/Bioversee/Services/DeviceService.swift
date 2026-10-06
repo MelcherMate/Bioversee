@@ -21,7 +21,7 @@ enum DeviceService {
 
         let devices: [DeviceRow] = try await SupabaseManager.client
             .from("devices")
-            .select("id, owner_id, type, name, created_at, updated_at")
+            .select("id, owner_id, type, name, created_at, updated_at, config")
             .in("id", values: ids.map(\.uuidString))
             .order("name", ascending: true)
             .execute()
@@ -41,7 +41,8 @@ enum DeviceService {
                     createdAt: device.createdAt,
                     updatedAt: device.updatedAt,
                     role: roleByDevice[device.id] ?? "viewer",
-                    isOwner: device.ownerId == user.id
+                    isOwner: device.ownerId == user.id,
+                    tankCapacityLiters: BioreactorVolume.capacityLiters(from: device.config)
                 )
             }
             .sorted { lhs, rhs in

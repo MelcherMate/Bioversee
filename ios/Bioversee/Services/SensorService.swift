@@ -34,6 +34,26 @@ enum SensorService {
         }
     }
 
+    /// Persist a single sensor sample (matches web `insertSensorReading`).
+    static func insertReading(
+        deviceId: UUID,
+        name: String,
+        value: Double,
+        userId: UUID
+    ) async throws {
+        try await SupabaseManager.client
+            .from("sensors")
+            .insert(
+                SensorInsert(
+                    deviceId: deviceId,
+                    name: name,
+                    value: value,
+                    userId: userId
+                )
+            )
+            .execute()
+    }
+
     /// Last 6 points, matching the web Chart slice.
     static func chartPoints(from readings: [SensorReading]) -> [SensorReading] {
         Array(readings.suffix(6))
@@ -53,5 +73,19 @@ enum SensorService {
 
     private static func parseDate(_ raw: String) -> Date? {
         isoFractional.date(from: raw) ?? iso.date(from: raw)
+    }
+}
+
+private struct SensorInsert: Encodable {
+    let deviceId: UUID
+    let name: String
+    let value: Double
+    let userId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case deviceId = "device_id"
+        case name
+        case value
+        case userId = "user_id"
     }
 }
