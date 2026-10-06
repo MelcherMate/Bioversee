@@ -10,6 +10,7 @@ extension Notification.Name {
 @MainActor
 final class DeviceStore: ObservableObject {
     @Published private(set) var devices: [AccessibleDevice] = []
+    @Published private(set) var overviews: [UUID: DeviceOverview] = [:]
     @Published private(set) var loading = true
     @Published var errorMessage: String?
 
@@ -18,6 +19,7 @@ final class DeviceStore: ObservableObject {
     private var realtimeTask: Task<Void, Never>?
     private var refreshObserver: NSObjectProtocol?
     private var refreshGeneration = 0
+    private var overviewGeneration = 0
 
     func bind(session: AppSession) {
         self.session = session
@@ -41,7 +43,7 @@ final class DeviceStore: ObservableObject {
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refresh(silent: true)
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
             }
         }
     }
@@ -100,6 +102,7 @@ final class DeviceStore: ObservableObject {
     func refresh(silent: Bool = false) async {
         guard session?.session != nil || !(session?.accounts.isEmpty ?? true) else {
             devices = []
+            overviews = [:]
             loading = false
             return
         }
@@ -113,6 +116,7 @@ final class DeviceStore: ObservableObject {
             let next = try await DeviceService.listAccessibleDevices()
             guard generation == refreshGeneration else { return }
             devices = next
+            await refreshOverviews(for: next, generation: generation)
         } catch {
             guard generation == refreshGeneration else { return }
             if devices.isEmpty {
@@ -124,5 +128,24 @@ final class DeviceStore: ObservableObject {
 
     func removeLocally(_ deviceId: UUID) {
         devices.removeAll { $0.id == deviceId }
+        overviews.removeValue(forKey: deviceId)
+    }
+
+    private func refreshOverviews(
+        for devices: [AccessibleDevice],
+        generation: Int
+    ) async {
+        overviewGeneration += 1
+        let overviewGen = overviewGeneration
+        let next = await DeviceOverviewService.fetchOverviews(for: devices)
+        guard generation == refreshGeneration, overviewGen == overviewGeneration else { return }
+        // Keep stale entries for devices still loading until replaced.
+        var merged = overviews
+        let bioreactorIds = Set(devices.filter { $0.type == .bioreactor }.map(\.id))
+        merged = merged.filter { bioreactorIds.contains($0.key) }
+        for (id, overview) in next {
+            merged[id] = overview
+        }
+        overviews = merged
     }
 }

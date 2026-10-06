@@ -18,6 +18,7 @@
 		40BC4D0557542A360E0E9D5A /* AccountVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7937A7F3453161CE51B0C8F5 /* AccountVault.swift */; };
 		59B35324EB5F5C68FA4E0545 /* BVTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4813BBF6872F04558239752 /* BVTheme.swift */; };
 		66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB6EB4B11C80B349588ED65 /* DeviceService.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* DeviceOverviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718293B4C5D /* DeviceOverviewService.swift */; };
 		7545DFC29A0BC856C49484E0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DFB522D85CADF4B5967022F /* RootView.swift */; };
 		778A8A0769672AFFA63DFDD0 /* DeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EF9482D0C37EAD50216988A /* DeviceStore.swift */; };
 		82C54E9D12724DCF4CE8067C /* AppearanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7B397E847936F5A700F54D /* AppearanceStore.swift */; };
@@ -62,6 +63,7 @@
 		E73ABD1E317C7F40419AE451 /* Bioversee.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Bioversee.entitlements; sourceTree = "<group>"; };
 		EA1CD5F9670AA699281F8276 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		EAB6EB4B11C80B349588ED65 /* DeviceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceService.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A60718293B4C5D /* DeviceOverviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOverviewService.swift; sourceTree = "<group>"; };
 		F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActuatorService.swift; sourceTree = "<group>"; };
 		F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F5F3361006DF679D11251F73 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 				F03EFEE2F5EF21DA1DA39068 /* ActuatorService.swift */,
 				3C7B397E847936F5A700F54D /* AppearanceStore.swift */,
 				EAB6EB4B11C80B349588ED65 /* DeviceService.swift */,
+				B1C2D3E4F5A60718293B4C5D /* DeviceOverviewService.swift */,
 				1EF9482D0C37EAD50216988A /* DeviceStore.swift */,
 				BDC2514BD6E87ADAE23B04E0 /* InboxStore.swift */,
 				F4EE7BF51A3656DACEDECE68 /* NotificationService.swift */,
@@ -308,6 +311,7 @@
 				3191055F65742AB804035CD6 /* DeviceListView.swift in Sources */,
 				1E862420DB2B56F9B70DA25F /* DeviceModels.swift in Sources */,
 				66FC3D71632A1241FFAC5C23 /* DeviceService.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* DeviceOverviewService.swift in Sources */,
 				778A8A0769672AFFA63DFDD0 /* DeviceStore.swift in Sources */,
 				4073D09668C8AAA16679F664 /* InboxStore.swift in Sources */,
 				0D0A70F4AE3A3BC8C4C716DF /* LoginView.swift in Sources */,
