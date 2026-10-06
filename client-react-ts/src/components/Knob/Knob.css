@@ -2,9 +2,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 2px 4px 4px;
-  min-width: 0;
+  gap: 4px;
+  padding: 0;
+  min-width: 72px;
   contain: layout style;
 }
 
@@ -12,9 +12,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   gap: 1px;
   width: 100%;
-  height: 2.35em;
+  min-height: 2.2em;
   overflow: hidden;
 }
 
@@ -24,7 +25,7 @@
   letter-spacing: -0.01em;
   color: var(--bv-text);
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

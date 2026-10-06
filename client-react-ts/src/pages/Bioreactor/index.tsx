@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Canvas from "../../components/Canvas";
 import Chart from "../../components/Chart/index";
@@ -6,7 +6,6 @@ import ControlClock from "../../components/ControlClock";
 import Knob from "../../components/Knob";
 import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
-import AnimatedNumber from "../../components/AnimatedNumber";
 import { ToastStack, useToasts } from "../../components/Toast";
 import {
   fillUnitsToPercent,
@@ -26,15 +25,19 @@ import { canOperateDevice } from "../../lib/devices";
 import {
   defaultBioreactorGeometry,
   fluidMotionFactors,
+  litersFromM3,
   parseBioreactorConfig,
 } from "../../lib/bioreactorGeometry";
 import { layoutFromGeometry } from "../../components/Canvas/bioreactorLayout";
+import { WaterLevelMeter } from "../../components/Canvas/WaterLevelMeter";
 import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
 import "./Bioreactor.css";
 
 const WATER_LEVEL_KEY = "water_level";
+/** Fallback tank size when device config has no working volume. */
+const DEFAULT_TANK_CAPACITY_L = 1000;
 
 interface Card {
   id: string;
@@ -46,29 +49,18 @@ interface BioreactorProps {
   user: AppUser;
 }
 
-function bindHoldButton(onHoldChange?: (held: boolean) => void, disabled = false) {
-  return {
-    type: "button" as const,
-    onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      if (disabled) return;
-      event.preventDefault();
-      event.currentTarget.setPointerCapture(event.pointerId);
-      onHoldChange?.(true);
-    },
-    onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      onHoldChange?.(false);
-    },
-    onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      onHoldChange?.(false);
-    },
-    onLostPointerCapture: () => onHoldChange?.(false),
-  };
+function clampFillUnits(value: number) {
+  return Math.min(VESSEL_MAX_FILL_UNITS, Math.max(0, value));
+}
+
+function tankCapacityLiters(volume_m3: number | null): number {
+  if (volume_m3 != null && volume_m3 > 0) return litersFromM3(volume_m3);
+  return DEFAULT_TANK_CAPACITY_L;
+}
+
+function fillUnitsFromLiters(liters: number, capacityL: number): number {
+  if (capacityL <= 0) return 0;
+  return clampFillUnits((liters / capacityL) * VESSEL_MAX_FILL_UNITS);
 }
 
 function Bioreactor({ user }: BioreactorProps) {
@@ -107,6 +99,9 @@ function Bioreactor({ user }: BioreactorProps) {
   );
   const [isFillHeld, setIsFillHeld] = useState(false);
   const [isDrainHeld, setIsDrainHeld] = useState(false);
+  const [fillTargetUnits, setFillTargetUnits] = useState<number | null>(null);
+  const [drainTargetUnits, setDrainTargetUnits] = useState<number | null>(null);
+  const [transferAmountText, setTransferAmountText] = useState("");
   const [pumpsHydrated, setPumpsHydrated] = useState(false);
   const fillUnitsRef = useRef(fillUnits);
   fillUnitsRef.current = fillUnits;
@@ -132,17 +127,51 @@ function Bioreactor({ user }: BioreactorProps) {
     };
   }, []);
 
+  const finishFillJob = useCallback(() => {
+    setIsFillHeld(false);
+    setFillTargetUnits(null);
+    if (!device || !canOperateDevice(device.role)) return;
+    const percent = fillUnitsToPercent(fillUnitsRef.current);
+    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+      console.error,
+    );
+    insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+      console.error,
+    );
+  }, [device, user.id]);
+
+  const finishDrainJob = useCallback(() => {
+    setIsDrainHeld(false);
+    setDrainTargetUnits(null);
+    if (!device || !canOperateDevice(device.role)) return;
+    const percent = fillUnitsToPercent(fillUnitsRef.current);
+    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+      console.error,
+    );
+    insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+      console.error,
+    );
+  }, [device, user.id]);
+
   const inletFill = useInletFillAnimation(
     fillUnits,
     setFillUnits,
     isFillHeld,
     flowGeom.inlet,
+    {
+      targetFillUnits: fillTargetUnits,
+      onTargetReached: finishFillJob,
+    },
   );
   const drainAnim = useDrainAnimation(
     fillUnits,
     setFillUnits,
     isDrainHeld,
     flowGeom.drain,
+    {
+      targetFillUnits: drainTargetUnits,
+      onTargetReached: finishDrainJob,
+    },
   );
 
   // Load actuator states before mounting animations so already-on pumps /
@@ -186,27 +215,52 @@ function Bioreactor({ user }: BioreactorProps) {
     };
   }, [device?.id]);
 
-  const persistLevel = (units: number) => {
-    if (!device || !canOperateDevice(device.role)) return;
-    const percent = fillUnitsToPercent(units);
-    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
-      console.error,
-    );
-    insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
-      console.error,
-    );
+  const parseTransferLiters = (): number | null => {
+    const normalized = transferAmountText.trim().replace(",", ".");
+    if (!normalized) return null;
+    const value = Number(normalized);
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return value;
   };
 
-  const onFillHoldChange = (held: boolean) => {
+  const startFill = () => {
     if (!device || !canOperateDevice(device.role)) return;
-    setIsFillHeld(held);
-    if (!held) persistLevel(fillUnitsRef.current);
+    if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
+      return;
+    }
+    const liters = parseTransferLiters();
+    if (liters == null) return;
+    const capacityL = tankCapacityLiters(
+      parseBioreactorConfig(device.config).volume_m3,
+    );
+    const deltaUnits = fillUnitsFromLiters(liters, capacityL);
+    if (deltaUnits <= 0) return;
+    const target = clampFillUnits(fillUnitsRef.current + deltaUnits);
+    if (target <= fillUnitsRef.current + 0.05) return;
+    setDrainTargetUnits(null);
+    setIsDrainHeld(false);
+    setFillTargetUnits(target);
+    setIsFillHeld(true);
   };
 
-  const onDrainHoldChange = (held: boolean) => {
+  const startDrain = () => {
     if (!device || !canOperateDevice(device.role)) return;
-    setIsDrainHeld(held);
-    if (!held) persistLevel(fillUnitsRef.current);
+    if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
+      return;
+    }
+    const liters = parseTransferLiters();
+    if (liters == null) return;
+    const capacityL = tankCapacityLiters(
+      parseBioreactorConfig(device.config).volume_m3,
+    );
+    const deltaUnits = fillUnitsFromLiters(liters, capacityL);
+    if (deltaUnits <= 0) return;
+    const target = clampFillUnits(fillUnitsRef.current - deltaUnits);
+    if (target >= fillUnitsRef.current - 0.05) return;
+    setFillTargetUnits(null);
+    setIsFillHeld(false);
+    setDrainTargetUnits(target);
+    setIsDrainHeld(true);
   };
 
   // Shut off aeration when the sparger is uncovered.
@@ -369,8 +423,22 @@ function Bioreactor({ user }: BioreactorProps) {
   const showMotion = eq.stirrer || eq.aerator;
   const atFull = fillUnits >= VESSEL_MAX_FILL_UNITS;
   const atEmpty = fillUnits <= 0;
-  const fillDisabled = readOnly || (inletFill.isAnimating && !isFillHeld);
-  const drainDisabled = readOnly || (drainAnim.isAnimating && !isDrainHeld);
+  const levelBusy =
+    isFillHeld ||
+    isDrainHeld ||
+    inletFill.isAnimating ||
+    drainAnim.isAnimating;
+  const transferLiters = parseTransferLiters();
+  const fillDisabled = readOnly || levelBusy || atFull || transferLiters == null;
+  const drainDisabled =
+    readOnly || levelBusy || atEmpty || transferLiters == null;
+
+  const capacityL = tankCapacityLiters(config.volume_m3);
+  const getLiveFillUnits = () => {
+    if (isFillHeld || inletFill.isAnimating) return inletFill.getLiveFillUnits();
+    if (isDrainHeld || drainAnim.isAnimating) return drainAnim.getLiveFillUnits();
+    return fillUnits;
+  };
 
   const setWarmExclusive = (next: boolean) => {
     setWarmWVal(next);
@@ -427,12 +495,6 @@ function Bioreactor({ user }: BioreactorProps) {
   const showCharts =
     eq.sensor_temperature || eq.sensor_ph || eq.sensor_pressure;
 
-  const panelFillUnits =
-    drainAnim.isLevelFrozen && drainAnim.frozenFillUnits != null
-      ? drainAnim.frozenFillUnits
-      : fillUnits;
-  const levelPercent = fillUnitsToPercent(panelFillUnits);
-
   return (
     <div className="container">
       <ToastStack toasts={toasts} onDismiss={dismiss} />
@@ -440,126 +502,120 @@ function Bioreactor({ user }: BioreactorProps) {
         <div className="controlPanel">
           <ControlClock />
           {showPumps ? (
-            <section className="controlPanel__section">
-              <h4 className="boxTitle">{t("process.pumps")}</h4>
-              <div className="controlPanel__switch-grid">
-                {eq.thermal_jacket ? (
-                  <>
-                    <Switch
-                      deviceId={device.id}
-                      name="switchWarmWaterPump"
-                      setVal={setWarmExclusive}
-                      val={warmWVal}
-                      label={t("process.warmWater")}
-                      user={user}
-                      disabled={readOnly}
-                    />
-                    <Switch
-                      deviceId={device.id}
-                      name="switchColdWaterPump"
-                      setVal={setColdExclusive}
-                      val={coldWVal}
-                      label={t("process.coldWater")}
-                      user={user}
-                      disabled={readOnly}
-                    />
-                  </>
-                ) : null}
-                {eq.dosing ? (
-                  <>
-                    <Switch
-                      deviceId={device.id}
-                      name="switchAcidPump"
-                      setVal={setAcidExclusive}
-                      val={acidVal}
-                      label={t("process.acid")}
-                      user={user}
-                      disabled={readOnly}
-                    />
-                    <Switch
-                      deviceId={device.id}
-                      name="switchBasePump"
-                      setVal={setBaseExclusive}
-                      val={baseVal}
-                      label={t("process.base")}
-                      user={user}
-                      disabled={readOnly}
-                    />
-                  </>
-                ) : null}
+            <section className="controlPanel__section controlPanel__section--pumps">
+              <div className="br-pumps">
+                <h4 className="br-pumps__title">{t("process.pumps")}</h4>
+                <div className="br-pumps__grid">
+                  {eq.thermal_jacket ? (
+                    <>
+                      <Switch
+                        deviceId={device.id}
+                        name="switchWarmWaterPump"
+                        setVal={setWarmExclusive}
+                        val={warmWVal}
+                        label={t("process.warmWater")}
+                        user={user}
+                        disabled={readOnly}
+                      />
+                      <Switch
+                        deviceId={device.id}
+                        name="switchColdWaterPump"
+                        setVal={setColdExclusive}
+                        val={coldWVal}
+                        label={t("process.coldWater")}
+                        user={user}
+                        disabled={readOnly}
+                      />
+                    </>
+                  ) : null}
+                  {eq.dosing ? (
+                    <>
+                      <Switch
+                        deviceId={device.id}
+                        name="switchAcidPump"
+                        setVal={setAcidExclusive}
+                        val={acidVal}
+                        label={t("process.acid")}
+                        user={user}
+                        disabled={readOnly}
+                      />
+                      <Switch
+                        deviceId={device.id}
+                        name="switchBasePump"
+                        setVal={setBaseExclusive}
+                        val={baseVal}
+                        label={t("process.base")}
+                        user={user}
+                        disabled={readOnly}
+                      />
+                    </>
+                  ) : null}
+                </div>
               </div>
             </section>
           ) : null}
           {showMotion ? (
-            <section className="controlPanel__section">
-              <h4 className="boxTitle">{t("process.motion")}</h4>
-              <div className="controlPanel__knob-grid controlPanel__knob-grid--two">
-                {eq.stirrer ? (
-                  <Knob
-                    deviceId={device.id}
-                    name="rotor"
-                    setVal={(value) => {
-                      if (value > 0) rotorLowWarnedRef.current = false;
-                      setRotorVal(value);
-                    }}
-                    val={rotorVal}
-                    label={t("process.rotor")}
-                    user={user}
-                    min={0}
-                    max={300}
-                    unit="rpm"
-                    disabled={readOnly}
-                  />
-                ) : null}
-                {eq.aerator ? (
-                  <Knob
-                    deviceId={device.id}
-                    name="aerator"
-                    setVal={(value) => {
-                      if (value > 0) aeratorLowWarnedRef.current = false;
-                      setAeratorVal(value);
-                    }}
-                    val={aeratorVal}
-                    label={t("process.aerator")}
-                    user={user}
-                    unit="%"
-                    step={10}
-                    disabled={readOnly}
-                  />
-                ) : null}
+            <section className="controlPanel__section controlPanel__section--mixing">
+              <div className="br-mixing">
+                <h4 className="br-mixing__title">{t("process.motion")}</h4>
+                <div className="br-mixing__grid">
+                  {eq.stirrer ? (
+                    <div className="br-mixing__card">
+                      <Knob
+                        deviceId={device.id}
+                        name="rotor"
+                        setVal={(value) => {
+                          if (value > 0) rotorLowWarnedRef.current = false;
+                          setRotorVal(value);
+                        }}
+                        val={rotorVal}
+                        label={t("process.rotor")}
+                        user={user}
+                        min={0}
+                        max={300}
+                        unit="rpm"
+                        disabled={readOnly}
+                      />
+                    </div>
+                  ) : null}
+                  {eq.aerator ? (
+                    <div className="br-mixing__card">
+                      <Knob
+                        deviceId={device.id}
+                        name="aerator"
+                        setVal={(value) => {
+                          if (value > 0) aeratorLowWarnedRef.current = false;
+                          setAeratorVal(value);
+                        }}
+                        val={aeratorVal}
+                        label={t("process.aerator")}
+                        user={user}
+                        unit="%"
+                        step={10}
+                        disabled={readOnly}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </section>
           ) : null}
           <section className="controlPanel__section controlPanel__section--level">
-            <div className="controlPanel__level-head">
-              <h4 className="boxTitle">{t("process.waterLevel")}</h4>
-              <AnimatedNumber
-                className="controlPanel__level-value"
-                value={levelPercent}
-                decimals={0}
-                suffix="%"
-              />
-            </div>
-            <div className="controlPanel__level-actions">
-              <button
-                {...bindHoldButton(onFillHoldChange, readOnly)}
-                disabled={readOnly || atFull || fillDisabled}
-                aria-label={t("process.fill")}
-                aria-pressed={isFillHeld}
-                className={`pv-panel__btn pv-panel__btn--fill${isFillHeld ? " is-active" : ""}`}
-              >
-                {t("process.fill")}
-              </button>
-              <button
-                {...bindHoldButton(onDrainHoldChange, readOnly)}
-                disabled={readOnly || atEmpty || drainDisabled}
-                aria-label={t("process.drain")}
-                aria-pressed={isDrainHeld}
-                className={`pv-panel__btn pv-panel__btn--drain${isDrainHeld ? " is-active" : ""}`}
-              >
-                {t("process.drain")}
-              </button>
-            </div>
+            <WaterLevelMeter
+              fillUnits={fillUnits}
+              getLiveFillUnits={getLiveFillUnits}
+              capacityLiters={capacityL}
+              busy={levelBusy}
+              transferAmountText={transferAmountText}
+              onTransferAmountChange={setTransferAmountText}
+              onFill={startFill}
+              onDrain={startDrain}
+              fillDisabled={fillDisabled}
+              drainDisabled={drainDisabled}
+              fillActive={isFillHeld}
+              drainActive={isDrainHeld}
+              readOnly={readOnly}
+            />
           </section>
         </div>
       </aside>

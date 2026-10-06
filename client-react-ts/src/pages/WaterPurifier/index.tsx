@@ -69,35 +69,39 @@ function WaterPurifier({ user }: WaterpurifierProps) {
     <div className="container">
       <aside id="actuatorSide">
         <div className="controlPanel">
-          <section className="controlPanel__section">
-            <h4 className="boxTitle">{t("process.pumps")}</h4>
-            <Switch
-              deviceId={device.id}
-              name="switchPump1"
-              setVal={setPump1Val}
-              val={pump1Val}
-              label={t("process.pumpPufferActive")}
-              user={user}
-              disabled={readOnly}
-            />
-            <Switch
-              deviceId={device.id}
-              name="switchPump2"
-              setVal={setPump2Val}
-              val={pump2Val}
-              label={t("process.pumpAdditiveActive")}
-              user={user}
-              disabled={readOnly}
-            />
-            <Switch
-              deviceId={device.id}
-              name="switchPump3"
-              setVal={setPump3Val}
-              val={pump3Val}
-              label={t("process.pumpActiveClean")}
-              user={user}
-              disabled={readOnly}
-            />
+          <section className="controlPanel__section controlPanel__section--pumps">
+            <div className="br-pumps">
+              <h4 className="br-pumps__title">{t("process.pumps")}</h4>
+              <div className="br-pumps__grid br-pumps__grid--stack">
+                <Switch
+                  deviceId={device.id}
+                  name="switchPump1"
+                  setVal={setPump1Val}
+                  val={pump1Val}
+                  label={t("process.pumpPufferActive")}
+                  user={user}
+                  disabled={readOnly}
+                />
+                <Switch
+                  deviceId={device.id}
+                  name="switchPump2"
+                  setVal={setPump2Val}
+                  val={pump2Val}
+                  label={t("process.pumpAdditiveActive")}
+                  user={user}
+                  disabled={readOnly}
+                />
+                <Switch
+                  deviceId={device.id}
+                  name="switchPump3"
+                  setVal={setPump3Val}
+                  val={pump3Val}
+                  label={t("process.pumpActiveClean")}
+                  user={user}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
           </section>
           <section className="controlPanel__section">
             <h4 className="boxTitle">{t("process.motion")}</h4>

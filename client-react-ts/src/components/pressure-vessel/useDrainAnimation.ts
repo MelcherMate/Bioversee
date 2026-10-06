@@ -22,6 +22,10 @@ export type DrainVisualState = {
   /** Fill units captured when the drain valve closes. */
   frozenFillUnits: number | null;
   isAnimating: boolean;
+  /** Latest tank fill from the animation loop (for live meters). */
+  liveFillUnits: number;
+  /** Read fill from the rAF loop without waiting for React state. */
+  getLiveFillUnits: () => number;
 };
 
 /** Vessel column + metal drain pipe geometry. */
@@ -30,6 +34,13 @@ export type DrainFlowGeometry = {
   pipePathLength: number;
   /** Interior height used for the rising column from the free surface. */
   columnHeight: number;
+};
+
+export type DrainAnimationOptions = {
+  /** Stop transferring once the tank reaches this fill (click-to-dose). */
+  targetFillUnits?: number | null;
+  /** Fired once when the target is reached (or tank is empty). */
+  onTargetReached?: () => void;
 };
 
 export const DEFAULT_DRAIN_FLOW_GEOMETRY: DrainFlowGeometry = {
@@ -60,14 +71,16 @@ export function useDrainAnimation(
   onFillUnitsChange: (value: number) => void,
   isDrainHeld: boolean,
   geometry: DrainFlowGeometry = DEFAULT_DRAIN_FLOW_GEOMETRY,
+  options: DrainAnimationOptions = {},
 ): DrainVisualState {
-  const [visual, setVisual] = useState<DrainVisualState>({
+  const [visual, setVisual] = useState<Omit<DrainVisualState, "getLiveFillUnits">>({
     tail: 0,
     head: 0,
     connectedToNozzle: false,
     isLevelFrozen: false,
     frozenFillUnits: null,
     isAnimating: false,
+    liveFillUnits: fillUnits,
   });
 
   const phaseRef = useRef<Phase>("idle");
@@ -81,11 +94,25 @@ export function useDrainAnimation(
   const fillUnitsRef = useRef(fillUnits);
   const onChangeRef = useRef(onFillUnitsChange);
   const geomRef = useRef(geometry);
+  const targetRef = useRef(options.targetFillUnits ?? null);
+  const onTargetReachedRef = useRef(options.onTargetReached);
+  const targetNotifiedRef = useRef(false);
 
   isHeldRef.current = isDrainHeld;
-  fillUnitsRef.current = fillUnits;
   onChangeRef.current = onFillUnitsChange;
   geomRef.current = geometry;
+  targetRef.current =
+    options.targetFillUnits === undefined ? null : options.targetFillUnits;
+  onTargetReachedRef.current = options.onTargetReached;
+  // While animating, the rAF loop owns fillUnitsRef — don't clobber it with
+  // a possibly-stale React state value mid-transfer.
+  if (phaseRef.current === "idle") {
+    fillUnitsRef.current = fillUnits;
+  }
+
+  useEffect(() => {
+    if (isDrainHeld) targetNotifiedRef.current = false;
+  }, [isDrainHeld]);
 
   useEffect(() => {
     let frame = 0;
@@ -99,6 +126,9 @@ export function useDrainAnimation(
       const isLevelFrozen = phase === "valveClose" || phase === "retreat";
       const frozenFillUnits = frozenFillUnitsRef.current;
       const isAnimating = phase !== "idle";
+      const liveFillUnits = isLevelFrozen
+        ? (frozenFillUnitsRef.current ?? fillUnitsRef.current)
+        : fillUnitsRef.current;
       setVisual((current) => {
         if (
           current.tail === tail &&
@@ -106,20 +136,51 @@ export function useDrainAnimation(
           current.connectedToNozzle === connectedToNozzle &&
           current.isLevelFrozen === isLevelFrozen &&
           current.frozenFillUnits === frozenFillUnits &&
-          current.isAnimating === isAnimating
+          current.isAnimating === isAnimating &&
+          Math.abs(current.liveFillUnits - liveFillUnits) < 0.01
         ) {
           return current;
         }
-        return { tail, head, connectedToNozzle, isLevelFrozen, frozenFillUnits, isAnimating };
+        return {
+          tail,
+          head,
+          connectedToNozzle,
+          isLevelFrozen,
+          frozenFillUnits,
+          isAnimating,
+          liveFillUnits,
+        };
       });
+    };
+
+    const notifyTarget = () => {
+      if (targetNotifiedRef.current) return;
+      targetNotifiedRef.current = true;
+      onTargetReachedRef.current?.();
+    };
+
+    const atOrPastTarget = () => {
+      const target = targetRef.current;
+      if (target == null) return false;
+      return fillUnitsRef.current <= target + 0.05;
     };
 
     const transferFromTank = (deltaSeconds: number) => {
       if (!hasReachedNozzleRef.current || !isHeldRef.current) return;
-      const next = clampFillUnits(fillUnitsRef.current - VESSEL_FILL_DRAIN_RATE * deltaSeconds);
+      const target = targetRef.current;
+      if (target != null && fillUnitsRef.current <= target + 0.05) {
+        notifyTarget();
+        return;
+      }
+      let next = fillUnitsRef.current - VESSEL_FILL_DRAIN_RATE * deltaSeconds;
+      if (target != null) next = Math.max(next, target);
+      next = clampFillUnits(next);
       if (next !== fillUnitsRef.current) {
         fillUnitsRef.current = next;
         onChangeRef.current(next);
+      }
+      if (target != null && next <= target + 0.05) {
+        notifyTarget();
       }
     };
 
@@ -153,6 +214,8 @@ export function useDrainAnimation(
       lastTime = now;
 
       const held = isHeldRef.current;
+      const reached = atOrPastTarget();
+      const active = held && !reached;
       const geom = geomRef.current;
       const atEmpty = fillUnitsRef.current <= 0;
       const pathEnd = totalHead(fillUnitsRef.current, geom);
@@ -163,16 +226,20 @@ export function useDrainAnimation(
           : DRAIN_PIPE_WATER_SPEED;
       let phase = phaseRef.current;
 
-      if (phase === "idle" && held && !atEmpty) {
+      if (phase === "idle" && active && !atEmpty) {
         phase = "advance";
         tailRef.current = 0;
         headRef.current = 0;
         hasReachedNozzleRef.current = false;
       }
 
+      if ((reached || atEmpty) && held) {
+        notifyTarget();
+      }
+
       switch (phase) {
         case "advance": {
-          if (held) {
+          if (active) {
             tailRef.current = 0;
             headRef.current = Math.min(
               pathEnd,
@@ -194,7 +261,7 @@ export function useDrainAnimation(
           break;
         }
         case "steady": {
-          if (held) {
+          if (active) {
             tailRef.current = 0;
             headRef.current = pathEnd;
             if (!atEmpty) {
@@ -238,5 +305,11 @@ export function useDrainAnimation(
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  return visual;
+  return {
+    ...visual,
+    getLiveFillUnits: () =>
+      phaseRef.current === "valveClose" || phaseRef.current === "retreat"
+        ? (frozenFillUnitsRef.current ?? fillUnitsRef.current)
+        : fillUnitsRef.current,
+  };
 }
