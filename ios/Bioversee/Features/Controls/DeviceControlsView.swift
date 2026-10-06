@@ -116,6 +116,7 @@ struct DeviceControlsView: View {
         }
         .onDisappear {
             levelTransferTask?.cancel()
+            levelTransferTask = nil
             levelBusy = false
         }
         .onChange(of: waterLevelPercent) { _, _ in
@@ -129,8 +130,11 @@ struct DeviceControlsView: View {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
                 guard !Task.isCancelled else { break }
+                // Water level must always track the web app so mixer/aerator
+                // enablement stays correct even during local write ignore windows.
+                await refreshWaterLevel()
                 if shouldApplyRemoteRefresh {
-                    await loadStates()
+                    await loadStates(includeWaterLevel: false)
                 }
                 await loadCharts()
             }
@@ -569,7 +573,8 @@ struct DeviceControlsView: View {
         levelTransferTask?.cancel()
         levelBusy = true
         levelFeedback = nil
-        ignoreRemoteUntil = Date().addingTimeInterval(30)
+        // levelBusy already blocks remote actuator echoes; keep ignore short.
+        ignoreRemoteUntil = Date().addingTimeInterval(1.6)
 
         // Match web fill (~7.5 %/s) and drain (~14 %/s) rates.
         let ratePercentPerSec: Double = kind == .fill ? 7.5 : 14.0
@@ -590,10 +595,20 @@ struct DeviceControlsView: View {
                 try? await Task.sleep(nanoseconds: UInt64(dt * 1_000_000_000))
             }
 
+            if Task.isCancelled {
+                levelBusy = false
+                return
+            }
+
             waterLevelPercent = targetPercent
             let actualLiters = abs(targetPercent - startPercent) / 100 * tankCapacityLiters
             let clipped = requestedLiters - actualLiters > 0.05
             await persistWaterLevel(percent: targetPercent)
+
+            if Task.isCancelled {
+                levelBusy = false
+                return
+            }
 
             if clipped {
                 if kind == .fill {
@@ -646,7 +661,9 @@ struct DeviceControlsView: View {
                 userId: userId
             )
         } catch {
-            errorMessage = error.localizedDescription
+            if !Self.isCancellation(error) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -679,15 +696,17 @@ struct DeviceControlsView: View {
                 for await _ in switchChanges {
                     guard !Task.isCancelled else { break }
                     if shouldApplyRemoteRefresh {
-                        await loadStates()
+                        await loadStates(includeWaterLevel: false)
                     }
                 }
             }
             group.addTask { @MainActor in
                 for await _ in sliderChanges {
                     guard !Task.isCancelled else { break }
+                    // Always pick up remote water_level so mixer/aerator unlock promptly.
+                    await refreshWaterLevel()
                     if shouldApplyRemoteRefresh {
-                        await loadStates()
+                        await loadStates(includeWaterLevel: false)
                     }
                 }
             }
@@ -701,10 +720,29 @@ struct DeviceControlsView: View {
         await loadCharts()
     }
 
-    private func loadStates() async {
+    /// Pull water level without waiting for the actuator ignore window.
+    private func refreshWaterLevel() async {
+        guard showsWaterLevelDose, !levelBusy else { return }
+        do {
+            if let loaded = try await ActuatorService.latestSliderIfPresent(
+                deviceId: device.id,
+                name: waterLevelKey
+            ) {
+                let next = min(100, max(0, loaded))
+                if abs(next - waterLevelPercent) > 0.05 {
+                    waterLevelPercent = next
+                }
+            }
+        } catch {
+            if !Self.isCancellation(error) {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func loadStates(includeWaterLevel: Bool = true) async {
         let showSpinner = switchStates.isEmpty
         if showSpinner { loading = true }
-        errorMessage = nil
         defer { loading = false }
 
         var nextSwitches: [String: Bool] = [:]
@@ -712,6 +750,7 @@ struct DeviceControlsView: View {
 
         do {
             for control in controls {
+                try Task.checkCancellation()
                 switch control.kind {
                 case .switchControl:
                     nextSwitches[control.name] = try await ActuatorService.latestSwitch(
@@ -732,21 +771,29 @@ struct DeviceControlsView: View {
             if nextSliders != sliderStates {
                 sliderStates = nextSliders
             }
-            if showsWaterLevelDose, !levelBusy {
-                if let loaded = try await ActuatorService.latestSliderIfPresent(
-                    deviceId: device.id,
-                    name: waterLevelKey
-                ) {
-                    waterLevelPercent = min(100, max(0, loaded))
-                }
+            if includeWaterLevel {
+                await refreshWaterLevel()
             }
             await enforceLevelGuards()
+            // Clear stale errors after a successful refresh.
+            if errorMessage != nil {
+                errorMessage = nil
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            if !Self.isCancellation(error) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
-    /// Zero rotor/aerator when the liquid sits below the equipment threshold (matches web).
+    private static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled { return true }
+        return false
+    }
+
+    /// Zero mixer/aerator when the liquid sits below the equipment threshold (matches web).
     private func enforceLevelGuards() async {
         guard device.canOperate, let userId = session.userId else { return }
         for control in sliderControls {
@@ -763,7 +810,9 @@ struct DeviceControlsView: View {
                     userId: userId
                 )
             } catch {
-                errorMessage = error.localizedDescription
+                if !Self.isCancellation(error) {
+                    errorMessage = error.localizedDescription
+                }
             }
         }
     }
@@ -777,6 +826,7 @@ struct DeviceControlsView: View {
         var next: [String: [SensorReading]] = [:]
         do {
             for spec in chartSpecs {
+                try Task.checkCancellation()
                 let rows = try await SensorService.readings(deviceId: device.id, name: spec.name)
                 next[spec.name] = SensorService.chartPoints(from: rows)
             }
@@ -784,6 +834,7 @@ struct DeviceControlsView: View {
                 chartPoints = next
             }
         } catch {
+            if Self.isCancellation(error) { return }
             if chartPoints.isEmpty {
                 errorMessage = error.localizedDescription
             }
@@ -826,7 +877,9 @@ struct DeviceControlsView: View {
             if let partner, partnerWasOn {
                 switchStates[partner] = true
             }
-            errorMessage = error.localizedDescription
+            if !Self.isCancellation(error) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -860,7 +913,9 @@ struct DeviceControlsView: View {
                 userId: userId
             )
         } catch {
-            errorMessage = error.localizedDescription
+            if !Self.isCancellation(error) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 }

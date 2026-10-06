@@ -41,7 +41,7 @@ enum ControlCatalog {
                 .init(kind: .switchControl, name: "switchColdWaterPump", label: "Cold water"),
                 .init(kind: .switchControl, name: "switchAcidPump", label: "Acid"),
                 .init(kind: .switchControl, name: "switchBasePump", label: "Base"),
-                .init(kind: .slider, name: "rotor", label: "Rotor", min: 0, max: 300, unit: "rpm"),
+                .init(kind: .slider, name: "rotor", label: "Mixer", min: 0, max: 300, unit: "rpm"),
                 .init(kind: .slider, name: "aerator", label: "Aerator"),
             ]
         case .pressureVessel:
