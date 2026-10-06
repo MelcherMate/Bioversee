@@ -35,16 +35,14 @@ enum AppTab: Hashable {
 
 struct MainTabView: View {
     @EnvironmentObject private var inbox: InboxStore
-    @ObservedObject private var appearance = AppearanceStore.shared
-    @ObservedObject private var tabChrome = TabBarChrome.shared
+    @ObservedObject private var keyboard = KeyboardObserver.shared
     @State private var tab: AppTab = .devices
 
-    private var tabBarHidden: Bool {
-        appearance.autoHideTabBar && tabChrome.isCollapsed
-    }
+    /// Space content needs so it isn't covered by the floating tab pill.
+    static let tabBarClearance: CGFloat = 92
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             BVTheme.surface.ignoresSafeArea()
 
             Group {
@@ -58,26 +56,19 @@ struct MainTabView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            BVTabBar(selection: $tab, unread: inbox.unread)
-                .padding(.horizontal, 14)
-                .padding(.top, 2)
-                .padding(.bottom, 2)
-                .offset(y: tabBarHidden ? 120 : 0)
-                .opacity(tabBarHidden ? 0 : 1)
-                .allowsHitTesting(!tabBarHidden)
-                .accessibilityHidden(tabBarHidden)
-                .animation(.easeInOut(duration: 0.28), value: tabBarHidden)
-        }
-        .onChange(of: tab) { _, _ in
-            TabBarChrome.shared.reset()
-        }
-        .onChange(of: appearance.autoHideTabBar) { _, enabled in
-            if !enabled {
-                TabBarChrome.shared.reset()
+            // Keep list/detail content clear of the floating tab bar.
+            .safeAreaPadding(.bottom, keyboard.isVisible ? 0 : Self.tabBarClearance)
+
+            if !keyboard.isVisible {
+                BVTabBar(selection: $tab, unread: inbox.unread)
+                    .padding(.horizontal, 14)
+                    // 8pt from the physical bottom edge (into the home-indicator area).
+                    .padding(.bottom, 8)
+                    .ignoresSafeArea(.container, edges: .bottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeOut(duration: 0.22), value: keyboard.isVisible)
         .task {
             await inbox.refresh(announceNew: false)
         }

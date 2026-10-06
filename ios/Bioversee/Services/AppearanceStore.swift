@@ -53,14 +53,11 @@ final class AppearanceStore: ObservableObject {
     static let shared = AppearanceStore()
 
     private static let iconPreferenceKey = "bv.appIcon.id"
-    private static let autoHideTabBarKey = "bv.autoHideTabBar"
 
     /// UI accent from website `user_settings` — read-only on iOS.
     @Published private(set) var accentHex: String = AccentPreset.default.hex
     /// Selected home-screen icon (local preference).
     @Published private(set) var selectedIconId: String = AppIconOption.default.id
-    /// Hide the floating tab bar while scrolling down (default on).
-    @Published private(set) var autoHideTabBar: Bool = true
 
     var accentColor: Color { ColorHex.color(accentHex) }
     var accentMuted: Color { accentColor.opacity(0.18) }
@@ -80,12 +77,6 @@ final class AppearanceStore: ObservableObject {
             selectedIconId = AppIconOption.matching(
                 alternateIconName: UIApplication.shared.alternateIconName
             ).id
-        }
-
-        if UserDefaults.standard.object(forKey: Self.autoHideTabBarKey) == nil {
-            autoHideTabBar = true
-        } else {
-            autoHideTabBar = UserDefaults.standard.bool(forKey: Self.autoHideTabBarKey)
         }
     }
 
@@ -135,14 +126,6 @@ final class AppearanceStore: ObservableObject {
             if let error {
                 print("[appearance] icon change failed:", error.localizedDescription)
             }
-        }
-    }
-
-    func setAutoHideTabBar(_ enabled: Bool) {
-        autoHideTabBar = enabled
-        UserDefaults.standard.set(enabled, forKey: Self.autoHideTabBarKey)
-        if !enabled {
-            TabBarChrome.shared.reset()
         }
     }
 }

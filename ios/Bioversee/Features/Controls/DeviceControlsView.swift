@@ -26,9 +26,10 @@ struct DeviceControlsView: View {
     @State private var levelFeedbackIsWarning = false
     @State private var levelTransferTask: Task<Void, Never>?
     @FocusState private var amountFieldFocused: Bool
+    @ObservedObject private var keyboard = KeyboardObserver.shared
 
     private let waterLevelKey = "water_level"
-    private let waterLevelScrollId = "waterLevelSection"
+    private let waterLevelActionsId = "waterLevelActions"
     /// Matches web `layout.impeller.minFillPercent` (ceil(0.202 * 100)).
     private let rotorMinFillPercent: Double = 21
     /// Matches web `layout.aerator.minFillPercent` (sparger at 10%).
@@ -40,6 +41,13 @@ struct DeviceControlsView: View {
 
     private var chartSpecs: [SensorChartSpec] {
         SensorCatalog.charts(for: device.type)
+    }
+
+    private var scrollBottomPadding: CGFloat {
+        if keyboard.isVisible {
+            return max(24, keyboard.height - 24)
+        }
+        return MainTabView.tabBarClearance + 16
     }
 
     var body: some View {
@@ -82,25 +90,23 @@ struct DeviceControlsView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 72)
-                            .padding(.bottom, amountFieldFocused ? 160 : 40)
+                            .padding(.bottom, scrollBottomPadding)
                         }
                         .scrollDismissesKeyboard(.interactively)
                         .refreshable { await reloadAll() }
                         .onChange(of: amountFieldFocused) { _, focused in
                             guard focused else { return }
-                            // Gentle nudge so the amount field sits above the keyboard.
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                proxy.scrollTo(waterLevelScrollId, anchor: .center)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    proxy.scrollTo(waterLevelActionsId, anchor: .bottom)
+                                }
                             }
                         }
-                    }
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button("Done") {
-                                amountFieldFocused = false
+                        .onChange(of: keyboard.height) { _, height in
+                            guard amountFieldFocused, height > 0 else { return }
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(waterLevelActionsId, anchor: .bottom)
                             }
-                            .font(.system(size: 16, weight: .semibold))
                         }
                     }
                 }
@@ -483,10 +489,20 @@ struct DeviceControlsView: View {
             .contentTransition(.numericText())
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("AMOUNT")
-                    .font(.system(size: 10, weight: .bold))
-                    .tracking(0.8)
-                    .foregroundStyle(BVTheme.textTertiary)
+                HStack {
+                    Text("AMOUNT")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.8)
+                        .foregroundStyle(BVTheme.textTertiary)
+                    Spacer(minLength: 8)
+                    if amountFieldFocused {
+                        Button("Done") {
+                            amountFieldFocused = false
+                        }
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(BVTheme.accent)
+                    }
+                }
                 HStack(spacing: 0) {
                     TextField("0", text: Binding(
                         get: { transferAmountText },
@@ -497,7 +513,6 @@ struct DeviceControlsView: View {
                     .foregroundStyle(BVTheme.text)
                     .focused($amountFieldFocused)
                     .disabled(readOnly || levelBusy)
-                    .submitLabel(.done)
                     Text("L")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(BVTheme.textTertiary)
@@ -552,6 +567,7 @@ struct DeviceControlsView: View {
                 .disabled(drainDisabled)
                 .opacity(drainDisabled ? 0.38 : 1)
             }
+            .id(waterLevelActionsId)
 
             if let levelFeedback {
                 Text(levelFeedback)
@@ -566,7 +582,6 @@ struct DeviceControlsView: View {
             RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                 .stroke(BVTheme.line, lineWidth: 1)
         )
-        .id(waterLevelScrollId)
     }
 
     private func formatLiters(_ value: Double) -> String {

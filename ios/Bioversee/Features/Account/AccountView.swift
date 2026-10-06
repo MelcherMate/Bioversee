@@ -107,30 +107,6 @@ struct AccountView: View {
                         .padding(16)
                         .bvCard()
 
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Navigation")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(BVTheme.textSecondary)
-
-                            Toggle(isOn: Binding(
-                                get: { appearance.autoHideTabBar },
-                                set: { appearance.setAutoHideTabBar($0) }
-                            )) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("Auto-hide tab bar")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundStyle(BVTheme.text)
-                                    Text("Hide the bottom bar when you scroll down, show it again when you scroll up.")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(BVTheme.textTertiary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                            .tint(BVTheme.accent)
-                        }
-                        .padding(16)
-                        .bvCard()
-
                         Text("Native Bioversee app for devices, controls, sensor charts, and notifications. Inbox covers every account signed in here.")
                             .font(.system(size: 13))
                             .foregroundStyle(BVTheme.textSecondary)
@@ -162,7 +138,6 @@ struct AccountView: View {
                     .padding(.top, 12)
                     .padding(.bottom, 24)
                 }
-                .trackTabBarScroll()
             }
             .toolbar(.hidden, for: .navigationBar)
         }

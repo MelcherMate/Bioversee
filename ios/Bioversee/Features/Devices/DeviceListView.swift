@@ -55,7 +55,6 @@ struct DeviceListView: View {
                             }
                             .listStyle(.plain)
                             .scrollContentBackground(.hidden)
-                            .trackTabBarScroll()
                             .padding(.bottom, 12)
                             .refreshable { await devicesStore.refresh(silent: false) }
                         }
