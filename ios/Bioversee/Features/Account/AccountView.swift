@@ -160,7 +160,7 @@ struct AccountView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 110)
+                    .padding(.bottom, 24)
                 }
                 .trackTabBarScroll()
             }

@@ -44,7 +44,7 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             BVTheme.surface.ignoresSafeArea()
 
             Group {
@@ -58,11 +58,13 @@ struct MainTabView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             BVTabBar(selection: $tab, unread: inbox.unread)
                 .padding(.horizontal, 14)
-                .padding(.bottom, 8)
-                .offset(y: tabBarHidden ? 110 : 0)
+                .padding(.top, 2)
+                .padding(.bottom, 2)
+                .offset(y: tabBarHidden ? 120 : 0)
                 .opacity(tabBarHidden ? 0 : 1)
                 .allowsHitTesting(!tabBarHidden)
                 .accessibilityHidden(tabBarHidden)
@@ -70,8 +72,10 @@ struct MainTabView: View {
         }
         // Reliable path: vertical drag direction (List scroll discovery is flaky in SwiftUI).
         .simultaneousGesture(
-            DragGesture(minimumDistance: 12, coordinateSpace: .global)
+            DragGesture(minimumDistance: 16, coordinateSpace: .global)
                 .onChanged { value in
+                    // Ignore mostly-horizontal pans (e.g. row swipe).
+                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
                     TabBarChrome.shared.handleDragTranslation(value.translation.height)
                 }
         )

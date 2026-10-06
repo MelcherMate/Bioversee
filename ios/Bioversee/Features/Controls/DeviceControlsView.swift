@@ -25,8 +25,10 @@ struct DeviceControlsView: View {
     @State private var levelFeedback: String?
     @State private var levelFeedbackIsWarning = false
     @State private var levelTransferTask: Task<Void, Never>?
+    @FocusState private var amountFieldFocused: Bool
 
     private let waterLevelKey = "water_level"
+    private let waterLevelScrollId = "waterLevelSection"
     /// Matches web `layout.impeller.minFillPercent` (ceil(0.202 * 100)).
     private let rotorMinFillPercent: Double = 21
     /// Matches web `layout.aerator.minFillPercent` (sparger at 10%).
@@ -50,39 +52,60 @@ struct DeviceControlsView: View {
                         .tint(BVTheme.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
-                            if !device.canOperate {
-                                Text("Viewer access — controls are read-only.")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(BVTheme.textSecondary)
-                                    .padding(14)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(BVTheme.fill)
-                                    .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 12) {
+                                if !device.canOperate {
+                                    Text("Viewer access — controls are read-only.")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(BVTheme.textSecondary)
+                                        .padding(14)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(BVTheme.fill)
+                                        .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+                                }
+
+                                ForEach(chartSpecs) { spec in
+                                    SensorChartCard(
+                                        label: spec.label,
+                                        points: chartPoints[spec.name] ?? []
+                                    )
+                                }
+
+                                controlPanel
+
+                                if let errorMessage {
+                                    Text(errorMessage)
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(BVTheme.danger)
+                                }
                             }
-
-                            ForEach(chartSpecs) { spec in
-                                SensorChartCard(
-                                    label: spec.label,
-                                    points: chartPoints[spec.name] ?? []
-                                )
-                            }
-
-                            controlPanel
-
-                            if let errorMessage {
-                                Text(errorMessage)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(BVTheme.danger)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 72)
+                            .padding(.bottom, amountFieldFocused ? 320 : 110)
+                        }
+                        .scrollDismissesKeyboard(.interactively)
+                        .refreshable { await reloadAll() }
+                        .trackTabBarScroll()
+                        .onChange(of: amountFieldFocused) { _, focused in
+                            guard focused else { return }
+                            // Let the keyboard start presenting, then pin water level above it.
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                                withAnimation(.easeInOut(duration: 0.28)) {
+                                    proxy.scrollTo(waterLevelScrollId, anchor: UnitPoint(x: 0.5, y: 0.18))
+                                }
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 72)
-                        .padding(.bottom, 110)
                     }
-                    .refreshable { await reloadAll() }
-                    .trackTabBarScroll()
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") {
+                                amountFieldFocused = false
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                        }
+                    }
                 }
 
                 deviceHeader
@@ -475,7 +498,9 @@ struct DeviceControlsView: View {
                     .keyboardType(.decimalPad)
                     .font(.system(size: 15, weight: .semibold).monospacedDigit())
                     .foregroundStyle(BVTheme.text)
+                    .focused($amountFieldFocused)
                     .disabled(readOnly || levelBusy)
+                    .submitLabel(.done)
                     Text("L")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(BVTheme.textTertiary)
@@ -485,13 +510,22 @@ struct DeviceControlsView: View {
                 .background(BVTheme.card)
                 .overlay(
                     RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous)
-                        .stroke(BVTheme.line, lineWidth: 1)
+                        .stroke(
+                            amountFieldFocused ? BVTheme.accentBorder : BVTheme.line,
+                            lineWidth: 1
+                        )
                 )
                 .clipShape(RoundedRectangle(cornerRadius: BVTheme.radiusMD, style: .continuous))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard !readOnly && !levelBusy else { return }
+                    amountFieldFocused = true
+                }
             }
 
             HStack(spacing: 8) {
                 Button {
+                    amountFieldFocused = false
                     startFillDose()
                 } label: {
                     Text("Fill")
@@ -507,6 +541,7 @@ struct DeviceControlsView: View {
                 .opacity(fillDisabled ? 0.38 : 1)
 
                 Button {
+                    amountFieldFocused = false
                     startDrainDose()
                 } label: {
                     Text("Drain")
@@ -539,6 +574,7 @@ struct DeviceControlsView: View {
             RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                 .stroke(BVTheme.line, lineWidth: 1)
         )
+        .id(waterLevelScrollId)
     }
 
     private func formatLiters(_ value: Double) -> String {
