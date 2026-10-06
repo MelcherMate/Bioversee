@@ -28,6 +28,8 @@ struct DeviceControlsView: View {
     @State private var levelTransferTask: Task<Void, Never>?
     @FocusState private var amountFieldFocused: Bool
     @ObservedObject private var keyboard = KeyboardObserver.shared
+    /// How far the scroll viewport sits above the physical screen bottom (home indicator, etc.).
+    @State private var scrollBottomToScreen: CGFloat = 0
 
     private let waterLevelKey = "water_level"
     private let waterLevelActionsId = "waterLevelActions"
@@ -35,6 +37,8 @@ struct DeviceControlsView: View {
     private let rotorMinFillPercent: Double = 21
     /// Matches web `layout.aerator.minFillPercent` (sparger at 10%).
     private let aeratorMinFillPercent: Double = 10
+    /// Same as horizontal page padding — gap between water-level card and number pad.
+    private let sidePadding: CGFloat = 16
 
     private var controls: [DeviceControl] {
         ControlCatalog.controls(for: device.type)
@@ -44,26 +48,17 @@ struct DeviceControlsView: View {
         SensorCatalog.charts(for: device.type)
     }
 
-    private var sidePadding: CGFloat { 16 }
-
-    /// Keyboard overlap with the scroll view (excludes home-indicator already outside the view).
-    private var keyboardScrollInset: CGFloat {
-        guard keyboard.isVisible, keyboard.height > 0 else { return 0 }
-        let safeBottom = Self.keyWindowSafeAreaBottom
-        return max(0, keyboard.height - safeBottom)
+    /// Spacer under the water-level card while the pad is open:
+    /// keyboard coverage of this scroll view + the same 16pt we use on the sides.
+    private var waterLevelKeyboardSpacer: CGFloat {
+        guard keyboard.isVisible, keyboard.height > 1 else { return 0 }
+        let covered = max(0, keyboard.height - scrollBottomToScreen)
+        return covered + sidePadding
     }
 
     private var scrollBottomPadding: CGFloat {
-        // Match horizontal page padding so the gap above the number pad equals the sides.
+        // Keyboard lift lives on the water-level card itself; only reserve tab-bar room when idle.
         keyboard.isVisible ? sidePadding : MainTabView.tabBarClearance + sidePadding
-    }
-
-    private static var keyWindowSafeAreaBottom: CGFloat {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)?
-            .safeAreaInsets.bottom ?? 0
     }
 
     var body: some View {
@@ -108,14 +103,19 @@ struct DeviceControlsView: View {
                             .padding(.top, 72)
                             .padding(.bottom, scrollBottomPadding)
                         }
-                        // Swipe down/up on the scroll view dismisses the pad (not a Done button).
+                        .background {
+                            GeometryReader { geo in
+                                let gap = UIScreen.main.bounds.maxY - geo.frame(in: .global).maxY
+                                Color.clear
+                                    .onAppear { scrollBottomToScreen = max(0, gap) }
+                                    .onChange(of: gap) { _, newGap in
+                                        scrollBottomToScreen = max(0, newGap)
+                                    }
+                            }
+                        }
+                        // Swipe the page to dismiss the pad.
                         .scrollDismissesKeyboard(.interactively)
                         .refreshable { await reloadAll() }
-                        .safeAreaInset(edge: .bottom, spacing: 0) {
-                            Color.clear
-                                .frame(height: keyboardScrollInset)
-                                .accessibilityHidden(true)
-                        }
                         .onChange(of: amountFieldFocused) { _, focused in
                             guard focused else { return }
                             pinWaterLevelAboveKeyboard(proxy)
@@ -124,12 +124,18 @@ struct DeviceControlsView: View {
                             guard amountFieldFocused, height > 0 else { return }
                             pinWaterLevelAboveKeyboard(proxy)
                         }
+                        .onChange(of: waterLevelKeyboardSpacer) { _, spacer in
+                            guard amountFieldFocused, spacer > 0 else { return }
+                            pinWaterLevelAboveKeyboard(proxy)
+                        }
                     }
                 }
 
                 deviceHeader
             }
         }
+        // We lift the water-level card ourselves — don't let UIKit also push the page.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .task {
@@ -237,7 +243,8 @@ struct DeviceControlsView: View {
     }
 
     private func pinWaterLevelAboveKeyboard(_ proxy: ScrollViewProxy) {
-        // Wait one tick so safeAreaInset has applied the keyboard height.
+        // Spacer under the card is part of the scroll target, so .bottom parks
+        // the card exactly sidePadding above the pad.
         DispatchQueue.main.async {
             withAnimation(.easeOut(duration: 0.22)) {
                 proxy.scrollTo(waterLevelActionsId, anchor: .bottom)
@@ -583,7 +590,6 @@ struct DeviceControlsView: View {
                 .disabled(drainDisabled)
                 .opacity(drainDisabled ? 0.38 : 1)
             }
-            .id(waterLevelActionsId)
 
             if let levelFeedback {
                 Text(levelFeedback)
@@ -598,6 +604,9 @@ struct DeviceControlsView: View {
             RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
                 .stroke(BVTheme.line, lineWidth: 1)
         )
+        // Lift the whole card (not just the buttons) and leave sidePadding above the pad.
+        .padding(.bottom, waterLevelKeyboardSpacer)
+        .id(waterLevelActionsId)
     }
 
     private func formatLiters(_ value: Double) -> String {

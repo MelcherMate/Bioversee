@@ -69,6 +69,8 @@ struct MainTabView: View {
             }
         }
         .animation(.easeOut(duration: 0.22), value: keyboard.isVisible)
+        // Don't let the system also pad for the keyboard on tab roots.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .task {
             await inbox.refresh(announceNew: false)
         }
