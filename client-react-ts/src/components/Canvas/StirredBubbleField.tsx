@@ -107,7 +107,8 @@ function stirredVelocity(
     upperFromBottom,
     clipHeight,
   );
-  const yMid = (yLo + yHi) * 0.5;
+  const singleDisc = Math.abs(yHi - yLo) < 0.03;
+  const yMid = singleDisc ? yLo : (yLo + yHi) * 0.5;
 
   // 40 rpm ≈ 0.13 → stir≈0; ~120 rpm → rising; 300 rpm → 1
   const stir = smoothstep(0.12, 0.62, rpmNorm);
@@ -117,7 +118,7 @@ function stirredVelocity(
   let vy = 0;
 
   const lo = planeKernel(y, yLo, 0.11);
-  const hi = planeKernel(y, yHi, 0.11);
+  const hi = singleDisc ? 0 : planeKernel(y, yHi, 0.11);
 
   // Mild blade nudge even at low speed — not a full loop yet
   const tipBoost = Math.max(0, 1 - Math.abs(r - 0.22) * 3.2);

@@ -11,9 +11,12 @@ import {
   defaultBioreactorConfig,
   parseVolumeInput,
   toBioreactorConfigPatch,
+  VESSEL_SHAPE_OPTIONS,
+  vesselShapePreset,
   type BioreactorConfig,
   type BioreactorEquipment,
   type BioreactorFluid,
+  type VesselShapeId,
   type VolumeUnit,
 } from "../../lib/bioreactorGeometry";
 import {
@@ -23,6 +26,7 @@ import {
 } from "../../lib/sharing";
 import EquipmentChecklist from "../EquipmentChecklist";
 import FluidPropertiesFields from "../FluidPropertiesFields";
+import VesselShapeSkeleton from "../VesselShapeSkeleton";
 import "./AddDevicePanel.css";
 
 /** Creation is bioreactor-only for now. */
@@ -117,6 +121,10 @@ function AddDevicePanel({
       ...prev,
       volume_m3: parseVolumeInput(n, prev.volume_unit),
     }));
+  };
+
+  const setVesselShape = (vessel_shape: VesselShapeId) => {
+    setConfig((prev) => ({ ...prev, vessel_shape }));
   };
 
   const setEquipment = (equipment: BioreactorEquipment) => {
@@ -238,6 +246,40 @@ function AddDevicePanel({
           />
 
           <div className="add-device__geometry">
+            <p className="add-device__label" id="add-vessel-shape-label">
+              {t("vesselShape.title")}
+            </p>
+            <p className="add-device__hint">{t("vesselShape.hint")}</p>
+            <div
+              className="add-device__shapes"
+              role="radiogroup"
+              aria-labelledby="add-vessel-shape-label"
+            >
+              {VESSEL_SHAPE_OPTIONS.map((shapeId) => {
+                const preset = vesselShapePreset(shapeId);
+                const active = config.vessel_shape === shapeId;
+                return (
+                  <button
+                    key={shapeId}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    className={`add-device__shape-btn${active ? " is-active" : ""}`}
+                    disabled={busy}
+                    onClick={() => setVesselShape(shapeId)}
+                  >
+                    <VesselShapeSkeleton shape={shapeId} height={104} />
+                    <span className="add-device__shape-name">
+                      {t(preset.labelKey)}
+                    </span>
+                    <span className="add-device__shape-hint">
+                      {t(preset.hintKey)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="add-device__volume-row">
               <label className="add-device__label" htmlFor="add-geo-volume">
                 {t("deviceSettings.volume")}

@@ -166,8 +166,16 @@ function Bioreactor({ user }: BioreactorProps) {
   const sensorWasLowRef = useRef<boolean | null>(null);
   const { toasts, push, dismiss } = useToasts();
 
+  const vesselShape = useMemo(
+    () =>
+      device
+        ? parseBioreactorConfig(device.config).vessel_shape
+        : ("capsule" as const),
+    [device],
+  );
+
   const flowGeom = useMemo(() => {
-    const layout = layoutFromGeometry(defaultBioreactorGeometry());
+    const layout = layoutFromGeometry(defaultBioreactorGeometry(), vesselShape);
     return {
       inlet: {
         pipePathLength: layout.fillInlet.pipePathLength,
@@ -181,7 +189,7 @@ function Bioreactor({ user }: BioreactorProps) {
       rotorMinFillPercent: layout.impeller.minFillPercent,
       sensorMinFillPercent: layout.sensors.minFillPercent,
     };
-  }, []);
+  }, [vesselShape]);
 
   const notifyTransferComplete = useCallback(
     (kind: "fill" | "drain") => {
@@ -1069,6 +1077,7 @@ function Bioreactor({ user }: BioreactorProps) {
           equipment={eq}
           fluidMotion={fluidMotion}
           geometry={defaultBioreactorGeometry()}
+          vesselShape={config.vessel_shape}
           sensorAlarms={sensorAlarms}
         />
       </main>

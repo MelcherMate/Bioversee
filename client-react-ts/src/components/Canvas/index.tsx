@@ -3,6 +3,7 @@ import type {
   BioreactorEquipment,
   BioreactorGeometry,
   FluidMotionFactors,
+  VesselShapeId,
 } from "../../lib/bioreactorGeometry";
 import type { InletFillVisualState } from "../pressure-vessel/useInletFillAnimation";
 import type { DrainVisualState } from "../pressure-vessel/useDrainAnimation";
@@ -30,6 +31,7 @@ type CanvasProps = {
   equipment?: Partial<BioreactorEquipment>;
   fluidMotion?: FluidMotionFactors;
   geometry?: BioreactorGeometry;
+  vesselShape?: VesselShapeId;
   /** Probe lamps flash red while uncovered. */
   sensorAlarms?: {
     temperature?: boolean;
@@ -107,6 +109,7 @@ function Canvas(props: CanvasProps) {
             equipment={props.equipment}
             fluidMotion={props.fluidMotion}
             geometry={props.geometry}
+            vesselShape={props.vesselShape}
             sensorAlarms={props.sensorAlarms}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}

@@ -1,14 +1,11 @@
 import type { CSSProperties } from "react";
-import type { BioreactorGeometry } from "../../lib/bioreactorGeometry";
+import type {
+  BioreactorGeometry,
+  VesselShapeId,
+} from "../../lib/bioreactorGeometry";
 import {
-  LEGACY_BORDER_PX,
-  LEGACY_CHAMBER_RADIUS_PX,
-  LEGACY_INNER_HEIGHT_PX,
-  LEGACY_INNER_WIDTH_PX,
-  LEGACY_OUTER_HEIGHT_PX,
-  LEGACY_OUTER_WIDTH_PX,
-  LEGACY_WATER_RADIUS_PX,
   defaultBioreactorGeometry,
+  vesselShapePreset,
 } from "../../lib/bioreactorGeometry";
 
 const JACKET_THICK = 18;
@@ -80,6 +77,8 @@ export type BioreactorLayout = {
   };
   /** Impeller disc Y offsets from water-clip bottom (for bubble field). */
   impeller: {
+    /** 1 = single Rushton (compact); 2 = dual stack. */
+    stages: 1 | 2;
     lowerFromBottom: number;
     upperFromBottom: number;
     clipHeight: number;
@@ -115,6 +114,8 @@ export type BioreactorLayout = {
     spargerLeft: number;
     dropX: number;
     pipeEndX: number;
+    /** Absolute Y of the top horizontal supply run (wrapper coords). */
+    topRunY: number;
     viewBox: string;
     svgLeft: number;
     svgTop: number;
@@ -127,6 +128,8 @@ export type BioreactorLayout = {
   dose: {
     tipX: number;
     tipY: number;
+    /** Horizontal run Y in dose SVG coords. */
+    horizY: number;
     svgLeft: number;
     svgTop: number;
     dripTravel: number;
@@ -167,24 +170,28 @@ function clamp(n: number, lo: number, hi: number): number {
 }
 
 /**
- * Fixed legacy capsule layout. Volume is data-only and does not affect drawing.
+ * Vessel layout for a silhouette preset. Volume is data-only and does not
+ * affect drawing — pass `vessel_shape` from device config.
  */
 export function layoutFromGeometry(
   _geometry: Pick<BioreactorGeometry, "height_m" | "diameter_m"> = defaultBioreactorGeometry(),
+  shape: VesselShapeId = "capsule",
 ): BioreactorLayout {
-  const innerW = LEGACY_INNER_WIDTH_PX;
-  const innerH = LEGACY_INNER_HEIGHT_PX;
-  const border = LEGACY_BORDER_PX;
-  const outerW = LEGACY_OUTER_WIDTH_PX;
-  const outerH = LEGACY_OUTER_HEIGHT_PX;
-  const radius = LEGACY_CHAMBER_RADIUS_PX;
-  const innerRadius = LEGACY_WATER_RADIUS_PX;
+  const preset = vesselShapePreset(shape);
+  const innerW = preset.innerW;
+  const innerH = preset.innerH;
+  const border = preset.border;
+  const outerW = preset.outerW;
+  const outerH = preset.outerH;
+  const radius = preset.chamberRadius;
+  const innerRadius = preset.waterRadius;
 
   const jacketPadX = 130;
   const jacketPadTop = 140;
   const jacketPadBottom = 40;
   const wrapperWidth = 442;
-  const wrapperHeight = 521;
+  // Keep wrapper tall enough for the chamber + headspace fittings.
+  const wrapperHeight = Math.max(521, outerH - 40);
   const chamberLeft = 20;
   const chamberTop = -120;
 
@@ -217,9 +224,10 @@ export function layoutFromGeometry(
   const stageHeight = clamp(agitatorWidth * 0.34, 48, 72);
   const stageWidth = clamp(agitatorWidth * 0.97, 80, MAX_BLADE_SPAN);
 
-  // Impeller planes as fractions of water column (match legacy ~0.20 / 0.345 at full fill)
-  const lowerFrac = 0.202;
-  const upperFrac = 0.345;
+  // Compact: one Rushton mid-low. Capsule/slender: dual stack (legacy fractions).
+  const impellerStages: 1 | 2 = shape === "compact" ? 1 : 2;
+  const lowerFrac = impellerStages === 1 ? 0.3 : 0.202;
+  const upperFrac = impellerStages === 1 ? lowerFrac : 0.345;
   const lowerFromBottom = waterH * lowerFrac;
   const upperFromBottom = waterH * upperFrac;
   // Stage top relative to agitator (disc center ≈ stage mid)
@@ -233,9 +241,12 @@ export function layoutFromGeometry(
 
   const sensorW = clamp(innerW * 0.045, MIN_SENSOR_WIDTH, MAX_SENSOR_WIDTH);
   const sensorTop = chamberTop - 40;
-  // Tip ends just below the upper impeller — short enough to clear the dish wall.
+  // Tip ends just below the topmost impeller — short enough to clear the dish wall.
   const sensorTipY = waterBottomAbs - upperFromBottom + 28;
-  const sensorHeight = Math.max(280, sensorTipY - sensorTop);
+  const sensorHeight = Math.max(
+    impellerStages === 1 ? 200 : 280,
+    sensorTipY - sensorTop,
+  );
   const chamberRight = chamberLeft + outerW;
   const sensorRight1 = wrapperWidth - (chamberRight - innerW * 0.22);
   const sensorRight2 = wrapperWidth - (chamberRight - innerW * 0.14);
@@ -251,19 +262,29 @@ export function layoutFromGeometry(
   const outflowPipeOd = 30;
 
   const spargerWidth = clamp(innerW * 0.55, 80, 220);
-  const spargerY = waterBottomAbs - waterH * 0.1; // ~10% up from dish floor in abs Y... wait waterBottomAbs is bottom
-  // sparger near bottom of water: absolute Y from wrapper
-  const spargerAbsY = waterTop + waterH * 0.9;
+  // Compact dish: lift the sparger under the impeller so the elbow clears the curve.
+  const spargerFromBottomFrac = shape === "compact" ? 0.16 : 0.1;
+  const spargerAbsY = waterBottomAbs - waterH * spargerFromBottomFrac;
   const spargerLeft = vesselCenterX - spargerWidth / 2;
+  // Riser along the left wall (same inset for all silhouettes).
   const dropX = chamberLeft + border + innerW * 0.16;
   const pipeEndX = spargerLeft + 10;
-  const spawnBottomPctAtFull = 10;
+  const spawnBottomPctAtFull = Math.round(spargerFromBottomFrac * 100);
   /** Minimum fill % so the sparger bar stays submerged. */
   const aeratorMinFillPercent = spawnBottomPctAtFull;
 
   const doseTipX = vesselCenterX + innerW * 0.12;
-  const doseTipY = 88; // in dose SVG coords — scaled below
+  // Keep the tip in the headspace while the horizontal run sits clear of the lid.
+  const doseSvgTop = chamberTop - (shape === "compact" ? 96 : 70);
+  const doseHorizY = 16;
+  const doseTipAbsY = waterTop + 28;
+  const doseTipY = doseTipAbsY - doseSvgTop;
   const dripTravel = waterH * 0.95;
+
+  // Aerator top run sits above the lid so the elbow clears the wall.
+  const aeratorSvgTop = chamberTop - (shape === "compact" ? 72 : 48);
+  const aeratorHorizY = aeratorSvgTop + 14;
+  const aeratorSvgH = outerH + (shape === "compact" ? 120 : 88);
 
   // Flat lid apex (outer + inner): x ∈ [chamberLeft+radius, chamberRight−radius]
   // = [189, 253]. Shaft is 6px wide at vesselCenterX — place fill OD clear of it.
@@ -275,7 +296,7 @@ export function layoutFromGeometry(
   const fillLidY = chamberTop;
   // Stop the nozzle at the inner lid face — do not poke a metal tip into the water body.
   const fillTipY = waterTop + 2;
-  const fillElbowY = chamberTop - 58;
+  const fillElbowY = chamberTop - (shape === "compact" ? 88 : 58);
   const fillRunEndX = fillCenterX + 72;
   const fillPad = 20;
   const fillSvgLeft = fillCenterX - fillPad;
@@ -347,11 +368,12 @@ export function layoutFromGeometry(
     "--br-jacket-svg-w": `${jacketSvgW}px`,
     "--br-jacket-svg-h": `${jacketSvgH}px`,
     "--br-aerator-left": `${jacketSvgLeft}px`,
-    "--br-aerator-top": `${chamberTop - 20}px`,
+    "--br-aerator-top": `${aeratorSvgTop}px`,
     "--br-aerator-w": `${jacketSvgW * 0.7}px`,
-    "--br-aerator-h": `${outerH + 60}px`,
+    "--br-aerator-h": `${aeratorSvgH}px`,
     "--br-dose-left": `${chamberLeft - 128}px`,
-    "--br-dose-top": `${chamberTop - 43}px`,
+    "--br-dose-top": `${doseSvgTop}px`,
+    "--br-dose-h": `${Math.max(140, Math.ceil(doseTipY + 24))}px`,
     "--br-fill-left": `${fillSvgLeft}px`,
     "--br-fill-top": `${fillSvgTop}px`,
     "--br-fill-w": `${fillSvgW}px`,
@@ -406,6 +428,7 @@ export function layoutFromGeometry(
       cavitationWidth: stageWidth + 20,
     },
     impeller: {
+      stages: impellerStages,
       lowerFromBottom,
       upperFromBottom,
       clipHeight: waterH,
@@ -436,19 +459,22 @@ export function layoutFromGeometry(
       spargerLeft,
       dropX,
       pipeEndX,
-      viewBox: `${jacketSvgLeft} ${chamberTop - 20} ${jacketSvgW * 0.7} ${outerH + 60}`,
+      /** Absolute Y of the top horizontal supply run (wrapper coords). */
+      topRunY: aeratorHorizY,
+      viewBox: `${jacketSvgLeft} ${aeratorSvgTop} ${jacketSvgW * 0.7} ${aeratorSvgH}`,
       svgLeft: jacketSvgLeft,
-      svgTop: chamberTop - 20,
+      svgTop: aeratorSvgTop,
       svgWidth: jacketSvgW * 0.7,
-      svgHeight: outerH + 60,
+      svgHeight: aeratorSvgH,
       spawnBottomPctAtFull,
       minFillPercent: aeratorMinFillPercent,
     },
     dose: {
       tipX: doseTipX,
       tipY: doseTipY,
+      horizY: doseHorizY,
       svgLeft: chamberLeft - 128,
-      svgTop: chamberTop - 43,
+      svgTop: doseSvgTop,
       dripTravel,
     },
     fillInlet: {

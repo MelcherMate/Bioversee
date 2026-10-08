@@ -10,6 +10,7 @@ import type {
   BioreactorEquipment,
   BioreactorGeometry,
   FluidMotionFactors,
+  VesselShapeId,
 } from "../../lib/bioreactorGeometry";
 import { defaultBioreactorGeometry, defaultEquipment } from "../../lib/bioreactorGeometry";
 import {
@@ -40,6 +41,8 @@ type BioreactorCardProps = {
   /** Wave + bubble motion scales vs water (from fluid config). */
   fluidMotion?: FluidMotionFactors;
   geometry?: BioreactorGeometry;
+  /** Vessel silhouette preset from device config. */
+  vesselShape?: VesselShapeId;
   /** Probe lamps flash red while uncovered. */
   sensorAlarms?: {
     temperature?: boolean;
@@ -570,9 +573,6 @@ function ThermalJacket({ mode, layout }: ThermalJacketProps) {
 /** Litmus-style acid (red) / base (blue) dosing colors. */
 const DOSE_ACID = "#e11d48";
 const DOSE_BASE = "#2563eb";
-/** Tip past the vessel wall into the headspace (SVG y; outer rim ≈ 43). */
-const DOSE_TIP_Y = 88;
-const DOSE_PATH = `M 16 16 L 264 16 L 264 ${DOSE_TIP_Y}`;
 const DOSE_PATH_LENGTH = 300;
 const DOSE_TUBE_OD = 4;
 const DOSE_WATER_WIDTH = 2.5;
@@ -581,8 +581,12 @@ const DOSE_FLOW_GAP = 22;
 const DOSE_FLOW_CYCLE = DOSE_FLOW_DASH + DOSE_FLOW_GAP;
 const DOSE_FLOW_CYCLE_SECONDS = 0.9;
 const DOSE_PIPE_SPEED = (DOSE_FLOW_CYCLE / DOSE_FLOW_CYCLE_SECONDS) * 2;
-/** Matches .base-acid-pipe-run { top }. */
-const DOSE_SVG_TOP = -163;
+
+function doseSupplyPath(layout: BioreactorLayout) {
+  const y = layout.dose.horizY;
+  const tipY = layout.dose.tipY;
+  return `M 16 ${y} L 264 ${y} L 264 ${tipY}`;
+}
 /** Drop fall speed — fixed so drips never speed up/slow down with level. */
 const DOSE_DRIP_SPEED = 320;
 /**
@@ -688,12 +692,15 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
   const dripFallPx = doseDripFallPx(fillUnits, layout);
   const showDrips =
     showLiquid && head >= DOSE_PATH_LENGTH - 1 && dripFallPx > 4;
+  const dosePath = doseSupplyPath(layout);
+  const tipY = layout.dose.tipY;
+  const doseViewH = Math.max(140, Math.ceil(tipY + 24));
 
   return (
     <div className="base-acid-supply">
       <svg
         className="base-acid-pipe-run"
-        viewBox="0 0 280 140"
+        viewBox={`0 0 280 ${doseViewH}`}
         aria-hidden
         overflow="visible"
       >
@@ -704,7 +711,7 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
             x1="0"
             y1="0"
             x2="0"
-            y2="140"
+            y2={doseViewH}
           >
             <stop offset="0%" stopColor="#f8fafc" />
             <stop offset="45%" stopColor="#e2e8f0" />
@@ -717,10 +724,10 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
               x="0"
               y="0"
               width="280"
-              height="140"
+              height={doseViewH}
             >
               <path
-                d={DOSE_PATH}
+                d={dosePath}
                 pathLength={DOSE_PATH_LENGTH}
                 fill="none"
                 stroke="#fff"
@@ -735,7 +742,7 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
         </defs>
 
         <path
-          d={DOSE_PATH}
+          d={dosePath}
           fill="none"
           stroke="#94a3b8"
           strokeWidth={DOSE_TUBE_OD + 1.5}
@@ -744,7 +751,7 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
           opacity={0.55}
         />
         <path
-          d={DOSE_PATH}
+          d={dosePath}
           fill="none"
           stroke={`url(#${prefix}-plastic)`}
           strokeWidth={DOSE_TUBE_OD}
@@ -755,7 +762,7 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
         {showLiquid ? (
           <g>
             <path
-              d={DOSE_PATH}
+              d={dosePath}
               pathLength={DOSE_PATH_LENGTH}
               fill="none"
               stroke={liquidColor}
@@ -767,7 +774,7 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
             />
             <path
               className="base-acid-flow-dash"
-              d={DOSE_PATH}
+              d={dosePath}
               pathLength={DOSE_PATH_LENGTH}
               fill="none"
               stroke="rgba(255, 255, 255, 0.65)"
@@ -786,14 +793,14 @@ function BaseAcidSupplyPipe({ mode, fillUnits, layout }: BaseAcidSupplyPipeProps
               <clipPath id={`${prefix}-drip-clip`}>
                 <rect
                   x={256}
-                  y={DOSE_TIP_Y - 3}
+                  y={tipY - 3}
                   width={16}
                   height={dripFallPx + 6}
                 />
               </clipPath>
             </defs>
             <g clipPath={`url(#${prefix}-drip-clip)`}>
-              <g transform={`translate(264 ${DOSE_TIP_Y})`}>
+              <g transform={`translate(264 ${tipY})`}>
                 {Array.from({ length: DOSE_DRIP_COUNT }, (_, i) => (
                   <circle
                     key={i}
@@ -921,6 +928,7 @@ function AeratorSupply({
     spargerLeft,
     dropX,
     pipeEndX,
+    topRunY,
     viewBox,
     svgLeft,
     svgTop,
@@ -929,8 +937,8 @@ function AeratorSupply({
   } = layout.aerator;
   const spargerTop = spargerY - AERATOR_SPARGER_HEIGHT / 2;
   const supplyPath = [
-    `M ${svgLeft + 10} ${svgTop + 13}`,
-    `L ${dropX} ${svgTop + 13}`,
+    `M ${svgLeft + 10} ${topRunY}`,
+    `L ${dropX} ${topRunY}`,
     `L ${dropX} ${spargerY}`,
     `L ${pipeEndX} ${spargerY}`,
   ].join(" ");
@@ -1470,15 +1478,19 @@ const ImpellerRotorSvg = memo(function ImpellerRotorSvg({
 function SpinningAgitator({
   rotorNorm,
   cavitationStrength,
+  stages = 2,
 }: {
   rotorNorm: number;
   /** 0–1 foam intensity on the discs (≥40% fill & high RPM). */
   cavitationStrength: number;
+  /** Compact vessels use a single Rushton disc. */
+  stages?: 1 | 2;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const angleRef = useRef(0.35);
   const speedRef = useRef(rotorNorm);
   speedRef.current = rotorNorm;
+  const dual = stages === 2;
 
   useEffect(() => {
     let frame = 0;
@@ -1506,7 +1518,7 @@ function SpinningAgitator({
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [stages]);
 
   // Faster boil as tip speed rises — ~0.28s at onset, ~0.08s at 300 rpm
   const cavitationPeriod = `${(0.28 - cavitationStrength * 0.2).toFixed(3)}s`;
@@ -1514,25 +1526,29 @@ function SpinningAgitator({
   return (
     <div className="agitator" aria-hidden ref={rootRef}>
       <div className="agitator__shaft" />
-      <div className="agitator__stage agitator__stage--upper">
-        <ImpellerRotorSvg />
-      </div>
+      {dual ? (
+        <div className="agitator__stage agitator__stage--upper">
+          <ImpellerRotorSvg />
+        </div>
+      ) : null}
       <div className="agitator__stage agitator__stage--lower">
         <ImpellerRotorSvg phaseRad={Math.PI / IMPELLER_BLADES} />
       </div>
       {cavitationStrength > 0 ? (
         <>
-          <div
-            className="agitator__cavitation agitator__cavitation--upper is-on"
-            style={
-              {
-                ["--cavitation-strength" as string]: String(
-                  0.55 + cavitationStrength * 0.45,
-                ),
-                ["--cavitation-period" as string]: cavitationPeriod,
-              } as CSSProperties
-            }
-          />
+          {dual ? (
+            <div
+              className="agitator__cavitation agitator__cavitation--upper is-on"
+              style={
+                {
+                  ["--cavitation-strength" as string]: String(
+                    0.55 + cavitationStrength * 0.45,
+                  ),
+                  ["--cavitation-period" as string]: cavitationPeriod,
+                } as CSSProperties
+              }
+            />
+          ) : null}
           <div
             className="agitator__cavitation agitator__cavitation--lower is-on"
             style={
@@ -1558,9 +1574,10 @@ function BioreactorCard(props: BioreactorCardProps) {
   const doseMode = props.doseMode ?? "idle";
   const equipment = { ...defaultEquipment(), ...props.equipment };
   const geometry = props.geometry ?? defaultBioreactorGeometry();
+  const vesselShape = props.vesselShape ?? "capsule";
   const layout = useMemo(
-    () => layoutFromGeometry(geometry),
-    [geometry.height_m, geometry.diameter_m],
+    () => layoutFromGeometry(geometry, vesselShape),
+    [geometry.height_m, geometry.diameter_m, vesselShape],
   );
   const airActive = Boolean(equipment.aerator && aeratorVal > 0);
   const [airAtSparger, setAirAtSparger] = useState(airActive);
@@ -1675,6 +1692,7 @@ function BioreactorCard(props: BioreactorCardProps) {
           <SpinningAgitator
             rotorNorm={rotorNorm}
             cavitationStrength={cavitationStrength}
+            stages={layout.impeller.stages}
           />
         ) : null}
 

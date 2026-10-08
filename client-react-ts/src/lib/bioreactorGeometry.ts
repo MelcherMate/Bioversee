@@ -1,11 +1,28 @@
 /**
- * Bioreactor device config: working volume (data only) + optional equipment.
- * Vessel drawing always uses the fixed legacy capsule — volume does not resize it.
+ * Bioreactor device config: working volume (data only) + optional equipment
+ * + vessel silhouette. Volume does not resize the drawing; `vessel_shape` does.
  */
 
 export type VolumeUnit = "L" | "m3";
 
-/** Fixed visual capsule (pre-parametric drawing). */
+/** Visual silhouettes selectable at device creation. */
+export type VesselShapeId = "capsule" | "slender" | "compact";
+
+export type VesselShapePreset = {
+  id: VesselShapeId;
+  /** i18n key under `vesselShape.*` */
+  labelKey: string;
+  hintKey: string;
+  innerW: number;
+  innerH: number;
+  border: number;
+  outerW: number;
+  outerH: number;
+  chamberRadius: number;
+  waterRadius: number;
+};
+
+/** Fixed visual capsule (pre-parametric drawing) — shape `capsule`. */
 export const LEGACY_INNER_WIDTH_PX = 362;
 export const LEGACY_INNER_HEIGHT_PX = 510;
 export const LEGACY_OUTER_WIDTH_PX = 402;
@@ -13,6 +30,65 @@ export const LEGACY_OUTER_HEIGHT_PX = 550;
 export const LEGACY_BORDER_PX = 20;
 export const LEGACY_CHAMBER_RADIUS_PX = 169;
 export const LEGACY_WATER_RADIUS_PX = 149;
+
+/**
+ * Shape recipes (pixels). `capsule` = current dish-end tank.
+ * `slender` = same size, small corner radius (cylinder).
+ * `compact` = same width, shorter height, dish ends.
+ */
+export const VESSEL_SHAPE_PRESETS: Record<VesselShapeId, VesselShapePreset> = {
+  capsule: {
+    id: "capsule",
+    labelKey: "vesselShape.capsule",
+    hintKey: "vesselShape.capsuleHint",
+    innerW: LEGACY_INNER_WIDTH_PX,
+    innerH: LEGACY_INNER_HEIGHT_PX,
+    border: LEGACY_BORDER_PX,
+    outerW: LEGACY_OUTER_WIDTH_PX,
+    outerH: LEGACY_OUTER_HEIGHT_PX,
+    chamberRadius: LEGACY_CHAMBER_RADIUS_PX,
+    waterRadius: LEGACY_WATER_RADIUS_PX,
+  },
+  slender: {
+    id: "slender",
+    labelKey: "vesselShape.slender",
+    hintKey: "vesselShape.slenderHint",
+    innerW: LEGACY_INNER_WIDTH_PX,
+    innerH: LEGACY_INNER_HEIGHT_PX,
+    border: LEGACY_BORDER_PX,
+    outerW: LEGACY_OUTER_WIDTH_PX,
+    outerH: LEGACY_OUTER_HEIGHT_PX,
+    // Cylinder: modest corners (not a pill, not a sharp box).
+    chamberRadius: 40,
+    waterRadius: 22,
+  },
+  compact: {
+    id: "compact",
+    labelKey: "vesselShape.compact",
+    hintKey: "vesselShape.compactHint",
+    innerW: LEGACY_INNER_WIDTH_PX,
+    innerH: 340,
+    border: LEGACY_BORDER_PX,
+    outerW: LEGACY_OUTER_WIDTH_PX,
+    outerH: 380,
+    chamberRadius: LEGACY_CHAMBER_RADIUS_PX,
+    waterRadius: LEGACY_WATER_RADIUS_PX,
+  },
+};
+
+export const VESSEL_SHAPE_OPTIONS: VesselShapeId[] = [
+  "capsule",
+  "slender",
+  "compact",
+];
+
+export function isVesselShapeId(value: unknown): value is VesselShapeId {
+  return value === "capsule" || value === "slender" || value === "compact";
+}
+
+export function vesselShapePreset(shape: VesselShapeId): VesselShapePreset {
+  return VESSEL_SHAPE_PRESETS[shape] ?? VESSEL_SHAPE_PRESETS.capsule;
+}
 
 /** Physical stand-ins for layout math (drawing uses legacy pixels 1:1). */
 export const DEFAULT_DIAMETER_M = 0.5;
@@ -52,6 +128,8 @@ export type BioreactorConfig = {
   /** Working volume in m³; null = unset (UI shows placeholder). */
   volume_m3: number | null;
   volume_unit: VolumeUnit;
+  /** Vessel silhouette — drives drawing layout, not volume. */
+  vessel_shape: VesselShapeId;
   equipment: BioreactorEquipment;
   fluid: BioreactorFluid;
 };
@@ -306,6 +384,7 @@ export function defaultBioreactorConfig(): BioreactorConfig {
   return {
     volume_m3: null,
     volume_unit: "L",
+    vessel_shape: "capsule",
     equipment: defaultEquipment(),
     fluid: defaultFluid(),
   };
@@ -351,8 +430,11 @@ export function parseBioreactorConfig(raw: unknown): BioreactorConfig {
   };
 
   const fluid = parseBioreactorFluid(nested.fluid);
+  const vessel_shape: VesselShapeId = isVesselShapeId(nested.vessel_shape)
+    ? nested.vessel_shape
+    : base.vessel_shape;
 
-  return { volume_m3, volume_unit, equipment, fluid };
+  return { volume_m3, volume_unit, vessel_shape, equipment, fluid };
 }
 
 /** @deprecated Use parseBioreactorConfig — drawing always uses default capsule. */

@@ -210,6 +210,16 @@
     "saveGeometry": "Reaktor beállítás mentése",
     "geometryReadOnly": "Csak tulajdonosok és adminok módosíthatják a reaktor beállítását."
   },
+  "vesselShape": {
+    "title": "Tartályforma",
+    "hint": "Csak a körvonal — a szerelvényeket alább választod. A meglévő eszközök a standard tartályt tartják.",
+    "capsule": "Standard",
+    "capsuleHint": "Ívelt fenék",
+    "slender": "Henger",
+    "slenderHint": "Ugyanakkora, éles sarkok",
+    "compact": "Kompakt",
+    "compactHint": "Ugyanakkora szélesség, alacsonyabb"
+  },
   "equipment": {
     "title": "Felszerelés",
     "hint": "Kapcsold be vagy ki a szerelvényeket. A kikapcsoltak nem jelennek meg a rajzon és a vezérlésen.",

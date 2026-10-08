@@ -210,6 +210,16 @@
     "saveGeometry": "Reaktor-Setup speichern",
     "geometryReadOnly": "Nur Eigentümer und Admins können das Reaktor-Setup ändern."
   },
+  "vesselShape": {
+    "title": "Behälterform",
+    "hint": "Nur die Silhouette — Armaturen wählst du darunter. Bestehende Geräte behalten den Standardtank.",
+    "capsule": "Standard",
+    "capsuleHint": "Gewölbte Böden",
+    "slender": "Zylinder",
+    "slenderHint": "Gleiche Größe, scharfe Kanten",
+    "compact": "Kompakt",
+    "compactHint": "Gleiche Breite, kürzer"
+  },
   "equipment": {
     "title": "Ausstattung",
     "hint": "Armaturen ein- oder ausschalten. Deaktivierte Teile fehlen in Zeichnung und Steuerung.",

@@ -1,0 +1,14 @@
+.vessel-shape-skel {
+  display: block;
+  overflow: visible;
+}
+
+.vessel-shape-skel__outline {
+  fill: color-mix(in srgb, var(--bv-text, #1a1a1a) 4%, transparent);
+  stroke: color-mix(in srgb, var(--bv-text, #1a1a1a) 42%, transparent);
+}
+
+.add-device__shape-btn.is-active .vessel-shape-skel__outline {
+  fill: color-mix(in srgb, var(--bv-accent, #0d9488) 12%, transparent);
+  stroke: var(--bv-accent, #0d9488);
+}

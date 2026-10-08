@@ -508,7 +508,7 @@
   left: var(--br-dose-left, -108px);
   top: var(--br-dose-top, -163px);
   width: 280px;
-  height: 140px;
+  height: var(--br-dose-h, 140px);
   overflow: visible;
 }
 

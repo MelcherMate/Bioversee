@@ -210,6 +210,16 @@
     "saveGeometry": "Save reactor setup",
     "geometryReadOnly": "Only owners and admins can edit reactor setup."
   },
+  "vesselShape": {
+    "title": "Vessel shape",
+    "hint": "Outline only — fittings are chosen below. Existing devices keep the standard tank.",
+    "capsule": "Standard",
+    "capsuleHint": "Curved dish ends",
+    "slender": "Cylinder",
+    "slenderHint": "Same size, sharp corners",
+    "compact": "Compact",
+    "compactHint": "Same width, shorter"
+  },
   "equipment": {
     "title": "Equipment",
     "hint": "Turn fittings on or off. Disabled items are hidden from the drawing and controls.",
