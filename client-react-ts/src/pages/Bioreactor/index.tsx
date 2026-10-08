@@ -8,7 +8,10 @@ import Switch from "../../components/Switch";
 import EmptyDeviceState from "../../components/EmptyDeviceState";
 import { ToastStack, useToasts } from "../../components/Toast";
 import {
+  fillUnitsToLiters,
   fillUnitsToPercent,
+  fillUnitsToStoredPercent,
+  storedPercentToFillUnits,
   VESSEL_MAX_FILL_UNITS,
 } from "../../components/pressure-vessel/constants";
 import { useDrainAnimation } from "../../components/pressure-vessel/useDrainAnimation";
@@ -57,11 +60,6 @@ function clampFillUnits(value: number) {
 function tankCapacityLiters(volume_m3: number | null): number {
   if (volume_m3 != null && volume_m3 > 0) return litersFromM3(volume_m3);
   return DEFAULT_TANK_CAPACITY_L;
-}
-
-function fillUnitsFromLiters(liters: number, capacityL: number): number {
-  if (capacityL <= 0) return 0;
-  return clampFillUnits((liters / capacityL) * VESSEL_MAX_FILL_UNITS);
 }
 
 function litersFromFillUnits(fillUnits: number, capacityL: number): number {
@@ -250,6 +248,25 @@ function Bioreactor({ user }: BioreactorProps) {
     }
   }, []);
 
+  const persistWaterLevel = useCallback(
+    (fillUnits: number, { sensor = true }: { sensor?: boolean } = {}) => {
+      if (!device || !canOperateDevice(device.role)) return;
+      const capacityL = tankCapacityLiters(
+        parseBioreactorConfig(device.config).volume_m3,
+      );
+      const percent = fillUnitsToStoredPercent(fillUnits, capacityL);
+      insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+        console.error,
+      );
+      if (sensor) {
+        insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
+          console.error,
+        );
+      }
+    },
+    [device, user.id],
+  );
+
   const finishFillJob = useCallback(() => {
     if (remoteLevelAnimRef.current) {
       // Phone may still be streaming — wait briefly before closing the inlet.
@@ -265,15 +282,8 @@ function Bioreactor({ user }: BioreactorProps) {
     setIsFillHeld(false);
     setFillTargetUnits(null);
     notifyTransferComplete("fill");
-    if (!device || !canOperateDevice(device.role)) return;
-    const percent = fillUnitsToPercent(fillUnitsRef.current);
-    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
-      console.error,
-    );
-    insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
-      console.error,
-    );
-  }, [clearRemoteEndTimer, device, notifyTransferComplete, user.id]);
+    persistWaterLevel(fillUnitsRef.current);
+  }, [clearRemoteEndTimer, notifyTransferComplete, persistWaterLevel]);
 
   const finishDrainJob = useCallback(() => {
     if (remoteLevelAnimRef.current) {
@@ -289,15 +299,8 @@ function Bioreactor({ user }: BioreactorProps) {
     setIsDrainHeld(false);
     setDrainTargetUnits(null);
     notifyTransferComplete("drain");
-    if (!device || !canOperateDevice(device.role)) return;
-    const percent = fillUnitsToPercent(fillUnitsRef.current);
-    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
-      console.error,
-    );
-    insertSensorReading(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
-      console.error,
-    );
-  }, [clearRemoteEndTimer, device, notifyTransferComplete, user.id]);
+    persistWaterLevel(fillUnitsRef.current);
+  }, [clearRemoteEndTimer, notifyTransferComplete, persistWaterLevel]);
 
   const inletFill = useInletFillAnimation(
     fillUnits,
@@ -349,9 +352,10 @@ function Bioreactor({ user }: BioreactorProps) {
         setAcidVal(Boolean(acid));
         setBaseVal(Boolean(base));
         const percent = Math.min(100, Math.max(0, Number(waterLevel)));
-        // Keep fractional fill units so percent↔units↔liters round-trips cleanly
-        // (integer rounding here made 5% → 21 units → 49 L on web vs 50 L on iOS).
-        setFillUnits((percent / 100) * VESSEL_MAX_FILL_UNITS);
+        const capacityL = tankCapacityLiters(
+          parseBioreactorConfig(device.config).volume_m3,
+        );
+        setFillUnits(storedPercentToFillUnits(percent, capacityL));
         setAeratorVal(Number(aerator));
         setRotorVal(Number(rotor));
       })
@@ -372,21 +376,28 @@ function Bioreactor({ user }: BioreactorProps) {
 
     let cancelled = false;
 
+    const capacityL = tankCapacityLiters(
+      parseBioreactorConfig(device.config).volume_m3,
+    );
+    // ~0.25 L in fill-units — small enough to notice a 1 L remote step.
+    const minDeltaUnits = Math.max(
+      0.05,
+      (0.25 / Math.max(capacityL, 1)) * VESSEL_MAX_FILL_UNITS,
+    );
+
     const applyWaterPercent = (percent: number) => {
       if (cancelled) return;
-      const next = clampFillUnits(
-        (Math.min(100, Math.max(0, percent)) / 100) * VESSEL_MAX_FILL_UNITS,
-      );
+      const next = storedPercentToFillUnits(percent, capacityL);
       const current = fillUnitsRef.current;
 
       // Already following a remote stream — chase the latest published level.
       if (remoteLevelAnimRef.current) {
-        if (isFillHeldRef.current && next > current + 0.4) {
+        if (isFillHeldRef.current && next > current + minDeltaUnits) {
           clearRemoteEndTimer();
           setFillTargetUnits(next);
           return;
         }
-        if (isDrainHeldRef.current && next < current - 0.4) {
+        if (isDrainHeldRef.current && next < current - minDeltaUnits) {
           clearRemoteEndTimer();
           setDrainTargetUnits(next);
           return;
@@ -403,7 +414,7 @@ function Bioreactor({ user }: BioreactorProps) {
       ) {
         return;
       }
-      if (Math.abs(next - current) < 0.5) return;
+      if (Math.abs(next - current) < minDeltaUnits) return;
 
       remoteLevelAnimRef.current = true;
       transferJobRef.current = null;
@@ -453,21 +464,24 @@ function Bioreactor({ user }: BioreactorProps) {
     if (remoteLevelAnimRef.current) return;
     if (!isFillHeld && !isDrainHeld) return;
 
-    const percent = fillUnitsToPercent(fillUnits);
+    const capacityL = tankCapacityLiters(
+      parseBioreactorConfig(device.config).volume_m3,
+    );
+    const percent = fillUnitsToStoredPercent(fillUnits, capacityL);
     const now = performance.now();
     if (now - lastStreamPersistAtRef.current < 280) return;
+    // Stream at least every ~1 L so a 1 L dose is visible on the other client.
+    const minStep = capacityL > 0 ? (1 / capacityL) * 100 : 1;
     if (
       lastStreamPercentRef.current != null &&
-      Math.abs(percent - lastStreamPercentRef.current) < 1
+      Math.abs(percent - lastStreamPercentRef.current) < minStep * 0.9
     ) {
       return;
     }
     lastStreamPersistAtRef.current = now;
     lastStreamPercentRef.current = percent;
-    insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
-      console.error,
-    );
-  }, [device, fillUnits, isDrainHeld, isFillHeld, user.id]);
+    persistWaterLevel(fillUnits, { sensor: false });
+  }, [device, fillUnits, isDrainHeld, isFillHeld, persistWaterLevel]);
 
   const parseTransferLiters = (capacityL: number): number | null => {
     const normalized = transferAmountText.trim().replace(",", ".");
@@ -500,13 +514,17 @@ function Bioreactor({ user }: BioreactorProps) {
       push("warning", t("process.tankFullTitle"), t("process.tankFullDetail"));
       return;
     }
-    const deltaUnits = fillUnitsFromLiters(liters, capacityL);
-    if (deltaUnits <= 0) return;
-    const target = clampFillUnits(startUnits + deltaUnits);
-    if (target <= startUnits + 0.05) {
+    // Snap dose targets to whole liters so 1 L lands exactly.
+    const startLiters = fillUnitsToLiters(startUnits, capacityL);
+    const targetLiters = Math.min(capacityL, startLiters + liters);
+    if (targetLiters <= startLiters) {
       push("warning", t("process.tankFullTitle"), t("process.tankFullDetail"));
       return;
     }
+    const target = storedPercentToFillUnits(
+      (targetLiters / capacityL) * 100,
+      capacityL,
+    );
     remoteLevelAnimRef.current = false;
     clearRemoteEndTimer();
     lastStreamPersistAtRef.current = 0;
@@ -538,13 +556,16 @@ function Bioreactor({ user }: BioreactorProps) {
       push("warning", t("process.tankEmptyTitle"), t("process.tankEmptyDetail"));
       return;
     }
-    const deltaUnits = fillUnitsFromLiters(liters, capacityL);
-    if (deltaUnits <= 0) return;
-    const target = clampFillUnits(startUnits - deltaUnits);
-    if (target >= startUnits - 0.05) {
+    const startLiters = fillUnitsToLiters(startUnits, capacityL);
+    const targetLiters = Math.max(0, startLiters - liters);
+    if (targetLiters >= startLiters) {
       push("warning", t("process.tankEmptyTitle"), t("process.tankEmptyDetail"));
       return;
     }
+    const target = storedPercentToFillUnits(
+      (targetLiters / capacityL) * 100,
+      capacityL,
+    );
     remoteLevelAnimRef.current = false;
     clearRemoteEndTimer();
     lastStreamPersistAtRef.current = 0;

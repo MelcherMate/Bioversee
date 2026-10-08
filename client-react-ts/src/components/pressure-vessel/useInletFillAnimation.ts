@@ -241,8 +241,10 @@ export function useInletFillAnimation(
             headRef.current,
             tailRef.current + pipeSpeed * deltaSeconds,
           );
-          // Hold mode keeps a short trickle; targeted doses stop at the set volume.
-          if (target == null) {
+          // Press-and-hold only: keep a short trickle while the button is still
+          // down with no dose target. Click-to-dose clears held+target on finish —
+          // must not keep adding or the level overshoots then "corrects".
+          if (target == null && held) {
             transferToTank(deltaSeconds);
           }
 

@@ -635,13 +635,17 @@ struct DeviceControlsView: View {
             showLevelFeedback("Tank is full. No more liquid can be added.", warning: true)
             return
         }
-        let start = waterLevelPercent
-        let deltaPercent = (liters / tankCapacityLiters) * 100
-        let target = min(100, start + deltaPercent)
-        if target <= start + 0.05 {
+        // Snap to whole liters so a 1 L dose lands exactly.
+        let capacity = tankCapacityLiters
+        let startLiters = ((waterLevelPercent / 100) * capacity).rounded()
+        let targetLiters = min(capacity, startLiters + liters.rounded())
+        if targetLiters <= startLiters {
             showLevelFeedback("Tank is full. No more liquid can be added.", warning: true)
             return
         }
+        let start = (startLiters / capacity) * 100
+        let target = (targetLiters / capacity) * 100
+        waterLevelPercent = start
         runLevelTransfer(
             kind: .fill,
             startPercent: start,
@@ -656,13 +660,16 @@ struct DeviceControlsView: View {
             showLevelFeedback("Tank is empty. No more liquid can be drained.", warning: true)
             return
         }
-        let start = waterLevelPercent
-        let deltaPercent = (liters / tankCapacityLiters) * 100
-        let target = max(0, start - deltaPercent)
-        if target >= start - 0.05 {
+        let capacity = tankCapacityLiters
+        let startLiters = ((waterLevelPercent / 100) * capacity).rounded()
+        let targetLiters = max(0, startLiters - liters.rounded())
+        if targetLiters >= startLiters {
             showLevelFeedback("Tank is empty. No more liquid can be drained.", warning: true)
             return
         }
+        let start = (startLiters / capacity) * 100
+        let target = (targetLiters / capacity) * 100
+        waterLevelPercent = start
         runLevelTransfer(
             kind: .drain,
             startPercent: start,
@@ -767,7 +774,12 @@ struct DeviceControlsView: View {
 
     private func persistWaterLevel(percent: Double, includeSensor: Bool = true) async {
         guard device.canOperate, let userId = session.userId else { return }
-        let value = min(100, max(0, percent.rounded()))
+        // Store via whole liters so 1 L doses round-trip (integer % was 10 L steps on 1000 L).
+        let capacity = tankCapacityLiters
+        let liters = ((min(100, max(0, percent)) / 100) * capacity).rounded()
+        let value = capacity > 0
+            ? ((liters / capacity) * 100 * 1000).rounded() / 1000
+            : min(100, max(0, percent.rounded()))
         do {
             try await ActuatorService.setSlider(
                 deviceId: device.id,
@@ -865,9 +877,12 @@ struct DeviceControlsView: View {
     }
 
     private func applyRemoteWaterLevel(_ percent: Double) {
-        let next = min(100, max(0, percent))
+        // Normalize through whole liters so web/phone readouts stay aligned.
+        let capacity = tankCapacityLiters
+        let liters = ((min(100, max(0, percent)) / 100) * capacity).rounded()
+        let next = capacity > 0 ? (liters / capacity) * 100 : min(100, max(0, percent))
         let delta = abs(next - waterLevelPercent)
-        guard delta > 0.05 else { return }
+        guard delta > 0.0005 else { return }
         // Match web fill (~7.5 %/s) / drain (~14 %/s); cap so big jumps still finish quickly.
         let rate = next > waterLevelPercent ? 7.5 : 14.0
         let duration = min(1.2, max(0.12, delta / rate))

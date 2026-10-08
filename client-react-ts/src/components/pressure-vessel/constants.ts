@@ -47,3 +47,41 @@ export function getVesselWaterHeights(fillUnits: number): VesselWaterHeights {
 export function fillUnitsToPercent(fillUnits: number): number {
   return Math.round((fillUnits / VESSEL_MAX_FILL_UNITS) * 100);
 }
+
+/** Whole liters implied by fill units for a tank capacity. */
+export function fillUnitsToLiters(fillUnits: number, capacityL: number): number {
+  if (!(capacityL > 0)) return 0;
+  return Math.round((fillUnits / VESSEL_MAX_FILL_UNITS) * capacityL);
+}
+
+/**
+ * Persistable water_level % that round-trips 1 L steps.
+ * Integer % was only 10 L resolution on a 1000 L tank.
+ */
+export function fillUnitsToStoredPercent(
+  fillUnits: number,
+  capacityL: number,
+): number {
+  if (!(capacityL > 0)) return fillUnitsToPercent(fillUnits);
+  const liters = fillUnitsToLiters(fillUnits, capacityL);
+  return Math.round((liters / capacityL) * 100 * 1000) / 1000;
+}
+
+/** Restore fill units from a stored water_level % via integer liters. */
+export function storedPercentToFillUnits(
+  percent: number,
+  capacityL: number,
+): number {
+  const clamped = Math.min(100, Math.max(0, percent));
+  if (!(capacityL > 0)) {
+    return Math.min(
+      VESSEL_MAX_FILL_UNITS,
+      Math.max(0, (clamped / 100) * VESSEL_MAX_FILL_UNITS),
+    );
+  }
+  const liters = Math.round((clamped / 100) * capacityL);
+  return Math.min(
+    VESSEL_MAX_FILL_UNITS,
+    Math.max(0, (liters / capacityL) * VESSEL_MAX_FILL_UNITS),
+  );
+}

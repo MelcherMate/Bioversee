@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AnimatedNumber from "../AnimatedNumber";
 import {
-  fillUnitsToPercent,
+  fillUnitsToLiters,
   VESSEL_MAX_FILL_UNITS,
 } from "../pressure-vessel/constants";
 
@@ -98,10 +98,12 @@ export function WaterLevelMeter({
     setDisplayUnits(fillUnits);
   }, [fillUnits, busy]);
 
-  // Readouts use the same integer % we persist to actuators — matches iOS
-  // (percent/100)*capacity. Deriving liters from raw fill-units caused 49 vs 50.
-  const pctRounded = fillUnitsToPercent(displayUnits);
-  const currentLiters = Math.round((pctRounded / 100) * capacityLiters);
+  // Whole liters from fill units — matches persisted water_level (1 L resolution).
+  const currentLiters = fillUnitsToLiters(displayUnits, capacityLiters);
+  const pctRounded =
+    capacityLiters > 0
+      ? Math.round((currentLiters / capacityLiters) * 1000) / 10
+      : 0;
   const capacityLabel = Math.round(capacityLiters).toLocaleString();
 
   return (

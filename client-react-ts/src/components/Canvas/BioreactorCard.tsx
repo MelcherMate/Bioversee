@@ -1577,9 +1577,16 @@ function BioreactorCard(props: BioreactorCardProps) {
       ? drainAnim.frozenFillUnits
       : rawFillUnits;
 
+  // While a click-to-dose (or remote) fill/drain owns the level, follow exactly.
+  // The old spring chase overshot the target then settled back.
+  const levelFollowExact = Boolean(
+    inletFill?.isAnimating ||
+      (drainAnim?.isAnimating && !drainAnim.isLevelFrozen),
+  );
+
   const { displayFillUnits, fillVelocity: levelVelocity } = useSpringFillUnits(
     levelFillUnits,
-    { stiffness: 120, damping: 0.68 },
+    { stiffness: 120, damping: 0.68, followExact: levelFollowExact },
   );
 
   const waveVelocity =

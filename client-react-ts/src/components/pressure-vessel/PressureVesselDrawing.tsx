@@ -28,6 +28,9 @@ export function PressureVesselDrawing({
   const { displayFillUnits, fillVelocity } = useSpringFillUnits(levelFillUnits, {
     stiffness: 120,
     damping: 0.68,
+    followExact:
+      inletFill.isAnimating ||
+      (drainAnim.isAnimating && !drainAnim.isLevelFrozen),
   });
 
   const showInletWater = inletFill.head > inletFill.tail;

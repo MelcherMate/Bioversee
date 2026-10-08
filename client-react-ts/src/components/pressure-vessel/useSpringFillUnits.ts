@@ -4,11 +4,20 @@ import { createSpringState } from "./wave-path";
 type UseSpringFillUnitsOptions = {
   stiffness?: number;
   damping?: number;
+  /**
+   * When true, display tracks the target exactly (no spring overshoot).
+   * Use while a dose fill/drain rAF loop owns the level.
+   */
+  followExact?: boolean;
 };
 
 export function useSpringFillUnits(
   target: number,
-  { stiffness = 160, damping = 0.74 }: UseSpringFillUnitsOptions = {},
+  {
+    stiffness = 160,
+    damping = 0.74,
+    followExact = false,
+  }: UseSpringFillUnitsOptions = {},
 ) {
   const springRef = useRef(createSpringState(target));
   const [displayValue, setDisplayValue] = useState(target);
@@ -16,6 +25,9 @@ export function useSpringFillUnits(
   const [flowRate, setFlowRate] = useState(0);
   const targetRef = useRef(target);
   const prevTargetRef = useRef(target);
+  const followExactRef = useRef(followExact);
+
+  followExactRef.current = followExact;
 
   useEffect(() => {
     const delta = target - prevTargetRef.current;
@@ -41,16 +53,32 @@ export function useSpringFillUnits(
       lastTime = now;
 
       const prev = springRef.current.value;
-      let next = springRef.current.step(targetRef.current, deltaSeconds, stiffness, damping);
-      // Snap when nearly settled so empty/full targets don't leave a residual puddle.
-      if (
-        Math.abs(next - targetRef.current) < 0.35 &&
-        Math.abs(springRef.current.velocity) < 2.5
-      ) {
+      let next: number;
+      let signedRate: number;
+
+      if (followExactRef.current) {
+        // Dose / remote transfer owns the level — don't spring past the target.
         springRef.current.snap(targetRef.current);
         next = targetRef.current;
+        signedRate = (next - prev) / Math.max(deltaSeconds, 0.001);
+      } else {
+        next = springRef.current.step(
+          targetRef.current,
+          deltaSeconds,
+          stiffness,
+          damping,
+        );
+        // Snap when nearly settled so empty/full targets don't leave a residual puddle.
+        if (
+          Math.abs(next - targetRef.current) < 0.35 &&
+          Math.abs(springRef.current.velocity) < 2.5
+        ) {
+          springRef.current.snap(targetRef.current);
+          next = targetRef.current;
+        }
+        signedRate = (next - prev) / Math.max(deltaSeconds, 0.001);
       }
-      const signedRate = (next - prev) / Math.max(deltaSeconds, 0.001);
+
       const velocity = Math.abs(signedRate);
 
       setDisplayValue(next);
