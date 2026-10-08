@@ -153,8 +153,11 @@ function Bioreactor({ user }: BioreactorProps) {
   const remoteEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastStreamPersistAtRef = useRef(0);
   const lastStreamPercentRef = useRef<number | null>(null);
+  /** Ignore realtime/poll water_level while this tab drives a local dose (avoids echo fights). */
+  const suppressRemoteWaterUntilRef = useRef(0);
   const inletAnimatingRef = useRef(false);
   const drainAnimatingRef = useRef(false);
+  const levelBusyRef = useRef(false);
   const aeratorLowWarnedRef = useRef(false);
   const rotorLowWarnedRef = useRef(false);
   const sensorLowWarnedRef = useRef(false);
@@ -248,6 +251,13 @@ function Bioreactor({ user }: BioreactorProps) {
     }
   }, []);
 
+  const suppressRemoteWater = useCallback((ms: number) => {
+    suppressRemoteWaterUntilRef.current = Math.max(
+      suppressRemoteWaterUntilRef.current,
+      Date.now() + ms,
+    );
+  }, []);
+
   const persistWaterLevel = useCallback(
     (fillUnits: number, { sensor = true }: { sensor?: boolean } = {}) => {
       if (!device || !canOperateDevice(device.role)) return;
@@ -255,6 +265,8 @@ function Bioreactor({ user }: BioreactorProps) {
         parseBioreactorConfig(device.config).volume_m3,
       );
       const percent = fillUnitsToStoredPercent(fillUnits, capacityL);
+      // Echoes of our own writes must not start a second fill/drain on this tab.
+      suppressRemoteWater(2500);
       insertSliderState(device.id, WATER_LEVEL_KEY, percent, user.id).catch(
         console.error,
       );
@@ -264,7 +276,7 @@ function Bioreactor({ user }: BioreactorProps) {
         );
       }
     },
-    [device, user.id],
+    [device, suppressRemoteWater, user.id],
   );
 
   const finishFillJob = useCallback(() => {
@@ -282,8 +294,14 @@ function Bioreactor({ user }: BioreactorProps) {
     setIsFillHeld(false);
     setFillTargetUnits(null);
     notifyTransferComplete("fill");
+    suppressRemoteWater(2500);
     persistWaterLevel(fillUnitsRef.current);
-  }, [clearRemoteEndTimer, notifyTransferComplete, persistWaterLevel]);
+  }, [
+    clearRemoteEndTimer,
+    notifyTransferComplete,
+    persistWaterLevel,
+    suppressRemoteWater,
+  ]);
 
   const finishDrainJob = useCallback(() => {
     if (remoteLevelAnimRef.current) {
@@ -299,8 +317,14 @@ function Bioreactor({ user }: BioreactorProps) {
     setIsDrainHeld(false);
     setDrainTargetUnits(null);
     notifyTransferComplete("drain");
+    suppressRemoteWater(2500);
     persistWaterLevel(fillUnitsRef.current);
-  }, [clearRemoteEndTimer, notifyTransferComplete, persistWaterLevel]);
+  }, [
+    clearRemoteEndTimer,
+    notifyTransferComplete,
+    persistWaterLevel,
+    suppressRemoteWater,
+  ]);
 
   const inletFill = useInletFillAnimation(
     fillUnits,
@@ -324,6 +348,12 @@ function Bioreactor({ user }: BioreactorProps) {
   );
   inletAnimatingRef.current = inletFill.isAnimating;
   drainAnimatingRef.current = drainAnim.isAnimating;
+  const levelBusy =
+    isFillHeld ||
+    isDrainHeld ||
+    inletFill.isAnimating ||
+    drainAnim.isAnimating;
+  levelBusyRef.current = levelBusy;
 
   // Load actuator states before mounting animations so already-on pumps /
   // set levels start in their steady state instead of replaying fill.
@@ -387,6 +417,9 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const applyWaterPercent = (percent: number) => {
       if (cancelled) return;
+      // Local dose (and its write echoes) own the level on this tab.
+      if (Date.now() < suppressRemoteWaterUntilRef.current) return;
+
       const next = storedPercentToFillUnits(percent, capacityL);
       const current = fillUnitsRef.current;
 
@@ -405,7 +438,7 @@ function Bioreactor({ user }: BioreactorProps) {
         if (isFillHeldRef.current || isDrainHeldRef.current) return;
       }
 
-      // Don't interrupt a transfer this tab started.
+      // Don't interrupt a transfer this tab started (or pipe retreat still running).
       if (
         isFillHeldRef.current ||
         isDrainHeldRef.current ||
@@ -414,6 +447,7 @@ function Bioreactor({ user }: BioreactorProps) {
       ) {
         return;
       }
+
       if (Math.abs(next - current) < minDeltaUnits) return;
 
       remoteLevelAnimRef.current = true;
@@ -433,6 +467,15 @@ function Bioreactor({ user }: BioreactorProps) {
     };
 
     const pull = () => {
+      if (Date.now() < suppressRemoteWaterUntilRef.current) return;
+      if (
+        isFillHeldRef.current ||
+        isDrainHeldRef.current ||
+        inletAnimatingRef.current ||
+        drainAnimatingRef.current
+      ) {
+        return;
+      }
       getLatestSliderState(device.id, WATER_LEVEL_KEY)
         .then((state) => {
           applyWaterPercent(Number(state));
@@ -529,6 +572,8 @@ function Bioreactor({ user }: BioreactorProps) {
     clearRemoteEndTimer();
     lastStreamPersistAtRef.current = 0;
     lastStreamPercentRef.current = null;
+    // Block echo/poll from reversing this dose for its whole duration.
+    suppressRemoteWater(300_000);
     transferJobRef.current = {
       kind: "fill",
       startUnits,
@@ -570,6 +615,7 @@ function Bioreactor({ user }: BioreactorProps) {
     clearRemoteEndTimer();
     lastStreamPersistAtRef.current = 0;
     lastStreamPercentRef.current = null;
+    suppressRemoteWater(300_000);
     transferJobRef.current = {
       kind: "drain",
       startUnits,
@@ -593,6 +639,11 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.aeratorMinFillPercent;
+    // Track edges during a dose, but don't toast/zero until it settles.
+    if (levelBusy) {
+      aeratorWasLowRef.current = tooLow;
+      return;
+    }
     const wasLow = aeratorWasLowRef.current;
 
     if (wasLow === null) {
@@ -634,6 +685,7 @@ function Bioreactor({ user }: BioreactorProps) {
     device,
     fillUnits,
     flowGeom.aeratorMinFillPercent,
+    levelBusy,
     pumpsHydrated,
     push,
     t,
@@ -651,6 +703,10 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.rotorMinFillPercent;
+    if (levelBusy) {
+      rotorWasLowRef.current = tooLow;
+      return;
+    }
     const wasLow = rotorWasLowRef.current;
 
     if (wasLow === null) {
@@ -690,6 +746,7 @@ function Bioreactor({ user }: BioreactorProps) {
     device,
     fillUnits,
     flowGeom.rotorMinFillPercent,
+    levelBusy,
     pumpsHydrated,
     push,
     rotorVal,
@@ -708,6 +765,10 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const levelPercent = fillUnitsToPercent(fillUnits);
     const tooLow = levelPercent <= flowGeom.sensorMinFillPercent;
+    if (levelBusy) {
+      sensorWasLowRef.current = tooLow;
+      return;
+    }
 
     if (sensorWasLowRef.current === null) {
       sensorWasLowRef.current = tooLow;
@@ -743,6 +804,7 @@ function Bioreactor({ user }: BioreactorProps) {
     device,
     fillUnits,
     flowGeom.sensorMinFillPercent,
+    levelBusy,
     pumpsHydrated,
     push,
     t,
@@ -791,11 +853,6 @@ function Bioreactor({ user }: BioreactorProps) {
   const showMotion = eq.stirrer || eq.aerator;
   const atFull = fillUnits >= VESSEL_MAX_FILL_UNITS;
   const atEmpty = fillUnits <= 0;
-  const levelBusy =
-    isFillHeld ||
-    isDrainHeld ||
-    inletFill.isAnimating ||
-    drainAnim.isAnimating;
   const capacityL = tankCapacityLiters(config.volume_m3);
   const transferLiters = parseTransferLiters(capacityL);
   const fillDisabled = readOnly || levelBusy || atFull || transferLiters == null;

@@ -182,17 +182,6 @@ aside > * {
   line-height: 1;
   color: var(--bv-accent-hover);
   font-variant-numeric: tabular-nums;
-  --bv-num-duration: 420ms;
-}
-
-.br-level__pct.bv-num,
-.br-level__pct .bv-num__visual,
-.br-level__pct .bv-num__digit {
-  overflow: hidden;
-}
-
-.br-level__pct .bv-num__digit {
-  height: 1em;
 }
 
 .br-level__meter {
@@ -234,18 +223,6 @@ aside > * {
 .br-level__volume-current {
   font-weight: 650;
   color: var(--bv-text-secondary);
-  --bv-num-duration: 420ms;
-}
-
-.br-level__volume-current.bv-num,
-.br-level__volume-current .bv-num__visual,
-.br-level__volume-current .bv-num__digit {
-  overflow: hidden;
-}
-
-.br-level__volume-current .bv-num__digit {
-  /* Must match .bv-num__glyph (1em) or the next reel digit peeks under as dashes. */
-  height: 1em;
 }
 
 .br-level__volume-rest {

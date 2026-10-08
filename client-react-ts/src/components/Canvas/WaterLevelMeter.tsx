@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import AnimatedNumber from "../AnimatedNumber";
 import {
   fillUnitsToLiters,
   VESSEL_MAX_FILL_UNITS,
@@ -29,9 +28,20 @@ function levelPercentContinuous(fillUnits: number): number {
   return Math.min(100, Math.max(0, (fillUnits / VESSEL_MAX_FILL_UNITS) * 100));
 }
 
+function formatLitersLabel(liters: number, locale: string): string {
+  return liters.toLocaleString(locale, {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
+}
+
+function formatPercentLabel(percent: number): string {
+  return `${percent.toFixed(1)}%`;
+}
+
 /**
- * Water-level controls: bar width is DOM-driven every frame; % and liters use
- * AnimatedNumber like the rotor/aerator readouts.
+ * Water-level controls: bar width is DOM-driven every frame.
+ * Percent / liters use plain text — the odometer ghosted badly on large doses.
  */
 export function WaterLevelMeter({
   fillUnits,
@@ -48,26 +58,46 @@ export function WaterLevelMeter({
   drainActive = false,
   readOnly = false,
 }: WaterLevelMeterProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const meterRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  const pctRef = useRef<HTMLSpanElement>(null);
+  const litersRef = useRef<HTMLSpanElement>(null);
   const getLiveRef = useRef(getLiveFillUnits);
   const fillUnitsPropRef = useRef(fillUnits);
+  const capacityRef = useRef(capacityLiters);
+  const localeRef = useRef(i18n.language || "en");
   const [displayUnits, setDisplayUnits] = useState(fillUnits);
 
   getLiveRef.current = getLiveFillUnits;
   fillUnitsPropRef.current = fillUnits;
+  capacityRef.current = capacityLiters;
+  localeRef.current = i18n.language || "en";
 
-  const paintBar = (units: number) => {
-    const pct = levelPercentContinuous(units);
-    if (barRef.current) barRef.current.style.width = `${pct}%`;
+  const paint = (units: number) => {
+    const capacity = capacityRef.current;
+    const liters = fillUnitsToLiters(units, capacity);
+    const pct =
+      capacity > 0
+        ? Math.round((liters / capacity) * 1000) / 10
+        : levelPercentContinuous(units);
+    const barPct = levelPercentContinuous(units);
+
+    if (barRef.current) barRef.current.style.width = `${barPct}%`;
     if (meterRef.current) {
       meterRef.current.setAttribute("aria-valuenow", String(Math.round(pct)));
+    }
+    if (pctRef.current) pctRef.current.textContent = formatPercentLabel(pct);
+    if (litersRef.current) {
+      litersRef.current.textContent = formatLitersLabel(
+        liters,
+        localeRef.current,
+      );
     }
   };
 
   useLayoutEffect(() => {
-    paintBar(fillUnits);
+    paint(fillUnits);
   }, []);
 
   useEffect(() => {
@@ -76,8 +106,7 @@ export function WaterLevelMeter({
 
     const tick = () => {
       const units = getLiveRef.current?.() ?? fillUnitsPropRef.current;
-      paintBar(units);
-      // Publish to React often enough for the odometer, not every frame.
+      paint(units);
       if (
         Number.isNaN(lastPublished) ||
         Math.abs(units - lastPublished) >= 0.15
@@ -94,28 +123,30 @@ export function WaterLevelMeter({
 
   useEffect(() => {
     if (busy) return;
-    paintBar(fillUnits);
+    paint(fillUnits);
     setDisplayUnits(fillUnits);
-  }, [fillUnits, busy]);
+  }, [fillUnits, busy, capacityLiters, i18n.language]);
 
-  // Whole liters from fill units — matches persisted water_level (1 L resolution).
   const currentLiters = fillUnitsToLiters(displayUnits, capacityLiters);
   const pctRounded =
     capacityLiters > 0
       ? Math.round((currentLiters / capacityLiters) * 1000) / 10
       : 0;
-  const capacityLabel = Math.round(capacityLiters).toLocaleString();
+  const capacityLabel = Math.round(capacityLiters).toLocaleString(
+    i18n.language || "en",
+  );
 
   return (
     <div className="br-level">
       <div className="br-level__head">
         <h4 className="br-level__title">{t("process.waterLevel")}</h4>
-        <AnimatedNumber
+        <span
+          ref={pctRef}
           className="br-level__pct"
-          value={pctRounded}
-          decimals={1}
-          suffix="%"
-        />
+          aria-label={formatPercentLabel(pctRounded)}
+        >
+          {formatPercentLabel(pctRounded)}
+        </span>
       </div>
       <div
         ref={meterRef}
@@ -129,11 +160,9 @@ export function WaterLevelMeter({
         <div ref={barRef} className="br-level__meter-fill" />
       </div>
       <p className="br-level__volume" aria-live="polite">
-        <AnimatedNumber
-          className="br-level__volume-current"
-          value={currentLiters}
-          decimals={0}
-        />
+        <span ref={litersRef} className="br-level__volume-current">
+          {formatLitersLabel(currentLiters, i18n.language || "en")}
+        </span>
         <span className="br-level__volume-rest">
           {` ${t("process.literUnit")} / ${capacityLabel} ${t("process.literUnit")}`}
         </span>
