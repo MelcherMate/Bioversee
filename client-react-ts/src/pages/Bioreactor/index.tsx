@@ -269,6 +269,8 @@ function Bioreactor({ user }: BioreactorProps) {
     },
     [i18n.language, push, t],
   );
+  const notifyTransferCompleteFromSnapRef = useRef(notifyTransferCompleteFromSnap);
+  notifyTransferCompleteFromSnapRef.current = notifyTransferCompleteFromSnap;
 
   const notifyTransferComplete = useCallback(
     (kind: "fill" | "drain") => {
@@ -449,7 +451,7 @@ function Bioreactor({ user }: BioreactorProps) {
           targetUnits: target,
           requestedLiters: meta?.requestedLiters ?? 0,
           currentUnits: fillUnitsRef.current,
-          onComplete: notifyTransferCompleteFromSnap,
+          onComplete: (snap) => notifyTransferCompleteFromSnapRef.current(snap),
         });
       }
 
@@ -526,15 +528,11 @@ function Bioreactor({ user }: BioreactorProps) {
     return () => {
       cancelled = true;
     };
-    // Intentionally keyed on device id — config refreshes must not abort transfers.
+    // Only re-hydrate when the selected vessel changes. Unstable callback
+    // identities used to retrigger this every render and cancel the fetch,
+    // leaving the UI stuck on "Loading your bioreactor...".
     // eslint-disable-next-line react-hooks/exhaustive-deps -- device fields read for the active id only
-  }, [
-    clearRemoteEndTimer,
-    device?.id,
-    notifyTransferCompleteFromSnap,
-    suppressRemoteWater,
-    user.id,
-  ]);
+  }, [device?.id, user.id]);
 
   // Follow a background transfer when this vessel is on screen again.
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "./Toast.css";
 
@@ -65,28 +65,26 @@ function ToastCard({
 export function useToasts() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const dismiss = (id: string) => {
+  const dismiss = useCallback((id: string) => {
     setToasts((current) => current.filter((toast) => toast.id !== id));
-  };
+  }, []);
 
-  const push = (tone: ToastTone, title: string, detail?: string) => {
+  const push = useCallback((tone: ToastTone, title: string, detail?: string) => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     setToasts((current) => [...current, { id, tone, title, detail }]);
     return id;
-  };
+  }, []);
 
-  const replace = (
-    id: string,
-    tone: ToastTone,
-    title: string,
-    detail?: string
-  ) => {
-    setToasts((current) =>
-      current.map((toast) =>
-        toast.id === id ? { ...toast, tone, title, detail } : toast
-      )
-    );
-  };
+  const replace = useCallback(
+    (id: string, tone: ToastTone, title: string, detail?: string) => {
+      setToasts((current) =>
+        current.map((toast) =>
+          toast.id === id ? { ...toast, tone, title, detail } : toast
+        )
+      );
+    },
+    []
+  );
 
   return { toasts, push, replace, dismiss };
 }
