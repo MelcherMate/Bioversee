@@ -27,6 +27,13 @@ import {
 import { subscribeDeviceActuators } from "../../lib/actuatorsSync";
 import { canOperateDevice } from "../../lib/devices";
 import {
+  getLevelTransfer,
+  hasLevelTransfer,
+  startLevelTransfer,
+  subscribeLevelTransfer,
+  type LevelTransferSnapshot,
+} from "../../lib/levelTransferJobs";
+import {
   defaultBioreactorGeometry,
   fluidMotionFactors,
   litersFromM3,
@@ -140,10 +147,20 @@ function Bioreactor({ user }: BioreactorProps) {
   isDrainHeldRef.current = isDrainHeld;
   const [fillTargetUnits, setFillTargetUnits] = useState<number | null>(null);
   const [drainTargetUnits, setDrainTargetUnits] = useState<number | null>(null);
+  const fillTargetUnitsRef = useRef<number | null>(null);
+  const drainTargetUnitsRef = useRef<number | null>(null);
+  fillTargetUnitsRef.current = fillTargetUnits;
+  drainTargetUnitsRef.current = drainTargetUnits;
   const [transferAmountText, setTransferAmountText] = useState("");
   const [pumpsHydrated, setPumpsHydrated] = useState(false);
   const fillUnitsRef = useRef(fillUnits);
+  /**
+   * When false, ignore animation ticks / water writes briefly while the UI
+   * detaches from one vessel and attaches to another.
+   */
+  const acceptsLevelTicksRef = useRef(true);
   const setFillUnits = useCallback((value: number) => {
+    if (!acceptsLevelTicksRef.current) return;
     fillUnitsRef.current = value;
     setFillUnitsState(value);
   }, []);
@@ -155,6 +172,12 @@ function Bioreactor({ user }: BioreactorProps) {
   const lastStreamPercentRef = useRef<number | null>(null);
   /** Ignore realtime/poll water_level while this tab drives a local dose (avoids echo fights). */
   const suppressRemoteWaterUntilRef = useRef(0);
+  /** Previous vessel — hand off in-flight transfers when switching devices. */
+  const activeVesselRef = useRef<{
+    id: string;
+    role: string;
+    volume_m3: number | null;
+  } | null>(null);
   const inletAnimatingRef = useRef(false);
   const drainAnimatingRef = useRef(false);
   const levelBusyRef = useRef(false);
@@ -191,29 +214,24 @@ function Bioreactor({ user }: BioreactorProps) {
     };
   }, [vesselShape]);
 
-  const notifyTransferComplete = useCallback(
-    (kind: "fill" | "drain") => {
-      const job = transferJobRef.current;
-      transferJobRef.current = null;
-      if (!job || job.kind !== kind) return;
-
-      const endUnits = fillUnitsRef.current;
+  const notifyTransferCompleteFromSnap = useCallback(
+    (snap: LevelTransferSnapshot) => {
+      const endUnits = snap.currentUnits;
       const deltaUnits =
-        kind === "fill"
-          ? Math.max(0, endUnits - job.startUnits)
-          : Math.max(0, job.startUnits - endUnits);
-      const actualL = litersFromFillUnits(deltaUnits, job.capacityL);
+        snap.kind === "fill"
+          ? Math.max(0, endUnits - snap.startUnits)
+          : Math.max(0, snap.startUnits - endUnits);
+      const actualL = litersFromFillUnits(deltaUnits, snap.capacityL);
       const locale = i18n.language || "en";
       const actualLabel = formatLiters(actualL, locale);
-      const requestedLabel = formatLiters(job.requestedLiters, locale);
+      const requestedLabel = formatLiters(snap.requestedLiters, locale);
       const clipped =
-        job.requestedLiters - actualL > 0.05 ||
-        (kind === "fill" && endUnits >= VESSEL_MAX_FILL_UNITS - 0.05) ||
-        (kind === "drain" && endUnits <= 0.05);
+        snap.requestedLiters - actualL > 0.05 ||
+        (snap.kind === "fill" && endUnits >= VESSEL_MAX_FILL_UNITS - 0.05) ||
+        (snap.kind === "drain" && endUnits <= 0.05);
 
-      // Only warn when the request could not be fully fulfilled.
-      if (clipped && job.requestedLiters - actualL > 0.05) {
-        if (kind === "fill") {
+      if (clipped && snap.requestedLiters - actualL > 0.05) {
+        if (snap.kind === "fill") {
           push(
             "warning",
             t("process.fillLimitedTitle"),
@@ -235,7 +253,7 @@ function Bioreactor({ user }: BioreactorProps) {
         return;
       }
 
-      if (kind === "fill") {
+      if (snap.kind === "fill") {
         push(
           "success",
           t("process.fillCompleteTitle"),
@@ -250,6 +268,25 @@ function Bioreactor({ user }: BioreactorProps) {
       }
     },
     [i18n.language, push, t],
+  );
+
+  const notifyTransferComplete = useCallback(
+    (kind: "fill" | "drain") => {
+      const job = transferJobRef.current;
+      transferJobRef.current = null;
+      if (!job || job.kind !== kind) return;
+      notifyTransferCompleteFromSnap({
+        deviceId: "",
+        kind: job.kind,
+        capacityL: job.capacityL,
+        startUnits: job.startUnits,
+        targetUnits: fillUnitsRef.current,
+        requestedLiters: job.requestedLiters,
+        currentUnits: fillUnitsRef.current,
+        done: true,
+      });
+    },
+    [notifyTransferCompleteFromSnap],
   );
 
   const clearRemoteEndTimer = useCallback(() => {
@@ -268,6 +305,7 @@ function Bioreactor({ user }: BioreactorProps) {
 
   const persistWaterLevel = useCallback(
     (fillUnits: number, { sensor = true }: { sensor?: boolean } = {}) => {
+      if (!acceptsLevelTicksRef.current) return;
       if (!device || !canOperateDevice(device.role)) return;
       const capacityL = tankCapacityLiters(
         parseBioreactorConfig(device.config).volume_m3,
@@ -367,12 +405,89 @@ function Bioreactor({ user }: BioreactorProps) {
   // set levels start in their steady state instead of replaying fill.
   useEffect(() => {
     if (!device) {
+      activeVesselRef.current = null;
       setPumpsHydrated(false);
       return;
     }
 
+    const prev = activeVesselRef.current;
+    const switched = Boolean(prev && prev.id !== device.id);
+
+    // Leave an in-flight dose running on the previous vessel — the command was
+    // already issued. Detach this view, hand the remainder to a background job.
+    if (switched && prev) {
+      const meta = transferJobRef.current;
+      const filling =
+        isFillHeldRef.current && fillTargetUnitsRef.current != null;
+      const draining =
+        isDrainHeldRef.current && drainTargetUnitsRef.current != null;
+      const kind = filling ? "fill" : draining ? "drain" : null;
+      const target = filling
+        ? fillTargetUnitsRef.current
+        : draining
+          ? drainTargetUnitsRef.current
+          : null;
+
+      acceptsLevelTicksRef.current = false;
+      isFillHeldRef.current = false;
+      isDrainHeldRef.current = false;
+
+      if (
+        kind &&
+        target != null &&
+        canOperateDevice(prev.role) &&
+        !getLevelTransfer(prev.id)
+      ) {
+        const capacityL =
+          meta?.capacityL ?? tankCapacityLiters(prev.volume_m3);
+        startLevelTransfer({
+          deviceId: prev.id,
+          userId: user.id,
+          kind,
+          capacityL,
+          startUnits: meta?.startUnits ?? fillUnitsRef.current,
+          targetUnits: target,
+          requestedLiters: meta?.requestedLiters ?? 0,
+          currentUnits: fillUnitsRef.current,
+          onComplete: notifyTransferCompleteFromSnap,
+        });
+      }
+
+      clearRemoteEndTimer();
+      remoteLevelAnimRef.current = false;
+      transferJobRef.current = null;
+      setIsFillHeld(false);
+      setIsDrainHeld(false);
+      setFillTargetUnits(null);
+      setDrainTargetUnits(null);
+      suppressRemoteWaterUntilRef.current = 0;
+      lastStreamPersistAtRef.current = 0;
+      lastStreamPercentRef.current = null;
+    }
+
+    activeVesselRef.current = {
+      id: device.id,
+      role: device.role,
+      volume_m3: parseBioreactorConfig(device.config).volume_m3,
+    };
+
     let cancelled = false;
     setPumpsHydrated(false);
+
+    const attachBackgroundJob = () => {
+      const job = getLevelTransfer(device.id);
+      if (!job) return false;
+      // Job owns the tank level + DB writes. Keep local fill/drain held off so
+      // inlet/drain animations don't double-advance the same dose.
+      setFillUnits(job.currentUnits);
+      setIsFillHeld(false);
+      setIsDrainHeld(false);
+      setFillTargetUnits(null);
+      setDrainTargetUnits(null);
+      transferJobRef.current = null;
+      suppressRemoteWater(300_000);
+      return true;
+    };
 
     Promise.all([
       getLatestSwitchState(device.id, "switchWarmWaterPump"),
@@ -389,23 +504,55 @@ function Bioreactor({ user }: BioreactorProps) {
         setColdWVal(Boolean(cold));
         setAcidVal(Boolean(acid));
         setBaseVal(Boolean(base));
-        const percent = Math.min(100, Math.max(0, Number(waterLevel)));
-        const capacityL = tankCapacityLiters(
-          parseBioreactorConfig(device.config).volume_m3,
-        );
-        setFillUnits(storedPercentToFillUnits(percent, capacityL));
+        acceptsLevelTicksRef.current = true;
+        if (!attachBackgroundJob()) {
+          const percent = Math.min(100, Math.max(0, Number(waterLevel)));
+          const capacityL = tankCapacityLiters(
+            parseBioreactorConfig(device.config).volume_m3,
+          );
+          setFillUnits(storedPercentToFillUnits(percent, capacityL));
+        }
         setAeratorVal(Number(aerator));
         setRotorVal(Number(rotor));
       })
       .catch((error) => console.log(error))
       .finally(() => {
-        if (!cancelled) setPumpsHydrated(true);
+        if (!cancelled) {
+          acceptsLevelTicksRef.current = true;
+          setPumpsHydrated(true);
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [device?.id]);
+    // Intentionally keyed on device id — config refreshes must not abort transfers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- device fields read for the active id only
+  }, [
+    clearRemoteEndTimer,
+    device?.id,
+    notifyTransferCompleteFromSnap,
+    suppressRemoteWater,
+    user.id,
+  ]);
+
+  // Follow a background transfer when this vessel is on screen again.
+  useEffect(() => {
+    if (!device || !pumpsHydrated) return;
+    if (!getLevelTransfer(device.id)) return;
+
+    return subscribeLevelTransfer(device.id, (snap) => {
+      if (!acceptsLevelTicksRef.current) return;
+      setFillUnits(snap.currentUnits);
+      if (!snap.done) return;
+      setIsFillHeld(false);
+      setIsDrainHeld(false);
+      setFillTargetUnits(null);
+      setDrainTargetUnits(null);
+      transferJobRef.current = null;
+      suppressRemoteWater(2500);
+    });
+  }, [device?.id, pumpsHydrated, setFillUnits, suppressRemoteWater]);
 
   // Keep vessel fill in sync with mobile / other tabs so level guards agree.
   // Remote level changes play the same inlet fill / drain animation as a local dose.
@@ -425,6 +572,8 @@ function Bioreactor({ user }: BioreactorProps) {
 
     const applyWaterPercent = (percent: number) => {
       if (cancelled) return;
+      // Background job (possibly started on this vessel earlier) owns DB writes.
+      if (hasLevelTransfer(device.id)) return;
       // Local dose (and its write echoes) own the level on this tab.
       if (Date.now() < suppressRemoteWaterUntilRef.current) return;
 
@@ -511,7 +660,10 @@ function Bioreactor({ user }: BioreactorProps) {
   // Publish live water_level while this tab runs a local fill/drain so the phone
   // can animate in parallel (sensor history still written once at the end).
   useEffect(() => {
+    if (!acceptsLevelTicksRef.current) return;
     if (!device || !canOperateDevice(device.role)) return;
+    // Background job already streams for this vessel.
+    if (hasLevelTransfer(device.id)) return;
     if (remoteLevelAnimRef.current) return;
     if (!isFillHeld && !isDrainHeld) return;
 
@@ -552,6 +704,7 @@ function Bioreactor({ user }: BioreactorProps) {
 
   const startFill = () => {
     if (!device || !canOperateDevice(device.role)) return;
+    if (hasLevelTransfer(device.id)) return;
     if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
       return;
     }
@@ -596,6 +749,7 @@ function Bioreactor({ user }: BioreactorProps) {
 
   const startDrain = () => {
     if (!device || !canOperateDevice(device.role)) return;
+    if (hasLevelTransfer(device.id)) return;
     if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
       return;
     }
