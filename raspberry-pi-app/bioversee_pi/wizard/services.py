@@ -700,14 +700,18 @@ def create_agent_service(
         raise RuntimeError(detail or "systemctl daemon-reload failed")
 
     cfg = load_local_config()
+    existing = next((s for s in cfg.agent_services if s.unit == unit), None)
+    preserved_wiring = list(existing.wiring) if existing else []
     if make_active:
-        # Keep previous service wiring, then switch to a fresh map for the new unit.
+        # Keep previous service wiring, then load this unit's map (empty if new).
         _sync_wiring_to_active_service(cfg)
         cfg.active_agent_unit = unit
-        cfg.wiring = []
+        cfg.wiring = list(preserved_wiring)
         cfg.agent_service_ready = False
     cfg.agent_services = [s for s in cfg.agent_services if s.unit != unit]
-    cfg.agent_services.append(AgentServiceEntry(unit=unit, name=display, wiring=[]))
+    cfg.agent_services.append(
+        AgentServiceEntry(unit=unit, name=display, wiring=list(preserved_wiring))
+    )
     save_local_config(cfg)
     return {
         "ok": True,
