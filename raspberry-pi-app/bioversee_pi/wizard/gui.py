@@ -162,6 +162,13 @@ class WizardApp:
         self._profile_menu: Any | None = None
         self._settings_win: Any | None = None
         self._version_display = display_version()
+        # Which steps the user may open (no skipping ahead).
+        self._progress = {
+            "signed_in": False,
+            "has_device": False,
+            "service_ready": False,
+            "setup_done": False,
+        }
 
         self.callback = CallbackServer(
             host="127.0.0.1",
@@ -270,8 +277,10 @@ class WizardApp:
                 padx=10,
                 pady=4,
                 font=ctk.CTkFont(size=12, weight="bold"),
+                cursor="arrow",
             )
             pill.pack(anchor="center")
+            pill.bind("<Button-1>", lambda _e, n=name: self._goto_step(n))
             hint = ctk.CTkLabel(
                 col,
                 text="",
@@ -411,6 +420,58 @@ class WizardApp:
         else:
             self.avatar_btn.configure(text="⚙", image=None)
 
+    def _update_progress(
+        self,
+        *,
+        signed_in: bool | None = None,
+        has_device: bool | None = None,
+        service_ready: bool | None = None,
+        setup_done: bool | None = None,
+    ) -> None:
+        if signed_in is not None:
+            self._progress["signed_in"] = signed_in
+        if has_device is not None:
+            self._progress["has_device"] = has_device
+        if service_ready is not None:
+            self._progress["service_ready"] = service_ready
+        if setup_done is not None:
+            self._progress["setup_done"] = setup_done
+
+    def _step_reachable(self, name: str) -> bool:
+        """Allow back/forth among unlocked steps; never skip ahead."""
+        if name not in STEPS:
+            return False
+        p = self._progress
+        if name == "account":
+            return True
+        if name == "device":
+            return bool(p["signed_in"])
+        if name == "service":
+            return bool(p["has_device"])
+        if name == "wiring":
+            return bool(p["service_ready"])
+        if name == "done":
+            return bool(p["setup_done"])
+        return False
+
+    def _goto_step(self, name: str) -> None:
+        if name == self.step:
+            return
+        if not self._step_reachable(name):
+            return
+        self._clear_banner()
+        if name == "account":
+            self._show("account")
+        elif name == "device":
+            self._show("device")
+            self._load_devices()
+        elif name == "service":
+            self._enter_service_step()
+        elif name == "wiring":
+            self._enter_wiring(simulate=_probe_simulate())
+        elif name == "done":
+            self._show("done")
+
     def _show(self, name: str) -> None:
         self.step = name
         for frame in self.frames.values():
@@ -419,13 +480,18 @@ class WizardApp:
         step_index = STEPS.index(name) if name in STEPS else -1
         for key, pill in self.step_pills.items():
             key_index = STEPS.index(key)
+            reachable = self._step_reachable(key)
             if key == name:
-                pill.configure(fg_color=_ACCENT, text_color="#FFFFFF")
-            elif key_index < step_index:
-                # Completed steps
-                pill.configure(fg_color="#CCFBF1", text_color=_ACCENT_HOVER)
+                pill.configure(fg_color=_ACCENT, text_color="#FFFFFF", cursor="hand2")
+            elif reachable and key_index < step_index:
+                # Visited / unlocked earlier steps
+                pill.configure(fg_color="#CCFBF1", text_color=_ACCENT_HOVER, cursor="hand2")
+            elif reachable:
+                # Unlocked but not yet current (e.g. Done after finishing, then went back)
+                pill.configure(fg_color="#E0F2F1", text_color=_ACCENT, cursor="hand2")
             else:
-                pill.configure(fg_color=_LINE, text_color=_MUTED)
+                # Locked — cannot skip ahead
+                pill.configure(fg_color=_LINE, text_color="#9CA3AF", cursor="arrow")
             hint = self.step_hints.get(key)
             if hint is not None:
                 hint.configure(
@@ -576,6 +642,12 @@ class WizardApp:
         services.logout()
         self.user_email = None
         self._update_avatar()
+        self._update_progress(
+            signed_in=False,
+            has_device=False,
+            service_ready=False,
+            setup_done=False,
+        )
         self._set_banner(self._tr("signed_out"))
         self._show("account")
 
@@ -1465,6 +1537,15 @@ class WizardApp:
             self.lang = normalize_language(str(st["language"]))
         self.user_email = st.get("email")
         self._update_avatar()
+        local = st.get("local") or {}
+        self._update_progress(
+            signed_in=bool(st.get("signed_in")),
+            has_device=bool(local.get("device_id") and local.get("has_api_key")),
+            service_ready=bool(
+                local.get("agent_service_ready") and local.get("has_agent_service")
+            ),
+            setup_done=bool(local.get("agent_enabled")),
+        )
         if not st.get("has_project"):
             if st.get("supabase_url"):
                 self.project_url.insert(0, st["supabase_url"])
@@ -1473,7 +1554,6 @@ class WizardApp:
         if not st.get("signed_in"):
             self._show("account")
             return
-        local = st.get("local") or {}
         if not local.get("device_id") or not local.get("has_api_key"):
             self._show("device")
             self._load_devices()
@@ -1481,6 +1561,9 @@ class WizardApp:
         if not local.get("agent_service_ready") or not local.get("has_agent_service"):
             self._enter_service_step()
             return
+        if local.get("agent_enabled"):
+            # Returning after a finished setup — unlock Done and land on wiring.
+            self._update_progress(setup_done=True)
         self._enter_wiring(simulate=bool(st.get("simulate_gpio")))
 
     def _save_project(self) -> None:
@@ -1526,6 +1609,7 @@ class WizardApp:
             self.auth_wait.configure(text="")
             self.user_email = st.get("email")
             self._update_avatar()
+            self._update_progress(signed_in=True)
             self._show("device")
             self._load_devices()
 
@@ -1545,6 +1629,7 @@ class WizardApp:
         def ok(_r: Any) -> None:
             self.user_email = email
             self._update_avatar()
+            self._update_progress(signed_in=True)
             self._show("device")
             self._load_devices()
 
@@ -1568,6 +1653,7 @@ class WizardApp:
                 return
             self.user_email = email
             self._update_avatar()
+            self._update_progress(signed_in=True)
             self._show("device")
             self._load_devices()
 
@@ -1628,14 +1714,23 @@ class WizardApp:
         if not name:
             self._set_banner(self._tr("enter_device_name"))
             return
+        def after_device(_r: Any) -> None:
+            self._update_progress(has_device=True, service_ready=False, setup_done=False)
+            self._enter_service_step()
+
         _run_async(
             services.create_device(self.settings, name=name, device_type="bioreactor"),
-            on_ok=lambda _r: self.root.after(0, self._enter_service_step),
+            on_ok=lambda r: self.root.after(0, lambda: after_device(r)),
             on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
         )
 
     def _select_device(self, device: dict[str, Any]) -> None:
         self._clear_banner()
+
+        def after_device(_r: Any) -> None:
+            self._update_progress(has_device=True, service_ready=False, setup_done=False)
+            self._enter_service_step()
+
         _run_async(
             services.select_device(
                 self.settings,
@@ -1643,7 +1738,7 @@ class WizardApp:
                 device_name=device.get("name"),
                 device_type=device.get("type"),
             ),
-            on_ok=lambda _r: self.root.after(0, self._enter_service_step),
+            on_ok=lambda r: self.root.after(0, lambda: after_device(r)),
             on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
         )
 
@@ -1689,7 +1784,11 @@ class WizardApp:
             return services.confirm_service_setup(unit)
 
         def ok(_r: dict[str, Any]) -> None:
-            self.root.after(0, lambda: self._enter_wiring(simulate=_probe_simulate()))
+            def go() -> None:
+                self._update_progress(service_ready=True)
+                self._enter_wiring(simulate=_probe_simulate())
+
+            self.root.after(0, go)
 
         def err(exc: Exception) -> None:
             self.root.after(
@@ -2143,6 +2242,7 @@ class WizardApp:
             "cloud_error": data.get("cloud_error"),
         }
         self.done_detail.insert("1.0", str(detail))
+        self._update_progress(setup_done=True)
         self._show("done")
 
 
