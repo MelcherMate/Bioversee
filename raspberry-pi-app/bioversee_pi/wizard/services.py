@@ -265,9 +265,14 @@ async def gpio_state() -> dict[str, Any]:
     await probe_service.poll_once(claimed_bcm=claimed_bcm)
     snap = probe_service.snapshot()
     confirmed_physical = sorted({p for w in cfg.wiring for p in (w.physical or [])})
+    confirmed = []
+    for index, w in enumerate(cfg.wiring):
+        row = w.model_dump()
+        row["index"] = index
+        confirmed.append(row)
     return {
         **snap,
-        "confirmed": [w.model_dump() for w in cfg.wiring],
+        "confirmed": confirmed,
         "confirmed_physical": confirmed_physical,
     }
 
@@ -307,14 +312,53 @@ def gpio_manual(
     *,
     bcm: int | None = None,
     physical: list[int] | None = None,
+    pin_map: dict[str, int] | None = None,
 ) -> dict[str, Any]:
+    """Add a peripheral. Prefer pin_map: {lead_id: physical_pin} from the wiring popup."""
+    from bioversee_pi.gpio.header import PHYSICAL_TO_PIN
+
     p = CATALOG_BY_ID.get(peripheral_id)
     if not p:
         raise RuntimeError("Unknown peripheral")
-    resolved_bcm = bcm if bcm is not None else p.default_bcm
-    resolved_physical = physical or (
-        physical_pins_for_bcm(resolved_bcm) if resolved_bcm is not None else []
-    )
+
+    resolved_bcm = bcm
+    resolved_physical = list(physical or [])
+
+    if pin_map:
+        # Validate required leads and collect physical pins.
+        for lead in p.wires:
+            if not lead.required:
+                continue
+            if lead.id not in pin_map:
+                raise RuntimeError(f"Select a pin for {lead.label}")
+        resolved_physical = []
+        seen: set[int] = set()
+        for lead in p.wires:
+            pin = pin_map.get(lead.id)
+            if pin is None:
+                continue
+            pin = int(pin)
+            if pin in seen:
+                raise RuntimeError(f"Pin {pin} is assigned more than once")
+            seen.add(pin)
+            if pin not in PHYSICAL_TO_PIN:
+                raise RuntimeError(f"Unknown physical pin {pin}")
+            resolved_physical.append(pin)
+            # Signal / data / SDA determines the BCM used by the agent.
+            if lead.kind in ("data", "signal", "sda") and resolved_bcm is None:
+                header = PHYSICAL_TO_PIN[pin]
+                if header.bcm is not None:
+                    resolved_bcm = header.bcm
+        if not resolved_physical:
+            raise RuntimeError("Map at least one cable to a pin")
+    else:
+        if resolved_bcm is None:
+            resolved_bcm = p.default_bcm
+        if not resolved_physical:
+            resolved_physical = (
+                physical_pins_for_bcm(resolved_bcm) if resolved_bcm is not None else []
+            )
+
     entry = WiringEntry(
         bcm=resolved_bcm,
         physical=resolved_physical,
@@ -324,9 +368,27 @@ def gpio_manual(
         confirmed=True,
     )
     cfg = load_local_config()
+    cfg.wiring = [w for w in cfg.wiring if not _same_wire(w, entry)]
     cfg.wiring.append(entry)
     save_local_config(cfg)
     return {"ok": True, "wiring": entry.model_dump()}
+
+
+def gpio_remove_confirmed(index: int) -> dict[str, Any]:
+    cfg = load_local_config()
+    if index < 0 or index >= len(cfg.wiring):
+        raise RuntimeError("Unknown confirmed entry")
+    removed = cfg.wiring.pop(index)
+    save_local_config(cfg)
+    return {"ok": True, "removed": removed.model_dump(), "remaining": len(cfg.wiring)}
+
+
+def gpio_clear_confirmed() -> dict[str, Any]:
+    cfg = load_local_config()
+    count = len(cfg.wiring)
+    cfg.wiring = []
+    save_local_config(cfg)
+    return {"ok": True, "cleared": count}
 
 
 async def finish_setup(settings: AppSettings) -> dict[str, Any]:

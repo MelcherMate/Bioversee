@@ -89,16 +89,29 @@ def _resolve_logo_path() -> Path | None:
     return None
 
 
-def _initials_from_email(email: str | None) -> str:
-    if not email:
-        return "?"
-    local = email.split("@", 1)[0].strip()
-    if not local:
-        return "?"
-    parts = [p for p in local.replace(".", " ").replace("_", " ").split() if p]
-    if len(parts) >= 2:
-        return (parts[0][0] + parts[1][0]).upper()
-    return local[:2].upper()
+def _account_icon_image(ctk_module, *, size: int = 40):
+    """Simple account placeholder icon (person silhouette on teal)."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return None
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((0, 0, size - 1, size - 1), fill=_ACCENT)
+    # Head
+    head_r = size * 0.16
+    cx, cy = size / 2, size * 0.36
+    draw.ellipse(
+        (cx - head_r, cy - head_r, cx + head_r, cy + head_r),
+        fill="#FFFFFF",
+    )
+    # Shoulders
+    body_top = size * 0.52
+    draw.ellipse(
+        (size * 0.22, body_top, size * 0.78, size * 1.15),
+        fill="#FFFFFF",
+    )
+    return ctk_module.CTkImage(light_image=img, dark_image=img, size=(size, size))
 
 
 class WizardApp:
@@ -212,12 +225,32 @@ class WizardApp:
         right = ctk.CTkFrame(top, fg_color="transparent")
         right.pack(side="right")
 
-        self.step_row = ctk.CTkFrame(right, fg_color="transparent")
-        self.step_row.pack(side="left", padx=(0, 12))
+        steps_wrap = ctk.CTkFrame(right, fg_color="transparent")
+        steps_wrap.pack(side="left", padx=(0, 12))
+        self.step_row = ctk.CTkFrame(steps_wrap, fg_color="transparent")
+        self.step_row.pack(anchor="e")
+        self.step_hint = ctk.CTkLabel(
+            steps_wrap,
+            text="",
+            text_color=_MUTED,
+            font=ctk.CTkFont(size=11),
+            anchor="e",
+        )
+        self.step_hint.pack(anchor="e", pady=(4, 0))
         self.step_pills: dict[str, Any] = {}
-        for name in STEPS:
+        for i, name in enumerate(STEPS):
+            cell = ctk.CTkFrame(self.step_row, fg_color="transparent")
+            cell.pack(side="left")
+            if i > 0:
+                ctk.CTkLabel(
+                    cell,
+                    text="›",
+                    text_color=_LINE,
+                    font=ctk.CTkFont(size=14, weight="bold"),
+                    width=14,
+                ).pack(side="left", padx=(0, 2))
             pill = ctk.CTkLabel(
-                self.step_row,
+                cell,
                 text=self._tr(f"step_{name}"),
                 corner_radius=999,
                 fg_color=_LINE,
@@ -226,19 +259,21 @@ class WizardApp:
                 pady=4,
                 font=ctk.CTkFont(size=12, weight="bold"),
             )
-            pill.pack(side="left", padx=4)
+            pill.pack(side="left", padx=2)
             self.step_pills[name] = pill
 
+        self._account_icon = _account_icon_image(ctk)
         self.avatar_btn = ctk.CTkButton(
             right,
-            text="?",
+            text="" if self._account_icon else "👤",
+            image=self._account_icon,
             width=40,
             height=40,
             corner_radius=20,
-            fg_color=_ACCENT,
-            hover_color=_ACCENT_HOVER,
-            text_color="#FFFFFF",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            fg_color="transparent",
+            hover_color="#E8F5F3",
+            text_color=_ACCENT,
+            font=ctk.CTkFont(size=18),
             command=self._toggle_profile_menu,
         )
         self.avatar_btn.pack(side="left")
@@ -349,20 +384,31 @@ class WizardApp:
         self.banner.configure(text=message or "")
 
     def _update_avatar(self) -> None:
-        self.avatar_btn.configure(text=_initials_from_email(self.user_email))
+        # Keep a stable account placeholder icon (no initials).
+        if self._account_icon is not None:
+            self.avatar_btn.configure(text="", image=self._account_icon)
+        else:
+            self.avatar_btn.configure(text="👤", image=None)
 
     def _show(self, name: str) -> None:
         self.step = name
         for frame in self.frames.values():
             frame.pack_forget()
         self.frames[name].pack(fill="both", expand=True, padx=24, pady=22)
+        step_index = STEPS.index(name) if name in STEPS else -1
         for key, pill in self.step_pills.items():
+            key_index = STEPS.index(key)
             if key == name:
                 pill.configure(fg_color=_ACCENT, text_color="#FFFFFF")
-            elif STEPS.index(key) < (STEPS.index(name) if name in STEPS else -1):
+            elif key_index < step_index:
+                # Completed steps
                 pill.configure(fg_color="#CCFBF1", text_color=_ACCENT_HOVER)
             else:
                 pill.configure(fg_color=_LINE, text_color=_MUTED)
+        if name in STEPS:
+            self.step_hint.configure(text=self._tr(f"step_{name}_hint"))
+        else:
+            self.step_hint.configure(text="")
         # Footer stays packed; enable tools only on wiring
         wiring_state = "normal" if name == "wiring" else "disabled"
         try:
@@ -385,6 +431,8 @@ class WizardApp:
         )
         for name, pill in self.step_pills.items():
             pill.configure(text=self._tr(f"step_{name}"))
+        if self.step in STEPS:
+            self.step_hint.configure(text=self._tr(f"step_{self.step}_hint"))
         self.add_manual_btn.configure(text=self._tr("add_manually"))
         self.finish_btn.configure(text=self._tr("finish_setup"))
         # Rebuild step frames so static copy updates
@@ -1068,9 +1116,28 @@ class WizardApp:
         ).pack(anchor="w")
         self.guess_box = ctk.CTkScrollableFrame(right, fg_color="#F7FAF9", corner_radius=12, height=200)
         self.guess_box.pack(fill="both", expand=True, pady=(6, 10))
+        conf_head = ctk.CTkFrame(right, fg_color="transparent")
+        conf_head.pack(fill="x")
         ctk.CTkLabel(
-            right, text=self._tr("confirmed"), font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
-        ).pack(anchor="w")
+            conf_head,
+            text=self._tr("confirmed"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=_TEXT,
+        ).pack(side="left")
+        self.clear_confirmed_btn = ctk.CTkButton(
+            conf_head,
+            text=self._tr("clear_all"),
+            width=80,
+            height=26,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_DANGER,
+            hover_color="#FCEBEA",
+            font=ctk.CTkFont(size=11),
+            command=self._clear_confirmed,
+        )
+        self.clear_confirmed_btn.pack(side="right")
         self.confirmed_box = ctk.CTkScrollableFrame(right, fg_color="#F7FAF9", corner_radius=12, height=120)
         self.confirmed_box.pack(fill="both", expand=True, pady=(6, 10))
         return f
@@ -1478,9 +1545,17 @@ class WizardApp:
         for child in self.confirmed_box.winfo_children():
             child.destroy()
         confirmed = st.get("confirmed") or []
-        for w in confirmed:
+        if not confirmed:
             self.ctk.CTkLabel(
                 self.confirmed_box,
+                text=self._tr("confirmed_empty"),
+                text_color=_MUTED,
+            ).pack(anchor="w", padx=8, pady=8)
+        for w in confirmed:
+            row = self.ctk.CTkFrame(self.confirmed_box, fg_color=_CARD, corner_radius=8)
+            row.pack(fill="x", padx=6, pady=4)
+            self.ctk.CTkLabel(
+                row,
                 text=(
                     f"{w.get('name')} · {w.get('driver')} · "
                     f"BCM {w.get('bcm') if w.get('bcm') is not None else '—'} · "
@@ -1488,7 +1563,23 @@ class WizardApp:
                 ),
                 text_color=_TEXT,
                 anchor="w",
-            ).pack(fill="x", padx=8, pady=3)
+                wraplength=260,
+                justify="left",
+            ).pack(side="left", fill="x", expand=True, padx=8, pady=8)
+            idx = int(w.get("index", -1))
+            self.ctk.CTkButton(
+                row,
+                text=self._tr("remove"),
+                width=70,
+                height=28,
+                fg_color="transparent",
+                border_width=1,
+                border_color=_LINE,
+                text_color=_DANGER,
+                hover_color="#FCEBEA",
+                font=self.ctk.CTkFont(size=11),
+                command=lambda i=idx: self._remove_confirmed(i),
+            ).pack(side="right", padx=6, pady=6)
         if self.step == "wiring":
             self.finish_btn.configure(state="normal" if confirmed else "disabled")
 
@@ -1511,15 +1602,181 @@ class WizardApp:
         except Exception as exc:  # noqa: BLE001
             self._set_banner(str(exc))
 
+    def _remove_confirmed(self, index: int) -> None:
+        try:
+            services.gpio_remove_confirmed(index)
+        except Exception as exc:  # noqa: BLE001
+            self._set_banner(str(exc))
+
+    def _clear_confirmed(self) -> None:
+        try:
+            services.gpio_clear_confirmed()
+        except Exception as exc:  # noqa: BLE001
+            self._set_banner(str(exc))
+
     def _manual_add(self) -> None:
         label = self.manual_menu.get()
         peripheral_id = self._catalog_by_label.get(label)
         if not peripheral_id:
             return
+        item = next((c for c in self.catalog if c.get("id") == peripheral_id), None)
+        if not item:
+            return
+        self._open_manual_wiring_popup(item)
+
+    def _pin_menu_values(self) -> list[str]:
+        values = [self._tr("manual_pick_pin")]
+        for pin in self.pins:
+            values.append(f"{pin['physical']} · {pin['label']}")
+        return values
+
+    def _parse_pin_choice(self, choice: str) -> int | None:
+        if not choice or choice == self._tr("manual_pick_pin") or "·" not in choice:
+            return None
         try:
-            services.gpio_manual(peripheral_id)
-        except Exception as exc:  # noqa: BLE001
-            self._set_banner(str(exc))
+            return int(choice.split("·", 1)[0].strip())
+        except ValueError:
+            return None
+
+    def _default_pin_for_lead(self, item: dict[str, Any], lead: dict[str, Any]) -> str | None:
+        """Suggest a sensible default pin label for a cable."""
+        from bioversee_pi.gpio.header import BCM_TO_PHYSICAL, HEADER_PINS
+
+        by_phys = {p.physical: p for p in HEADER_PINS}
+        kind = lead.get("kind")
+        default_bcm = item.get("default_bcm")
+        pick: int | None = None
+        if kind == "data" or kind == "signal":
+            if default_bcm is not None:
+                pick = BCM_TO_PHYSICAL.get(int(default_bcm))
+        elif kind == "sda":
+            pick = BCM_TO_PHYSICAL.get(2)
+        elif kind == "scl":
+            pick = BCM_TO_PHYSICAL.get(3)
+        elif kind == "power":
+            pick = 1  # 3V3
+        elif kind == "gnd":
+            # Prefer GND near the default data pin
+            if default_bcm is not None:
+                data_phys = BCM_TO_PHYSICAL.get(int(default_bcm))
+                if data_phys:
+                    for candidate in (data_phys + 2, data_phys - 1, data_phys + 1, 6, 9, 14):
+                        pin = by_phys.get(candidate)
+                        if pin and pin.kind == "gnd":
+                            pick = candidate
+                            break
+            if pick is None:
+                pick = 6
+        if pick is None:
+            return None
+        pin = by_phys.get(pick)
+        if not pin:
+            return None
+        return f"{pin.physical} · {pin.label}"
+
+    def _open_manual_wiring_popup(self, item: dict[str, Any]) -> None:
+        ctk = self.ctk
+        wires = item.get("wires") or []
+        if not wires:
+            # Fallback for older catalog entries without wire metadata
+            try:
+                services.gpio_manual(str(item["id"]))
+            except Exception as exc:  # noqa: BLE001
+                self._set_banner(str(exc))
+            return
+
+        win = ctk.CTkToplevel(self.root)
+        win.title(self._tr("manual_wiring_title"))
+        win.geometry("480x520")
+        win.minsize(440, 420)
+        win.configure(fg_color=_BG)
+        win.transient(self.root)
+        win.grab_set()
+
+        body = ctk.CTkScrollableFrame(win, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=20, pady=16)
+
+        ctk.CTkLabel(
+            body,
+            text=item.get("label") or item.get("id"),
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            body,
+            text=self._tr("manual_wiring_sub"),
+            text_color=_MUTED,
+            wraplength=420,
+            justify="left",
+        ).pack(anchor="w", pady=(4, 14))
+
+        pin_values = self._pin_menu_values()
+        menus: dict[str, Any] = {}
+        for lead in wires:
+            card = ctk.CTkFrame(body, fg_color=_CARD, corner_radius=10)
+            card.pack(fill="x", pady=5)
+            req = " *" if lead.get("required", True) else ""
+            ctk.CTkLabel(
+                card,
+                text=f"{lead.get('label')}{req}",
+                font=ctk.CTkFont(size=13, weight="bold"),
+                text_color=_TEXT,
+                anchor="w",
+            ).pack(fill="x", padx=12, pady=(10, 2))
+            ctk.CTkLabel(
+                card,
+                text=f"{self._tr('manual_pin')}",
+                text_color=_MUTED,
+                font=ctk.CTkFont(size=11),
+                anchor="w",
+            ).pack(fill="x", padx=12)
+            menu = ctk.CTkOptionMenu(card, values=pin_values, width=280)
+            suggested = self._default_pin_for_lead(item, lead)
+            menu.set(suggested if suggested in pin_values else pin_values[0])
+            menu.pack(anchor="w", padx=12, pady=(4, 12))
+            menus[str(lead["id"])] = (menu, lead)
+
+        err = ctk.CTkLabel(body, text="", text_color=_DANGER, wraplength=400, justify="left")
+        err.pack(anchor="w", pady=(8, 0))
+
+        actions = ctk.CTkFrame(body, fg_color="transparent")
+        actions.pack(fill="x", pady=(16, 0))
+
+        def save() -> None:
+            pin_map: dict[str, int] = {}
+            for lead_id, (menu, lead) in menus.items():
+                pin = self._parse_pin_choice(menu.get())
+                if pin is None:
+                    if lead.get("required", True):
+                        err.configure(text=self._tr("manual_need_pins"))
+                        return
+                    continue
+                pin_map[lead_id] = pin
+            try:
+                services.gpio_manual(str(item["id"]), pin_map=pin_map)
+            except Exception as exc:  # noqa: BLE001
+                err.configure(text=str(exc))
+                return
+            win.destroy()
+
+        ctk.CTkButton(
+            actions,
+            text=self._tr("cancel"),
+            height=36,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_MUTED,
+            command=win.destroy,
+        ).pack(side="left")
+        ctk.CTkButton(
+            actions,
+            text=self._tr("manual_save"),
+            height=36,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            command=save,
+        ).pack(side="right")
 
     def _finish(self) -> None:
         self._clear_banner()
