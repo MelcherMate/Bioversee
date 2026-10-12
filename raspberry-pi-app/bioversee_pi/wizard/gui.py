@@ -524,6 +524,8 @@ class WizardApp:
             self.step_caption.configure(
                 text=self._tr(f"step_{name}_hint") if name in STEPS else ""
             )
+        if name == "account":
+            self._refresh_account_view()
         if name == "wiring":
             # Pack footer before content so it stays pinned to the bottom.
             self.content.pack_forget()
@@ -1273,23 +1275,36 @@ class WizardApp:
     def _frame_account(self):
         ctk = self.ctk
         f = ctk.CTkFrame(self.content, fg_color="transparent")
+
+        # Guest: sign-in form
+        self.account_guest = ctk.CTkFrame(f, fg_color="transparent")
         ctk.CTkLabel(
-            f, text=self._tr("sign_in_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            self.account_guest,
+            text=self._tr("sign_in_title"),
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=_TEXT,
         ).pack(anchor="w")
         ctk.CTkLabel(
-            f,
+            self.account_guest,
             text=self._tr("sign_in_sub"),
             text_color=_MUTED,
             wraplength=700,
             justify="left",
         ).pack(anchor="w", pady=(6, 16))
 
-        self.email = ctk.CTkEntry(f, height=42, placeholder_text=self._tr("email"))
+        self.email = ctk.CTkEntry(
+            self.account_guest, height=42, placeholder_text=self._tr("email")
+        )
         self.email.pack(fill="x", pady=4)
-        self.password = ctk.CTkEntry(f, height=42, placeholder_text=self._tr("password"), show="•")
+        self.password = ctk.CTkEntry(
+            self.account_guest,
+            height=42,
+            placeholder_text=self._tr("password"),
+            show="•",
+        )
         self.password.pack(fill="x", pady=4)
 
-        row = ctk.CTkFrame(f, fg_color="transparent")
+        row = ctk.CTkFrame(self.account_guest, fg_color="transparent")
         row.pack(fill="x", pady=(12, 8))
         ctk.CTkButton(
             row,
@@ -1312,12 +1327,12 @@ class WizardApp:
             command=self._local_signup,
         ).pack(side="left")
 
-        divider = ctk.CTkFrame(f, fg_color="transparent")
+        divider = ctk.CTkFrame(self.account_guest, fg_color="transparent")
         divider.pack(fill="x", pady=(20, 12))
         ctk.CTkLabel(divider, text=self._tr("or"), text_color=_MUTED).pack()
 
         ctk.CTkButton(
-            f,
+            self.account_guest,
             text=self._tr("continue_google"),
             height=44,
             fg_color=_TEXT,
@@ -1325,9 +1340,67 @@ class WizardApp:
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._google_login,
         ).pack(anchor="w")
-        self.auth_wait = ctk.CTkLabel(f, text="", text_color=_ACCENT)
+        self.auth_wait = ctk.CTkLabel(self.account_guest, text="", text_color=_ACCENT)
         self.auth_wait.pack(anchor="w", pady=(12, 0))
+
+        # Signed-in: status + logout
+        self.account_signed_in = ctk.CTkFrame(f, fg_color="transparent")
+        self.account_signed_title = ctk.CTkLabel(
+            self.account_signed_in,
+            text=self._tr("logged_in_title"),
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=_TEXT,
+        )
+        self.account_signed_title.pack(anchor="w")
+        self.account_signed_email = ctk.CTkLabel(
+            self.account_signed_in,
+            text="",
+            text_color=_MUTED,
+            font=ctk.CTkFont(size=14),
+            wraplength=700,
+            justify="left",
+        )
+        self.account_signed_email.pack(anchor="w", pady=(8, 20))
+        ctk.CTkButton(
+            self.account_signed_in,
+            text=self._tr("log_out"),
+            width=140,
+            height=42,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_DANGER,
+            text_color=_DANGER,
+            hover_color="#FCEBEA",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._logout,
+        ).pack(anchor="w")
+
+        self._refresh_account_view()
         return f
+
+    def _refresh_account_view(self) -> None:
+        """Show sign-in form or logged-in status depending on session."""
+        if not hasattr(self, "account_guest"):
+            return
+        from bioversee_pi.auth import current_user_email
+
+        email = self.user_email or current_user_email()
+        if email and not self.user_email:
+            self.user_email = email
+        signed_in = bool(email) or bool(self._progress.get("signed_in"))
+
+        if signed_in:
+            self.account_guest.pack_forget()
+            self.account_signed_title.configure(text=self._tr("logged_in_title"))
+            self.account_signed_email.configure(
+                text=self._tr("logged_in_as", email=email) if email else ""
+            )
+            if not self.account_signed_in.winfo_ismapped():
+                self.account_signed_in.pack(fill="both", expand=True)
+        else:
+            self.account_signed_in.pack_forget()
+            if not self.account_guest.winfo_ismapped():
+                self.account_guest.pack(fill="both", expand=True)
 
     def _frame_device(self):
         ctk = self.ctk
