@@ -25,6 +25,13 @@ class WiringEntry(BaseModel):
     one_wire_id: str | None = None
 
 
+class AgentServiceEntry(BaseModel):
+    """User-named systemd unit for the background agent."""
+
+    unit: str  # e.g. bioversee-agent.service
+    name: str  # display name chosen by the user
+
+
 class LocalConfig(BaseModel):
     device_id: str | None = None
     device_name: str | None = None
@@ -36,6 +43,8 @@ class LocalConfig(BaseModel):
     wiring: list[WiringEntry] = Field(default_factory=list)
     agent_enabled: bool = False
     language: str = "en"
+    active_agent_unit: str = "bioversee-agent.service"
+    agent_services: list[AgentServiceEntry] = Field(default_factory=list)
 
 
 class AppSettings(BaseSettings):
@@ -94,6 +103,11 @@ def load_local_config() -> LocalConfig:
     language = str(data.get("language") or "en").strip().lower()
     if language not in ("en", "de", "hu"):
         language = "en"
+    services_raw = data.get("agent_services") or []
+    agent_services = [AgentServiceEntry.model_validate(s) for s in services_raw]
+    active_unit = str(data.get("active_agent_unit") or "bioversee-agent.service").strip()
+    if not active_unit.endswith(".service"):
+        active_unit = "bioversee-agent.service"
     return LocalConfig(
         device_id=data.get("device_id"),
         device_name=data.get("device_name"),
@@ -105,6 +119,8 @@ def load_local_config() -> LocalConfig:
         wiring=[WiringEntry.model_validate(w) for w in wiring_raw],
         agent_enabled=bool(data.get("agent_enabled", False)),
         language=language,
+        active_agent_unit=active_unit,
+        agent_services=agent_services,
     )
 
 
@@ -120,6 +136,8 @@ def save_local_config(cfg: LocalConfig) -> None:
         "supabase_anon_key": cfg.supabase_anon_key,
         "agent_enabled": cfg.agent_enabled,
         "language": cfg.language or "en",
+        "active_agent_unit": cfg.active_agent_unit or "bioversee-agent.service",
+        "agent_services": [s.model_dump() for s in cfg.agent_services],
         "wiring": [w.model_dump(exclude_none=True) for w in cfg.wiring],
     }
     with CONFIG_PATH.open("wb") as fh:

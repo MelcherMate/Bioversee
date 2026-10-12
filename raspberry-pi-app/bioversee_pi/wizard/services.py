@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 from bioversee_pi import auth
 from bioversee_pi.config import (
     CONFIG_PATH,
+    AgentServiceEntry,
     AppSettings,
     WiringEntry,
     bootstrap_env_from_system,
@@ -463,8 +464,8 @@ def _same_wire(a: WiringEntry, b: WiringEntry) -> bool:
     return False
 
 
-_AGENT_UNIT = "bioversee-agent.service"
-_AGENT_UNIT_PATH = Path("/etc/systemd/system/bioversee-agent.service")
+_DEFAULT_AGENT_UNIT = "bioversee-agent.service"
+_SYSTEMD_DIR = Path("/etc/systemd/system")
 
 
 def _run_sudo(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -476,18 +477,250 @@ def _run_sudo(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _enable_agent_service() -> dict[str, Any]:
-    if not _AGENT_UNIT_PATH.exists():
-        return {
+def _slugify_service_name(name: str) -> str:
+    import re
+
+    slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+    return slug[:40] or "agent"
+
+
+def _unit_from_name(name: str) -> str:
+    slug = _slugify_service_name(name)
+    if slug in ("agent", "bioversee-agent", "default"):
+        return _DEFAULT_AGENT_UNIT
+    return f"bioversee-agent-{slug}.service"
+
+
+def _unit_path(unit: str) -> Path:
+    return _SYSTEMD_DIR / unit
+
+
+def _active_unit(unit: str | None = None) -> str:
+    if unit:
+        return unit if unit.endswith(".service") else f"{unit}.service"
+    cfg = load_local_config()
+    return cfg.active_agent_unit or _DEFAULT_AGENT_UNIT
+
+
+def _read_unit_description(path: Path) -> str | None:
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("Description="):
+                desc = line.split("=", 1)[1].strip()
+                # "Bioversee agent: My Reactor" → "My Reactor"
+                if ": " in desc:
+                    return desc.split(": ", 1)[1].strip() or None
+                return desc or None
+    except OSError:
+        return None
+    return None
+
+
+def _agent_unit_template(*, display_name: str, settings: AppSettings | None = None) -> str:
+    settings = settings or AppSettings()
+    prefix = Path(settings.install_prefix)
+    user = os.environ.get("USER") or "pi"
+    return f"""[Unit]
+Description=Bioversee agent: {display_name}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={user}
+Group={user}
+WorkingDirectory={prefix}
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/bioversee/pi.env
+ExecStart={prefix}/.venv/bin/bioversee-agent
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+
+def list_agent_services() -> dict[str, Any]:
+    """List installed bioversee-agent*.service units + saved display names."""
+    cfg = load_local_config()
+    name_by_unit = {s.unit: s.name for s in cfg.agent_services}
+    units: dict[str, dict[str, Any]] = {}
+
+    if _SYSTEMD_DIR.is_dir():
+        for path in sorted(_SYSTEMD_DIR.glob("bioversee-agent*.service")):
+            unit = path.name
+            display = name_by_unit.get(unit) or _read_unit_description(path) or unit.replace(
+                ".service", ""
+            )
+            status = agent_service_status(unit)
+            units[unit] = {
+                "unit": unit,
+                "name": display,
+                "path": str(path),
+                "active": bool(status.get("active")),
+                "enabled": bool(status.get("enabled")),
+                "state": status.get("state"),
+            }
+
+    # Include config-only entries that aren't on disk yet (rare).
+    for entry in cfg.agent_services:
+        if entry.unit not in units:
+            units[entry.unit] = {
+                "unit": entry.unit,
+                "name": entry.name,
+                "path": str(_unit_path(entry.unit)),
+                "active": False,
+                "enabled": False,
+                "state": "missing",
+            }
+
+    if not units:
+        units[_DEFAULT_AGENT_UNIT] = {
+            "unit": _DEFAULT_AGENT_UNIT,
+            "name": "Default",
+            "path": str(_unit_path(_DEFAULT_AGENT_UNIT)),
+            "active": False,
             "enabled": False,
-            "message": "Service unit not installed — run packaging/install.sh",
-            "hint": "sudo ./packaging/install.sh && sudo systemctl enable --now bioversee-agent",
+            "state": "missing",
         }
+
+    active = _active_unit()
+    if active not in units:
+        active = next(iter(units))
+        cfg.active_agent_unit = active
+        save_local_config(cfg)
+
+    return {
+        "ok": True,
+        "active_unit": active,
+        "services": list(units.values()),
+    }
+
+
+def set_active_agent_service(unit: str) -> dict[str, Any]:
+    unit = _active_unit(unit)
+    cfg = load_local_config()
+    cfg.active_agent_unit = unit
+    save_local_config(cfg)
+    return {"ok": True, **list_agent_services(), "status": agent_service_status(unit)}
+
+
+def create_agent_service(
+    name: str,
+    *,
+    settings: AppSettings | None = None,
+    make_active: bool = True,
+) -> dict[str, Any]:
+    """Create a named systemd unit file for the background agent."""
+    display = (name or "").strip()
+    if not display:
+        raise RuntimeError("Enter a name for the service")
+    unit = _unit_from_name(display)
+    path = _unit_path(unit)
+    content = _agent_unit_template(display_name=display, settings=settings)
+
+    # Write via sudo tee so we don't need a root Python process.
+    result = subprocess.run(
+        ["sudo", "tee", str(path)],
+        input=content,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(detail or f"Could not write {path}")
+
+    reload = _run_sudo(["systemctl", "daemon-reload"])
+    if reload.returncode != 0:
+        detail = (reload.stderr or reload.stdout or "").strip()
+        raise RuntimeError(detail or "systemctl daemon-reload failed")
+
+    cfg = load_local_config()
+    cfg.agent_services = [s for s in cfg.agent_services if s.unit != unit]
+    cfg.agent_services.append(AgentServiceEntry(unit=unit, name=display))
+    if make_active:
+        cfg.active_agent_unit = unit
+    save_local_config(cfg)
+    return {
+        "ok": True,
+        "unit": unit,
+        "name": display,
+        **list_agent_services(),
+        "status": agent_service_status(unit),
+    }
+
+
+def rename_agent_service(unit: str, name: str) -> dict[str, Any]:
+    display = (name or "").strip()
+    if not display:
+        raise RuntimeError("Enter a name for the service")
+    unit = _active_unit(unit)
+    path = _unit_path(unit)
+    if path.exists():
+        # Rewrite Description= line
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise RuntimeError(str(exc)) from exc
+        lines = []
+        replaced = False
+        for line in text.splitlines():
+            if line.startswith("Description="):
+                lines.append(f"Description=Bioversee agent: {display}")
+                replaced = True
+            else:
+                lines.append(line)
+        if not replaced:
+            lines.insert(1, f"Description=Bioversee agent: {display}")
+        result = subprocess.run(
+            ["sudo", "tee", str(path)],
+            input="\n".join(lines) + "\n",
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            raise RuntimeError(detail or "Could not rename service")
+        _run_sudo(["systemctl", "daemon-reload"])
+
+    cfg = load_local_config()
+    found = False
+    for entry in cfg.agent_services:
+        if entry.unit == unit:
+            entry.name = display
+            found = True
+            break
+    if not found:
+        cfg.agent_services.append(AgentServiceEntry(unit=unit, name=display))
+    save_local_config(cfg)
+    return {"ok": True, **list_agent_services()}
+
+
+def _enable_agent_service(unit: str | None = None) -> dict[str, Any]:
+    unit = _active_unit(unit)
+    path = _unit_path(unit)
+    if not path.exists():
+        # Create the default unit if missing so finish_setup still works.
+        try:
+            create_agent_service(
+                "Default" if unit == _DEFAULT_AGENT_UNIT else unit.replace(".service", ""),
+                make_active=True,
+            )
+        except RuntimeError as exc:
+            return {
+                "enabled": False,
+                "unit": unit,
+                "message": str(exc),
+                "hint": "sudo ./packaging/install.sh && sudo systemctl enable --now bioversee-agent",
+            }
 
     errors: list[str] = []
     for cmd in (
         ["systemctl", "daemon-reload"],
-        ["systemctl", "enable", "--now", _AGENT_UNIT],
+        ["systemctl", "enable", "--now", unit],
     ):
         try:
             result = _run_sudo(cmd)
@@ -495,28 +728,32 @@ def _enable_agent_service() -> dict[str, Any]:
                 errors.append(result.stderr.strip() or result.stdout.strip() or str(cmd))
                 return {
                     "enabled": False,
+                    "unit": unit,
                     "message": "Could not enable systemd unit",
                     "errors": errors,
-                    "hint": "sudo systemctl enable --now bioversee-agent",
+                    "hint": f"sudo systemctl enable --now {unit}",
                 }
         except FileNotFoundError as exc:
             errors.append(str(exc))
             return {
                 "enabled": False,
+                "unit": unit,
                 "message": "Could not enable systemd unit",
                 "errors": errors,
-                "hint": "sudo systemctl enable --now bioversee-agent",
+                "hint": f"sudo systemctl enable --now {unit}",
             }
 
-    return {"enabled": True, "message": "bioversee-agent enabled on boot"}
+    return {"enabled": True, "unit": unit, "message": f"{unit} enabled on boot"}
 
 
-def agent_service_status() -> dict[str, Any]:
-    """Return live systemd status for the background agent."""
-    unit_exists = _AGENT_UNIT_PATH.exists()
-    if not unit_exists:
+def agent_service_status(unit: str | None = None) -> dict[str, Any]:
+    """Return live systemd status for a background agent unit."""
+    unit = _active_unit(unit)
+    path = _unit_path(unit)
+    if not path.exists():
         return {
             "ok": True,
+            "unit": unit,
             "installed": False,
             "active": False,
             "enabled": False,
@@ -529,7 +766,7 @@ def agent_service_status() -> dict[str, Any]:
     state = "unknown"
     try:
         active_res = subprocess.run(
-            ["systemctl", "is-active", _AGENT_UNIT],
+            ["systemctl", "is-active", unit],
             check=False,
             capture_output=True,
             text=True,
@@ -538,7 +775,7 @@ def agent_service_status() -> dict[str, Any]:
         active = state == "active"
 
         enabled_res = subprocess.run(
-            ["systemctl", "is-enabled", _AGENT_UNIT],
+            ["systemctl", "is-enabled", unit],
             check=False,
             capture_output=True,
             text=True,
@@ -547,6 +784,7 @@ def agent_service_status() -> dict[str, Any]:
     except FileNotFoundError:
         return {
             "ok": False,
+            "unit": unit,
             "installed": True,
             "active": False,
             "enabled": False,
@@ -556,6 +794,7 @@ def agent_service_status() -> dict[str, Any]:
 
     return {
         "ok": True,
+        "unit": unit,
         "installed": True,
         "active": active,
         "enabled": enabled,
@@ -564,63 +803,85 @@ def agent_service_status() -> dict[str, Any]:
     }
 
 
-def agent_service_start() -> dict[str, Any]:
-    if not _AGENT_UNIT_PATH.exists():
-        raise RuntimeError("Service unit not installed — run packaging/install.sh")
+def agent_service_start(unit: str | None = None) -> dict[str, Any]:
+    unit = _active_unit(unit)
+    if not _unit_path(unit).exists():
+        raise RuntimeError("Service unit not installed — create one in Settings first")
     for cmd in (
         ["systemctl", "daemon-reload"],
-        ["systemctl", "enable", "--now", _AGENT_UNIT],
+        ["systemctl", "enable", "--now", unit],
     ):
         result = _run_sudo(cmd)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
-            raise RuntimeError(detail or "Could not start bioversee-agent")
+            raise RuntimeError(detail or f"Could not start {unit}")
     cfg = load_local_config()
     cfg.agent_enabled = True
+    cfg.active_agent_unit = unit
     save_local_config(cfg)
-    return {"ok": True, **agent_service_status()}
+    return {"ok": True, **agent_service_status(unit)}
 
 
-def agent_service_stop() -> dict[str, Any]:
-    if not _AGENT_UNIT_PATH.exists():
+def agent_service_stop(unit: str | None = None) -> dict[str, Any]:
+    unit = _active_unit(unit)
+    if not _unit_path(unit).exists():
         raise RuntimeError("Service unit not installed")
-    result = _run_sudo(["systemctl", "stop", _AGENT_UNIT])
+    result = _run_sudo(["systemctl", "stop", unit])
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
-        raise RuntimeError(detail or "Could not stop bioversee-agent")
+        raise RuntimeError(detail or f"Could not stop {unit}")
     cfg = load_local_config()
     cfg.agent_enabled = False
     save_local_config(cfg)
-    return {"ok": True, **agent_service_status()}
+    return {"ok": True, **agent_service_status(unit)}
 
 
-def agent_service_delete() -> dict[str, Any]:
-    """Stop, disable, and remove the systemd unit file."""
+def agent_service_delete(unit: str | None = None) -> dict[str, Any]:
+    """Stop, disable, and remove a systemd unit file."""
+    unit = _active_unit(unit)
+    path = _unit_path(unit)
     errors: list[str] = []
     for cmd in (
-        ["systemctl", "disable", "--now", _AGENT_UNIT],
+        ["systemctl", "disable", "--now", unit],
         ["systemctl", "daemon-reload"],
     ):
         result = _run_sudo(cmd)
-        if result.returncode != 0 and _AGENT_UNIT_PATH.exists():
+        if result.returncode != 0 and path.exists():
             errors.append((result.stderr or result.stdout or "").strip() or str(cmd))
 
-    if _AGENT_UNIT_PATH.exists():
-        rm = _run_sudo(["rm", "-f", str(_AGENT_UNIT_PATH)])
+    if path.exists():
+        rm = _run_sudo(["rm", "-f", str(path)])
         if rm.returncode != 0:
             detail = (rm.stderr or rm.stdout or "").strip()
             raise RuntimeError(detail or "Could not delete service file")
         _run_sudo(["systemctl", "daemon-reload"])
 
     cfg = load_local_config()
+    cfg.agent_services = [s for s in cfg.agent_services if s.unit != unit]
+    if cfg.active_agent_unit == unit:
+        disk_units = (
+            [p.name for p in sorted(_SYSTEMD_DIR.glob("bioversee-agent*.service"))]
+            if _SYSTEMD_DIR.is_dir()
+            else []
+        )
+        if disk_units:
+            cfg.active_agent_unit = disk_units[0]
+        elif cfg.agent_services:
+            cfg.active_agent_unit = cfg.agent_services[0].unit
+        else:
+            cfg.active_agent_unit = _DEFAULT_AGENT_UNIT
     cfg.agent_enabled = False
     save_local_config(cfg)
+    listed = list_agent_services()
     return {
         "ok": True,
         "deleted": True,
+        "unit": unit,
         "errors": errors,
-        "message": "bioversee-agent service file removed",
-        **agent_service_status(),
+        "message": f"{unit} removed",
+        "active_unit": listed.get("active_unit"),
+        "services": listed.get("services"),
+        "status": agent_service_status(cfg.active_agent_unit),
     }
 
 
@@ -629,11 +890,13 @@ def uninstall_app(settings: AppSettings | None = None) -> dict[str, Any]:
     settings = settings or AppSettings()
     prefix = Path(settings.install_prefix)
 
-    # Stop & remove agent first so nothing holds files open.
-    try:
-        agent_service_delete()
-    except RuntimeError:
-        pass
+    # Stop & remove all agent units first so nothing holds files open.
+    listed = list_agent_services().get("services") or []
+    for svc in listed:
+        try:
+            agent_service_delete(str(svc.get("unit")))
+        except RuntimeError:
+            pass
 
     paths_to_remove = [
         str(prefix),

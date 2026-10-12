@@ -194,9 +194,10 @@ class WizardApp:
         ctk = self.ctk
         top = ctk.CTkFrame(self.root, fg_color="transparent")
         top.pack(fill="x", padx=28, pady=(22, 8))
+        top.grid_columnconfigure(1, weight=1)
 
         brand = ctk.CTkFrame(top, fg_color="transparent")
-        brand.pack(side="left")
+        brand.grid(row=0, column=0, sticky="w")
         self._logo_image = self._load_logo_image()
         if self._logo_image is not None:
             logo = ctk.CTkLabel(brand, text="", image=self._logo_image, width=40, height=40)
@@ -222,22 +223,12 @@ class WizardApp:
         )
         self.title_label.pack(anchor="w")
 
-        right = ctk.CTkFrame(top, fg_color="transparent")
-        right.pack(side="right")
-
-        steps_wrap = ctk.CTkFrame(right, fg_color="transparent")
-        steps_wrap.pack(side="left", padx=(0, 12))
+        steps_wrap = ctk.CTkFrame(top, fg_color="transparent")
+        steps_wrap.grid(row=0, column=1, sticky="e", padx=(16, 12))
         self.step_row = ctk.CTkFrame(steps_wrap, fg_color="transparent")
-        self.step_row.pack(anchor="e")
-        self.step_hint = ctk.CTkLabel(
-            steps_wrap,
-            text="",
-            text_color=_MUTED,
-            font=ctk.CTkFont(size=11),
-            anchor="e",
-        )
-        self.step_hint.pack(anchor="e", pady=(4, 0))
+        self.step_row.pack(anchor="center")
         self.step_pills: dict[str, Any] = {}
+        self.step_hints: dict[str, Any] = {}
         for i, name in enumerate(STEPS):
             cell = ctk.CTkFrame(self.step_row, fg_color="transparent")
             cell.pack(side="left")
@@ -248,9 +239,11 @@ class WizardApp:
                     text_color=_LINE,
                     font=ctk.CTkFont(size=14, weight="bold"),
                     width=14,
-                ).pack(side="left", padx=(0, 2))
+                ).pack(side="left", padx=(0, 2), anchor="n", pady=(6, 0))
+            col = ctk.CTkFrame(cell, fg_color="transparent")
+            col.pack(side="left", padx=2)
             pill = ctk.CTkLabel(
-                cell,
+                col,
                 text=self._tr(f"step_{name}"),
                 corner_radius=999,
                 fg_color=_LINE,
@@ -259,12 +252,21 @@ class WizardApp:
                 pady=4,
                 font=ctk.CTkFont(size=12, weight="bold"),
             )
-            pill.pack(side="left", padx=2)
+            pill.pack(anchor="center")
+            hint = ctk.CTkLabel(
+                col,
+                text="",
+                text_color=_MUTED,
+                font=ctk.CTkFont(size=10),
+                height=14,
+            )
+            hint.pack(anchor="center", pady=(3, 0))
             self.step_pills[name] = pill
+            self.step_hints[name] = hint
 
         self._account_icon = _account_icon_image(ctk)
         self.avatar_btn = ctk.CTkButton(
-            right,
+            top,
             text="" if self._account_icon else "👤",
             image=self._account_icon,
             width=40,
@@ -276,7 +278,7 @@ class WizardApp:
             font=ctk.CTkFont(size=18),
             command=self._toggle_profile_menu,
         )
-        self.avatar_btn.pack(side="left")
+        self.avatar_btn.grid(row=0, column=2, sticky="e")
 
         self.banner = ctk.CTkLabel(
             self.root,
@@ -405,10 +407,11 @@ class WizardApp:
                 pill.configure(fg_color="#CCFBF1", text_color=_ACCENT_HOVER)
             else:
                 pill.configure(fg_color=_LINE, text_color=_MUTED)
-        if name in STEPS:
-            self.step_hint.configure(text=self._tr(f"step_{name}_hint"))
-        else:
-            self.step_hint.configure(text="")
+            hint = self.step_hints.get(key)
+            if hint is not None:
+                hint.configure(
+                    text=self._tr(f"step_{key}_hint") if key == name and name in STEPS else ""
+                )
         # Footer stays packed; enable tools only on wiring
         wiring_state = "normal" if name == "wiring" else "disabled"
         try:
@@ -431,8 +434,11 @@ class WizardApp:
         )
         for name, pill in self.step_pills.items():
             pill.configure(text=self._tr(f"step_{name}"))
-        if self.step in STEPS:
-            self.step_hint.configure(text=self._tr(f"step_{self.step}_hint"))
+            hint = self.step_hints.get(name)
+            if hint is not None:
+                hint.configure(
+                    text=self._tr(f"step_{name}_hint") if name == self.step else ""
+                )
         self.add_manual_btn.configure(text=self._tr("add_manually"))
         self.finish_btn.configure(text=self._tr("finish_setup"))
         # Rebuild step frames so static copy updates
@@ -721,15 +727,49 @@ class WizardApp:
         check_btn.configure(command=do_check)
         update_btn.configure(command=do_update)
 
-        # Agent service
+        # Agent services (named units)
         ctk.CTkLabel(
             body,
             text=self._tr("agent_service"),
             font=ctk.CTkFont(size=14, weight="bold"),
             text_color=_TEXT,
         ).pack(anchor="w")
+        ctk.CTkLabel(
+            body,
+            text=self._tr("agent_service_sub"),
+            text_color=_MUTED,
+            wraplength=400,
+            justify="left",
+        ).pack(anchor="w", pady=(2, 8))
+
+        svc_state: dict[str, Any] = {"unit": None, "by_label": {}, "labels": []}
+
+        ctk.CTkLabel(body, text=self._tr("service_select"), text_color=_MUTED).pack(anchor="w")
+        service_menu = ctk.CTkOptionMenu(body, values=["—"], width=320)
+        service_menu.pack(anchor="w", pady=(4, 6))
+        service_file_lbl = ctk.CTkLabel(body, text="", text_color=_MUTED, font=ctk.CTkFont(size=11))
+        service_file_lbl.pack(anchor="w")
         service_status = ctk.CTkLabel(body, text="", text_color=_MUTED)
         service_status.pack(anchor="w", pady=(4, 8))
+
+        create_row = ctk.CTkFrame(body, fg_color="transparent")
+        create_row.pack(fill="x", pady=(0, 8))
+        new_svc_name = ctk.CTkEntry(
+            create_row, height=34, placeholder_text=self._tr("service_name_ph"), width=200
+        )
+        new_svc_name.pack(side="left", padx=(0, 8))
+        create_svc_btn = ctk.CTkButton(
+            create_row,
+            text=self._tr("service_create"),
+            height=34,
+            width=110,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_ACCENT,
+        )
+        create_svc_btn.pack(side="left")
+
         svc_row = ctk.CTkFrame(body, fg_color="transparent")
         svc_row.pack(fill="x", pady=(0, 8))
         start_btn = ctk.CTkButton(
@@ -753,8 +793,57 @@ class WizardApp:
         start_btn.pack(side="left", padx=(0, 8))
         stop_btn.pack(side="left")
 
+        def selected_unit() -> str | None:
+            return svc_state.get("unit")
+
+        def apply_service_list(listed: dict[str, Any] | None = None) -> None:
+            data = listed or services.list_agent_services()
+            rows = data.get("services") or []
+            active = data.get("active_unit")
+            labels: list[str] = []
+            by_label: dict[str, str] = {}
+            for row in rows:
+                label = f"{row.get('name')}  ({row.get('unit')})"
+                labels.append(label)
+                by_label[label] = str(row["unit"])
+            if not labels:
+                labels = ["—"]
+            svc_state["by_label"] = by_label
+            svc_state["labels"] = labels
+            service_menu.configure(values=labels)
+            chosen = None
+            for label, unit in by_label.items():
+                if unit == active:
+                    chosen = label
+                    break
+            if chosen is None:
+                chosen = labels[0]
+            service_menu.set(chosen)
+            svc_state["unit"] = by_label.get(chosen)
+            refresh_service()
+
+        def on_service_pick(choice: str) -> None:
+            unit = svc_state["by_label"].get(choice)
+            if not unit:
+                return
+            svc_state["unit"] = unit
+
+            def ok(_r: dict[str, Any]) -> None:
+                win.after(0, refresh_service)
+
+            def err(exc: Exception) -> None:
+                win.after(0, lambda: service_status.configure(text=str(exc), text_color=_DANGER))
+
+            _run_sync(lambda: services.set_active_agent_service(unit), on_ok=ok, on_err=err)
+
+        service_menu.configure(command=on_service_pick)
+
         def refresh_service(st: dict[str, Any] | None = None) -> None:
-            data = st or services.agent_service_status()
+            unit = selected_unit()
+            data = st if st and "installed" in st else services.agent_service_status(unit)
+            unit = data.get("unit") or unit
+            if unit:
+                service_file_lbl.configure(text=self._tr("service_file", file=unit))
             if not data.get("installed"):
                 label = self._tr("service_missing")
             elif data.get("active"):
@@ -763,7 +852,7 @@ class WizardApp:
                 label = self._tr("service_stopped")
             else:
                 label = f"{self._tr('service_unknown')} ({data.get('state')})"
-            service_status.configure(text=label)
+            service_status.configure(text=label, text_color=_MUTED)
             installed = bool(data.get("installed"))
             start_btn.configure(state="normal" if installed and not data.get("active") else "disabled")
             stop_btn.configure(state="normal" if installed and data.get("active") else "disabled")
@@ -774,7 +863,13 @@ class WizardApp:
             service_status.configure(text=self._tr("working"))
 
             def ok(result: dict[str, Any]) -> None:
-                win.after(0, lambda: refresh_service(result))
+                def apply() -> None:
+                    if result.get("services") is not None:
+                        apply_service_list(result)
+                    else:
+                        refresh_service(result.get("status") or result)
+
+                win.after(0, apply)
 
             def err(exc: Exception) -> None:
                 win.after(
@@ -787,9 +882,24 @@ class WizardApp:
 
             _run_sync(fn, on_ok=ok, on_err=err)
 
-        start_btn.configure(command=lambda: svc_action(services.agent_service_start))
-        stop_btn.configure(command=lambda: svc_action(services.agent_service_stop))
-        refresh_service()
+        def create_service() -> None:
+            name = new_svc_name.get().strip()
+            if not name:
+                service_status.configure(text=self._tr("service_need_name"), text_color=_DANGER)
+                return
+            svc_action(
+                lambda: services.create_agent_service(name, settings=self.settings, make_active=True)
+            )
+            new_svc_name.delete(0, "end")
+
+        create_svc_btn.configure(command=create_service)
+        start_btn.configure(
+            command=lambda: svc_action(lambda: services.agent_service_start(selected_unit()))
+        )
+        stop_btn.configure(
+            command=lambda: svc_action(lambda: services.agent_service_stop(selected_unit()))
+        )
+        apply_service_list()
 
         # Danger zone
         ctk.CTkLabel(
@@ -820,8 +930,13 @@ class WizardApp:
                 dialog.destroy()
                 service_status.configure(text=self._tr("working"))
 
-                def ok(_r: dict[str, Any]) -> None:
-                    win.after(0, after)
+                def ok(result: dict[str, Any]) -> None:
+                    def done() -> None:
+                        if result.get("services") is not None:
+                            apply_service_list(result)
+                        after()
+
+                    win.after(0, done)
 
                 def err(exc: Exception) -> None:
                     win.after(0, lambda: self._set_banner(str(exc)))
@@ -858,8 +973,8 @@ class WizardApp:
             hover_color="#FCEBEA",
             command=lambda: confirm_action(
                 self._tr("confirm_delete_service"),
-                services.agent_service_delete,
-                lambda: refresh_service(),
+                lambda: services.agent_service_delete(selected_unit()),
+                lambda: None,
             ),
         ).pack(fill="x", pady=(0, 8))
 
