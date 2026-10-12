@@ -2086,16 +2086,22 @@ class WizardApp:
         by_phys = {p.physical: p for p in HEADER_PINS}
         kind = lead.get("kind")
         default_bcm = item.get("default_bcm")
+        bus = item.get("bus")
         pick: int | None = None
-        if kind == "data" or kind == "signal":
+        if kind in ("data", "signal", "trig"):
             if default_bcm is not None:
                 pick = BCM_TO_PHYSICAL.get(int(default_bcm))
+        elif kind == "echo":
+            # HC-SR04-style: ECHO often on the next free GPIO after TRIG
+            if default_bcm is not None:
+                pick = BCM_TO_PHYSICAL.get(int(default_bcm) + 1) or BCM_TO_PHYSICAL.get(24)
         elif kind == "sda":
             pick = BCM_TO_PHYSICAL.get(2)
         elif kind == "scl":
             pick = BCM_TO_PHYSICAL.get(3)
         elif kind == "power":
-            pick = 1  # 3V3
+            # 5V for ultrasonic / many analog modules; 3V3 otherwise
+            pick = 2 if bus in ("ultrasonic", "analog") else 1
         elif kind == "gnd":
             # Prefer GND near the default data pin
             if default_bcm is not None:

@@ -354,9 +354,9 @@ class ProbeService:
         return addrs
 
     def _guess_i2c(self, addr: int) -> Peripheral:
-        for pid in ("ph_i2c", "pressure_i2c"):
-            p = CATALOG_BY_ID[pid]
-            if addr in p.i2c_addresses:
+        # Prefer exact address matches across wastewater / Atlas-style probes.
+        for p in CATALOG_BY_ID.values():
+            if p.role == "sensor" and p.bus == "i2c" and addr in p.i2c_addresses:
                 return p
         return CATALOG_BY_ID["ph_i2c"]
 

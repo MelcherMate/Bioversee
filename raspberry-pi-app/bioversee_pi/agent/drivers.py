@@ -8,11 +8,41 @@ from bioversee_pi.config import WiringEntry, is_raspberry_pi
 log = logging.getLogger("bioversee.drivers")
 
 
+# Simulation baselines for off-Pi / stub drivers (wastewater-typical ranges).
+_SIM_VALUES: dict[str, float] = {
+    "temperature": 22.5,
+    "ph": 7.1,
+    "dissolvedOxygen": 3.8,
+    "orp": 180.0,
+    "conductivity": 1250.0,
+    "turbidity": 12.0,
+    "ammonia": 2.4,
+    "nitrate": 8.0,
+    "chlorine": 0.4,
+    "cod": 85.0,
+    "pressure": 14.7,
+    "level": 1.25,
+    "levelHydrostatic": 1.8,
+    "flow": 4.2,
+    "floatLevel": 0.0,
+}
+
+
 def read_sensor(wire: WiringEntry) -> float | None:
     if wire.driver == "ds18b20":
         return _read_ds18b20(wire.one_wire_id)
-    if wire.driver in ("ph_i2c", "pressure_i2c"):
-        return _read_i2c_stub(wire)
+    if wire.driver == "float_switch":
+        return _read_float_switch(wire)
+    if wire.driver == "flow_pulse":
+        return _read_stub(wire, metric="flow")
+    if wire.driver == "level_ultrasonic":
+        return _read_stub(wire, metric="level")
+    if wire.driver.endswith("_i2c") or wire.driver.endswith("_analog") or wire.driver in (
+        "level_hydrostatic",
+        "turbidity_analog",
+        "cod_analog",
+    ):
+        return _read_stub(wire)
     return None
 
 
@@ -75,10 +105,32 @@ def _read_ds18b20(one_wire_id: str | None) -> float | None:
     return None
 
 
-def _read_i2c_stub(wire: WiringEntry) -> float | None:
-    """Placeholder until a concrete ADC driver is wired for the chosen HAT."""
+def _read_stub(wire: WiringEntry, *, metric: str | None = None) -> float | None:
+    """Placeholder until a concrete hardware driver is wired for the probe."""
+    key = metric or wire.name
     if not is_raspberry_pi():
-        base = 7.0 if wire.name == "ph" else 14.7
-        return base
-    log.debug("I2C driver stub for %s @ 0x%02X", wire.name, wire.i2c_address or 0)
+        base = _SIM_VALUES.get(key, 1.0)
+        jitter = (hash(f"{key}:{wire.bcm}:{wire.i2c_address}") % 17) / 10.0
+        return round(base + jitter - 0.8, 3)
+    log.debug(
+        "Sensor stub for %s driver=%s bcm=%s i2c=0x%02X",
+        wire.name,
+        wire.driver,
+        wire.bcm,
+        wire.i2c_address or 0,
+    )
     return None
+
+
+def _read_float_switch(wire: WiringEntry) -> float | None:
+    """Digital float: 1.0 = closed/high, 0.0 = open/low (or simulated)."""
+    if not is_raspberry_pi() or wire.bcm is None:
+        return _SIM_VALUES.get("floatLevel", 0.0)
+    try:
+        from gpiozero import DigitalInputDevice  # type: ignore
+
+        pin = DigitalInputDevice(wire.bcm, pull_up=True)
+        return 1.0 if pin.value else 0.0
+    except Exception as exc:  # noqa: BLE001
+        log.debug("Float switch read failed on BCM %s: %s", wire.bcm, exc)
+        return None

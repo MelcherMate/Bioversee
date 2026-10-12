@@ -350,8 +350,8 @@ def gpio_manual(
             if pin not in PHYSICAL_TO_PIN:
                 raise RuntimeError(f"Unknown physical pin {pin}")
             resolved_physical.append(pin)
-            # Signal / data / SDA determines the BCM used by the agent.
-            if lead.kind in ("data", "signal", "sda") and resolved_bcm is None:
+            # Signal / data / TRIG / SDA determines the BCM used by the agent.
+            if lead.kind in ("data", "signal", "sda", "trig") and resolved_bcm is None:
                 header = PHYSICAL_TO_PIN[pin]
                 if header.bcm is not None:
                     resolved_bcm = header.bcm
