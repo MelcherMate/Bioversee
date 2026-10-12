@@ -311,9 +311,8 @@ class WizardApp:
         self.card = ctk.CTkFrame(self.root, fg_color=_CARD, corner_radius=18)
         self.card.pack(fill="both", expand=True, padx=28, pady=(4, 24))
 
-        # Sticky wiring footer — always visible at bottom of the card
+        # Wiring footer — only shown on the wiring step
         self.wiring_footer = ctk.CTkFrame(self.card, fg_color="transparent")
-        self.wiring_footer.pack(side="bottom", fill="x", padx=24, pady=(0, 18))
         self._build_wiring_footer()
 
         self.content = ctk.CTkFrame(self.card, fg_color="transparent")
@@ -432,18 +431,25 @@ class WizardApp:
                 hint.configure(
                     text=self._tr(f"step_{key}_hint") if key == name and name in STEPS else ""
                 )
-        # Footer stays packed; enable tools only on wiring
-        wiring_state = "normal" if name == "wiring" else "disabled"
-        try:
-            self.manual_menu.configure(state=wiring_state)
-            self.add_manual_btn.configure(state=wiring_state)
-            if name != "wiring":
-                self.finish_btn.configure(state="disabled")
-        except Exception:  # noqa: BLE001
-            pass
-        if name != "wiring":
+        if name == "wiring":
+            # Pack footer before content so it stays pinned to the bottom.
+            self.content.pack_forget()
+            self.wiring_footer.pack(side="bottom", fill="x", padx=24, pady=(0, 18))
+            self.content.pack(fill="both", expand=True)
+            try:
+                self.manual_menu.configure(state="normal")
+                self.add_manual_btn.configure(state="normal")
+            except Exception:  # noqa: BLE001
+                pass
+        else:
+            self.wiring_footer.pack_forget()
+            if not self.content.winfo_ismapped():
+                self.content.pack(fill="both", expand=True)
             self._stop_wiring_poll()
-            self.sim_row.pack_forget()
+            try:
+                self.sim_row.pack_forget()
+            except Exception:  # noqa: BLE001
+                pass
         if name != "account":
             self._stop_auth_poll()
 

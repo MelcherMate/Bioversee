@@ -1,6 +1,6 @@
 # Bioversee Raspberry Pi app
 
-**Version: v1.5.4** (`1.5.4`) — **native desktop setup wizard** (CustomTkinter). Sign in and wire GPIO entirely in the app; control the bioreactor from the Bioversee website.
+**Version: v1.5.5** (`1.5.5`) — **native desktop setup wizard** (CustomTkinter). Sign in and wire GPIO entirely in the app; control the bioreactor from the Bioversee website.
 
 ## Recommended install (from the website)
 
