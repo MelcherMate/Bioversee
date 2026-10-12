@@ -89,28 +89,47 @@ def _resolve_logo_path() -> Path | None:
     return None
 
 
-def _account_icon_image(ctk_module, *, size: int = 40):
-    """Simple account placeholder icon (person silhouette on teal)."""
+def _gear_icon_image(ctk_module, *, size: int = 40):
+    """Simple gear icon on a teal circle (settings / app menu)."""
     try:
+        import math
+
         from PIL import Image, ImageDraw
     except ImportError:
         return None
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    scale = 4
+    canvas = size * scale
+    img = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    draw.ellipse((0, 0, size - 1, size - 1), fill=_ACCENT)
-    # Head
-    head_r = size * 0.16
-    cx, cy = size / 2, size * 0.36
+    draw.ellipse((0, 0, canvas - 1, canvas - 1), fill=_ACCENT)
+
+    cx = cy = canvas / 2
+    teeth = 8
+    outer = canvas * 0.34
+    inner = canvas * 0.24
+    hole = canvas * 0.10
+    tooth_w = math.pi / teeth * 0.45
+    points: list[tuple[float, float]] = []
+    for i in range(teeth):
+        a0 = i * (2 * math.pi / teeth) - tooth_w
+        a1 = i * (2 * math.pi / teeth) + tooth_w
+        a_mid = i * (2 * math.pi / teeth)
+        # valley → tooth side → tip → other side → valley
+        for angle, radius in (
+            (a0 - (2 * math.pi / teeth - 2 * tooth_w) / 2, inner),
+            (a0, inner),
+            (a0, outer),
+            (a_mid, outer * 1.08),
+            (a1, outer),
+            (a1, inner),
+        ):
+            points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
+    draw.polygon(points, fill="#FFFFFF")
     draw.ellipse(
-        (cx - head_r, cy - head_r, cx + head_r, cy + head_r),
-        fill="#FFFFFF",
+        (cx - hole, cy - hole, cx + hole, cy + hole),
+        fill=_ACCENT,
     )
-    # Shoulders
-    body_top = size * 0.52
-    draw.ellipse(
-        (size * 0.22, body_top, size * 0.78, size * 1.15),
-        fill="#FFFFFF",
-    )
+    img = img.resize((size, size), Image.Resampling.LANCZOS)
     return ctk_module.CTkImage(light_image=img, dark_image=img, size=(size, size))
 
 
@@ -264,10 +283,10 @@ class WizardApp:
             self.step_pills[name] = pill
             self.step_hints[name] = hint
 
-        self._account_icon = _account_icon_image(ctk)
+        self._account_icon = _gear_icon_image(ctk)
         self.avatar_btn = ctk.CTkButton(
             top,
-            text="" if self._account_icon else "👤",
+            text="" if self._account_icon else "⚙",
             image=self._account_icon,
             width=40,
             height=40,
@@ -386,11 +405,11 @@ class WizardApp:
         self.banner.configure(text=message or "")
 
     def _update_avatar(self) -> None:
-        # Keep a stable account placeholder icon (no initials).
+        # Keep a stable gear icon for the settings / account menu.
         if self._account_icon is not None:
             self.avatar_btn.configure(text="", image=self._account_icon)
         else:
-            self.avatar_btn.configure(text="👤", image=None)
+            self.avatar_btn.configure(text="⚙", image=None)
 
     def _show(self, name: str) -> None:
         self.step = name
@@ -793,6 +812,33 @@ class WizardApp:
         start_btn.pack(side="left", padx=(0, 8))
         stop_btn.pack(side="left")
 
+        autostart_row = ctk.CTkFrame(body, fg_color="transparent")
+        autostart_row.pack(fill="x", pady=(4, 10))
+        ctk.CTkLabel(
+            autostart_row,
+            text=self._tr("service_autostart"),
+            text_color=_TEXT,
+            font=ctk.CTkFont(size=13),
+        ).pack(side="left")
+        autostart_switch = ctk.CTkSwitch(
+            autostart_row,
+            text="",
+            width=48,
+            progress_color=_ACCENT,
+            button_color="#FFFFFF",
+            button_hover_color="#F3F4F6",
+        )
+        autostart_switch.pack(side="right")
+        autostart_hint = ctk.CTkLabel(
+            body,
+            text=self._tr("service_autostart_sub"),
+            text_color=_MUTED,
+            font=ctk.CTkFont(size=11),
+            wraplength=400,
+            justify="left",
+        )
+        autostart_hint.pack(anchor="w", pady=(0, 8))
+
         def selected_unit() -> str | None:
             return svc_state.get("unit")
 
@@ -856,10 +902,47 @@ class WizardApp:
             installed = bool(data.get("installed"))
             start_btn.configure(state="normal" if installed and not data.get("active") else "disabled")
             stop_btn.configure(state="normal" if installed and data.get("active") else "disabled")
+            # Update autostart switch without firing its command
+            svc_state["refreshing_autostart"] = True
+            try:
+                if installed and data.get("enabled"):
+                    autostart_switch.select()
+                else:
+                    autostart_switch.deselect()
+                autostart_switch.configure(state="normal" if installed else "disabled")
+            finally:
+                svc_state["refreshing_autostart"] = False
+
+        def on_autostart_toggle() -> None:
+            if svc_state.get("refreshing_autostart"):
+                return
+            enabled = bool(autostart_switch.get())
+            unit = selected_unit()
+            autostart_switch.configure(state="disabled")
+            service_status.configure(text=self._tr("working"))
+
+            def ok(result: dict[str, Any]) -> None:
+                win.after(0, lambda: refresh_service(result))
+
+            def err(exc: Exception) -> None:
+                def revert() -> None:
+                    service_status.configure(text=str(exc), text_color=_DANGER)
+                    refresh_service()
+
+                win.after(0, revert)
+
+            _run_sync(
+                lambda: services.agent_service_set_autostart(enabled, unit),
+                on_ok=ok,
+                on_err=err,
+            )
+
+        autostart_switch.configure(command=on_autostart_toggle)
 
         def svc_action(fn: Callable[[], dict[str, Any]]) -> None:
             start_btn.configure(state="disabled")
             stop_btn.configure(state="disabled")
+            autostart_switch.configure(state="disabled")
             service_status.configure(text=self._tr("working"))
 
             def ok(result: dict[str, Any]) -> None:

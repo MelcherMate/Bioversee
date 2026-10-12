@@ -836,6 +836,29 @@ def agent_service_stop(unit: str | None = None) -> dict[str, Any]:
     return {"ok": True, **agent_service_status(unit)}
 
 
+def agent_service_set_autostart(enabled: bool, unit: str | None = None) -> dict[str, Any]:
+    """Enable or disable starting the agent on Raspberry Pi boot (does not start/stop now)."""
+    unit = _active_unit(unit)
+    if not _unit_path(unit).exists():
+        raise RuntimeError("Service unit not installed — create one first")
+    cmd = ["systemctl", "enable" if enabled else "disable", unit]
+    result = _run_sudo(cmd)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "").strip()
+        action = "enable" if enabled else "disable"
+        raise RuntimeError(detail or f"Could not {action} {unit} on boot")
+    cfg = load_local_config()
+    cfg.agent_enabled = bool(enabled)
+    cfg.active_agent_unit = unit
+    save_local_config(cfg)
+    status = agent_service_status(unit)
+    return {
+        "ok": True,
+        "autostart": bool(status.get("enabled")),
+        **status,
+    }
+
+
 def agent_service_delete(unit: str | None = None) -> dict[str, Any]:
     """Stop, disable, and remove a systemd unit file."""
     unit = _active_unit(unit)
