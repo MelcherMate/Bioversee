@@ -251,8 +251,9 @@ class WizardApp:
         top.pack(fill="x", padx=28, pady=(22, 8))
         top.grid_columnconfigure(1, weight=1)
 
+        # Top-align brand / steps / gear so uneven heights don't float mid-row.
         brand = ctk.CTkFrame(top, fg_color="transparent")
-        brand.grid(row=0, column=0, sticky="w")
+        brand.grid(row=0, column=0, sticky="nw")
         self._logo_image = self._load_logo_image()
         if self._logo_image is not None:
             logo = ctk.CTkLabel(brand, text="", image=self._logo_image, width=40, height=40)
@@ -279,47 +280,45 @@ class WizardApp:
         self.title_label.pack(anchor="w")
 
         steps_wrap = ctk.CTkFrame(top, fg_color="transparent")
-        steps_wrap.grid(row=0, column=1, sticky="e", padx=(16, 12))
+        steps_wrap.grid(row=0, column=1, sticky="ne", padx=(16, 12))
+        # Pills on one row (vertically centered vs 40px logo/gear); caption under strip.
         self.step_row = ctk.CTkFrame(steps_wrap, fg_color="transparent")
-        self.step_row.pack(anchor="center")
+        self.step_row.pack(anchor="e", pady=(6, 0))
         self.step_pills: dict[str, Any] = {}
-        self.step_hints: dict[str, Any] = {}
         for i, name in enumerate(STEPS):
-            cell = ctk.CTkFrame(self.step_row, fg_color="transparent")
-            cell.pack(side="left")
             if i > 0:
                 ctk.CTkLabel(
-                    cell,
+                    self.step_row,
                     text="›",
                     text_color=_LINE,
                     font=ctk.CTkFont(size=14, weight="bold"),
                     width=14,
-                ).pack(side="left", padx=(0, 2), anchor="n", pady=(6, 0))
-            col = ctk.CTkFrame(cell, fg_color="transparent")
-            col.pack(side="left", padx=2)
+                    height=28,
+                ).pack(side="left", padx=(2, 2))
             pill = ctk.CTkLabel(
-                col,
+                self.step_row,
                 text=self._tr(f"step_{name}"),
                 corner_radius=999,
                 fg_color=_LINE,
                 text_color=_MUTED,
-                padx=10,
-                pady=4,
+                height=28,
+                padx=12,
                 font=ctk.CTkFont(size=12, weight="bold"),
                 cursor="arrow",
             )
-            pill.pack(anchor="center")
+            pill.pack(side="left", padx=2)
             pill.bind("<Button-1>", lambda _e, n=name: self._goto_step(n))
-            hint = ctk.CTkLabel(
-                col,
-                text="",
-                text_color=_MUTED,
-                font=ctk.CTkFont(size=10),
-                height=14,
-            )
-            hint.pack(anchor="center", pady=(3, 0))
             self.step_pills[name] = pill
-            self.step_hints[name] = hint
+
+        self.step_caption = ctk.CTkLabel(
+            steps_wrap,
+            text="",
+            text_color=_MUTED,
+            font=ctk.CTkFont(size=10),
+            height=16,
+            anchor="e",
+        )
+        self.step_caption.pack(anchor="e", pady=(4, 0))
 
         self._account_icon = _gear_icon_image(ctk)
         self.avatar_btn = ctk.CTkButton(
@@ -335,7 +334,7 @@ class WizardApp:
             font=ctk.CTkFont(size=18),
             command=self._toggle_profile_menu,
         )
-        self.avatar_btn.grid(row=0, column=2, sticky="e")
+        self.avatar_btn.grid(row=0, column=2, sticky="ne")
 
         self.banner = ctk.CTkLabel(
             self.root,
@@ -521,11 +520,10 @@ class WizardApp:
             else:
                 # Locked — cannot skip ahead
                 pill.configure(fg_color=_LINE, text_color="#9CA3AF", cursor="arrow")
-            hint = self.step_hints.get(key)
-            if hint is not None:
-                hint.configure(
-                    text=self._tr(f"step_{key}_hint") if key == name and name in STEPS else ""
-                )
+        if hasattr(self, "step_caption"):
+            self.step_caption.configure(
+                text=self._tr(f"step_{name}_hint") if name in STEPS else ""
+            )
         if name == "wiring":
             # Pack footer before content so it stays pinned to the bottom.
             self.content.pack_forget()
@@ -555,11 +553,10 @@ class WizardApp:
         )
         for name, pill in self.step_pills.items():
             pill.configure(text=self._tr(f"step_{name}"))
-            hint = self.step_hints.get(name)
-            if hint is not None:
-                hint.configure(
-                    text=self._tr(f"step_{name}_hint") if name == self.step else ""
-                )
+        if hasattr(self, "step_caption"):
+            self.step_caption.configure(
+                text=self._tr(f"step_{self.step}_hint") if self.step in STEPS else ""
+            )
         self.add_manual_btn.configure(text=self._tr("add_manually"))
         self.finish_btn.configure(text=self._tr("finish_setup"))
         # Rebuild step frames so static copy updates
