@@ -25,5 +25,16 @@ else
   exit 1
 fi
 
-systemctl try-restart bioversee-agent.service bioversee-wizard.service || true
-echo "Services restarted (if installed)."
+# apply_update already installs the privileged helper and restarts agent units.
+# Only fall back here if the helper is missing (very old installs).
+if [[ -x "${PREFIX}/bin/bioversee-privileged" ]]; then
+  "${PREFIX}/bin/bioversee-privileged" restart-agents || true
+else
+  systemctl try-restart bioversee-agent.service || true
+fi
+# Legacy desktop-as-service unit (never restart — app is a window now).
+systemctl disable --now bioversee-wizard.service 2>/dev/null || true
+rm -f /etc/systemd/system/bioversee-wizard.service
+systemctl daemon-reload 2>/dev/null || true
+
+echo "Update finished. Reopen Bioversee if it is still running."

@@ -505,7 +505,68 @@ def _load_wiring_from_service(cfg: Any, unit: str) -> None:
     # else keep current wiring (first time for this unit)
 
 
+def _install_prefix() -> Path:
+    return Path(os.environ.get("BIOVERSEE_PREFIX", "/opt/bioversee-pi"))
+
+
+def _privileged_helper() -> Path | None:
+    prefix = _install_prefix()
+    for candidate in (
+        prefix / "bin" / "bioversee-privileged",
+        prefix / "packaging" / "bioversee-privileged",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _run_privileged(
+    *args: str,
+    input_text: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run bioversee-privileged via sudo (NOPASSWD after install/update)."""
+    helper = _privileged_helper()
+    if helper is None:
+        return subprocess.CompletedProcess(
+            args=["bioversee-privileged", *args],
+            returncode=127,
+            stdout="",
+            stderr="bioversee-privileged not installed",
+        )
+    return subprocess.run(
+        ["sudo", str(helper), *args],
+        input=input_text,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
 def _run_sudo(cmd: list[str]) -> subprocess.CompletedProcess[str]:
+    """Prefer the privileged helper for systemctl / unit-file ops (one sudoers rule)."""
+    if not cmd:
+        return subprocess.run(["sudo"], check=False, capture_output=True, text=True)
+
+    if cmd[0] == "systemctl" and len(cmd) >= 2:
+        action = cmd[1]
+        if action == "daemon-reload":
+            return _run_privileged("daemon-reload")
+        if action in ("start", "stop", "enable", "disable") and len(cmd) == 3:
+            return _run_privileged(action, cmd[2])
+        if action == "enable" and len(cmd) == 4 and cmd[2] == "--now":
+            return _run_privileged("enable-now", cmd[3])
+        if action == "disable" and len(cmd) == 4 and cmd[2] == "--now":
+            return _run_privileged("disable-now", cmd[3])
+
+    if cmd[0] == "rm" and "-f" in cmd:
+        # Expect: rm -f /etc/systemd/system/bioversee-agent….service
+        for part in cmd[1:]:
+            if part.startswith("-"):
+                continue
+            name = Path(part).name
+            if name.startswith("bioversee-agent") and name.endswith(".service"):
+                return _run_privileged("remove-unit", name)
+
     return subprocess.run(
         ["sudo", *cmd],
         check=False,
@@ -682,22 +743,24 @@ def create_agent_service(
     path = _unit_path(unit)
     content = _agent_unit_template(display_name=display, settings=settings)
 
-    # Write via sudo tee so we don't need a root Python process.
-    result = subprocess.run(
-        ["sudo", "tee", str(path)],
-        input=content,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    # Single privileged helper call: write unit + daemon-reload.
+    result = _run_privileged("write-unit", unit, input_text=content)
     if result.returncode != 0:
-        detail = (result.stderr or result.stdout or "").strip()
-        raise RuntimeError(detail or f"Could not write {path}")
-
-    reload = _run_sudo(["systemctl", "daemon-reload"])
-    if reload.returncode != 0:
-        detail = (reload.stderr or reload.stdout or "").strip()
-        raise RuntimeError(detail or "systemctl daemon-reload failed")
+        # Fallback for installs that don't have the helper yet.
+        result = subprocess.run(
+            ["sudo", "tee", str(path)],
+            input=content,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            raise RuntimeError(detail or f"Could not write {path}")
+        reload = _run_sudo(["systemctl", "daemon-reload"])
+        if reload.returncode != 0:
+            detail = (reload.stderr or reload.stdout or "").strip()
+            raise RuntimeError(detail or "systemctl daemon-reload failed")
 
     cfg = load_local_config()
     existing = next((s for s in cfg.agent_services if s.unit == unit), None)
@@ -744,17 +807,20 @@ def rename_agent_service(unit: str, name: str) -> dict[str, Any]:
                 lines.append(line)
         if not replaced:
             lines.insert(1, f"Description=Bioversee agent: {display}")
-        result = subprocess.run(
-            ["sudo", "tee", str(path)],
-            input="\n".join(lines) + "\n",
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        body = "\n".join(lines) + "\n"
+        result = _run_privileged("write-unit", unit, input_text=body)
         if result.returncode != 0:
-            detail = (result.stderr or result.stdout or "").strip()
-            raise RuntimeError(detail or "Could not rename service")
-        _run_sudo(["systemctl", "daemon-reload"])
+            result = subprocess.run(
+                ["sudo", "tee", str(path)],
+                input=body,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout or "").strip()
+                raise RuntimeError(detail or "Could not rename service")
+            _run_sudo(["systemctl", "daemon-reload"])
 
     cfg = load_local_config()
     found = False
@@ -934,20 +1000,26 @@ def agent_service_delete(unit: str | None = None) -> dict[str, Any]:
     unit = _active_unit(unit)
     path = _unit_path(unit)
     errors: list[str] = []
-    for cmd in (
-        ["systemctl", "disable", "--now", unit],
-        ["systemctl", "daemon-reload"],
-    ):
-        result = _run_sudo(cmd)
-        if result.returncode != 0 and path.exists():
-            errors.append((result.stderr or result.stdout or "").strip() or str(cmd))
-
     if path.exists():
-        rm = _run_sudo(["rm", "-f", str(path)])
-        if rm.returncode != 0:
-            detail = (rm.stderr or rm.stdout or "").strip()
-            raise RuntimeError(detail or "Could not delete service file")
-        _run_sudo(["systemctl", "daemon-reload"])
+        result = _run_privileged("remove-unit", unit)
+        if result.returncode != 0:
+            # Legacy fallback
+            for cmd in (
+                ["systemctl", "disable", "--now", unit],
+                ["systemctl", "daemon-reload"],
+            ):
+                legacy = _run_sudo(cmd)
+                if legacy.returncode != 0:
+                    errors.append(
+                        (legacy.stderr or legacy.stdout or "").strip() or str(cmd)
+                    )
+            rm = _run_sudo(["rm", "-f", str(path)])
+            if rm.returncode != 0:
+                detail = (rm.stderr or rm.stdout or "").strip()
+                raise RuntimeError(detail or "Could not delete service file")
+            _run_sudo(["systemctl", "daemon-reload"])
+            if result.stderr:
+                errors.append(result.stderr.strip())
 
     cfg = load_local_config()
     cfg.agent_services = [s for s in cfg.agent_services if s.unit != unit]

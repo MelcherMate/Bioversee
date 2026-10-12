@@ -106,6 +106,20 @@ EOF
 sed -i "s|/opt/bioversee-pi|${PREFIX}|g" "${LAUNCHER}"
 chmod 755 "${LAUNCHER}"
 
+# Privileged helper — one binary for all agent systemctl / unit-file actions
+PRIVILEGED="${PREFIX}/bin/bioversee-privileged"
+cp "${PREFIX}/packaging/bioversee-privileged" "${PRIVILEGED}"
+chmod 755 "${PRIVILEGED}"
+# Allow passwordless sudo for this helper only (avoids repeated polkit prompts).
+SUDOERS="/etc/sudoers.d/bioversee-pi"
+sed "s|SERVICE_USER_PLACEHOLDER|${SERVICE_USER}|g; s|/opt/bioversee-pi|${PREFIX}|g" \
+  "${PREFIX}/packaging/sudoers.bioversee" > "${SUDOERS}"
+chmod 440 "${SUDOERS}"
+visudo -cf "${SUDOERS}" >/dev/null || {
+  echo "Warning: sudoers validation failed — removing ${SUDOERS}" >&2
+  rm -f "${SUDOERS}"
+}
+
 # Background monitoring agent only (desktop app is launched by the user).
 sed "s/^User=pi$/User=${SERVICE_USER}/; s/^Group=pi$/Group=${SERVICE_USER}/" \
   "${PREFIX}/packaging/bioversee-agent.service" \

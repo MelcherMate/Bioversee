@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Small root helper for Bioversee Pi — limits privileged actions so the desktop
+# app can manage its own systemd units with a single NOPASSWD sudoers rule.
+# Usage (as root / via sudo):
+#   bioversee-privileged restart-agents
+#   bioversee-privileged daemon-reload
+#   bioversee-privileged start <unit>
+#   bioversee-privileged stop <unit>
+#   bioversee-privileged enable <unit>
+#   bioversee-privileged disable <unit>
+#   bioversee-privileged enable-now <unit>
+#   bioversee-privileged disable-now <unit>
+#   bioversee-privileged write-unit <unit-name>   # reads unit body from stdin
+#   bioversee-privileged remove-unit <unit-name>
+
+set -euo pipefail
+
+SYSTEMD_DIR="/etc/systemd/system"
+
+_valid_unit() {
+  local unit="$1"
+  [[ "${unit}" =~ ^bioversee-agent(-[a-z0-9-]+)?\.service$ ]]
+}
+
+_list_agent_units() {
+  local units=()
+  local path
+  shopt -s nullglob
+  for path in "${SYSTEMD_DIR}"/bioversee-agent*.service; do
+    units+=("$(basename "${path}")")
+  done
+  shopt -u nullglob
+  if ((${#units[@]})); then
+    printf '%s\n' "${units[@]}"
+  fi
+}
+
+cmd="${1:-}"
+shift || true
+
+case "${cmd}" in
+  restart-agents)
+    mapfile -t units < <(_list_agent_units)
+    if ((${#units[@]} == 0)); then
+      exit 0
+    fi
+    systemctl daemon-reload
+    systemctl try-restart "${units[@]}"
+    ;;
+  daemon-reload)
+    systemctl daemon-reload
+    ;;
+  start|stop|enable|disable|enable-now|disable-now)
+    unit="${1:-}"
+    if ! _valid_unit "${unit}"; then
+      echo "Refusing unit: ${unit}" >&2
+      exit 2
+    fi
+    case "${cmd}" in
+      start) systemctl start "${unit}" ;;
+      stop) systemctl stop "${unit}" ;;
+      enable) systemctl enable "${unit}" ;;
+      disable) systemctl disable "${unit}" ;;
+      enable-now) systemctl enable --now "${unit}" ;;
+      disable-now) systemctl disable --now "${unit}" ;;
+    esac
+    ;;
+  write-unit)
+    unit="${1:-}"
+    if ! _valid_unit "${unit}"; then
+      echo "Refusing unit: ${unit}" >&2
+      exit 2
+    fi
+    cat > "${SYSTEMD_DIR}/${unit}"
+    systemctl daemon-reload
+    ;;
+  remove-unit)
+    unit="${1:-}"
+    if ! _valid_unit "${unit}"; then
+      echo "Refusing unit: ${unit}" >&2
+      exit 2
+    fi
+    systemctl disable --now "${unit}" 2>/dev/null || true
+    rm -f "${SYSTEMD_DIR}/${unit}"
+    systemctl daemon-reload
+    ;;
+  *)
+    echo "Usage: bioversee-privileged <restart-agents|daemon-reload|start|stop|enable|disable|enable-now|disable-now|write-unit|remove-unit> [unit]" >&2
+    exit 1
+    ;;
+esac

@@ -1,0 +1,5 @@
+# Allow the desktop user to manage Bioversee agent units without a password prompt.
+# Installed as /etc/sudoers.d/bioversee-pi by packaging/install.sh
+# SERVICE_USER is substituted at install time.
+
+SERVICE_USER_PLACEHOLDER ALL=(root) NOPASSWD: /opt/bioversee-pi/bin/bioversee-privileged

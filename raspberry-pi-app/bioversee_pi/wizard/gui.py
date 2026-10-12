@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import subprocess
+import sys
 import threading
 import tkinter as tk
 from pathlib import Path
@@ -145,8 +148,8 @@ class WizardApp:
 
         self.root = self.ctk.CTk()
         self.root.title("Bioversee")
-        self.root.geometry("980x720")
-        self.root.minsize(840, 600)
+        self.root.geometry("1240x760")
+        self.root.minsize(1100, 680)
         self.root.configure(fg_color=_BG)
 
         self.step = "account"
@@ -202,6 +205,32 @@ class WizardApp:
         except Exception:  # noqa: BLE001
             pass
         self.root.destroy()
+
+    def _relaunch_after_update(self, result: dict[str, Any]) -> None:
+        """Spawn a fresh Bioversee process and exit so the new code is loaded."""
+        cmd = result.get("launch_command")
+        if not isinstance(cmd, list) or not cmd:
+            prefix = Path(
+                os.environ.get("BIOVERSEE_PREFIX", "/opt/bioversee-pi")
+            )
+            launcher = prefix / "bin" / "bioversee-launch"
+            venv_app = prefix / ".venv" / "bin" / "bioversee"
+            if launcher.is_file():
+                cmd = [str(launcher)]
+            elif venv_app.is_file():
+                cmd = [str(venv_app)]
+            else:
+                cmd = [sys.executable, "-m", "bioversee_pi.wizard.gui"]
+        try:
+            subprocess.Popen(  # noqa: S603 — controlled install paths only
+                cmd,
+                start_new_session=True,
+                env=os.environ.copy(),
+            )
+        except OSError as exc:
+            log.warning("Could not relaunch after update: %s", exc)
+            return
+        self._on_close()
 
     def _on_root_click(self, event: Any) -> None:
         if self._profile_menu is None:
@@ -810,6 +839,9 @@ class WizardApp:
                         self.title_label.configure(
                             text=f"{self._tr('setup_title')}  {self._version_display}"
                         )
+                    if result.get("updated") and result.get("relaunch"):
+                        # Brief delay so the status text is visible, then reload.
+                        win.after(600, lambda: self._relaunch_after_update(result))
 
                 win.after(0, apply)
 

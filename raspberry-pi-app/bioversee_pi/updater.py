@@ -109,6 +109,7 @@ def apply_update(
             "ok": True,
             "updated": False,
             "message": "Already up to date",
+            "relaunch": False,
             **status_before,
         }
 
@@ -177,33 +178,100 @@ def apply_update(
         else:
             log.warning("No venv at %s — skip pip reinstall", venv)
 
+    # Install helper + sudoers and restart agents in ONE sudo prompt.
     if restart_services:
-        _restart_services()
+        _post_update_privileged(prefix)
 
     after = local_version()
     return {
         "ok": True,
         "updated": True,
+        "relaunch": True,
         "previous": status_before["current"],
         "previous_display": status_before["current_display"],
         "current": after,
         "current_display": display_version(after),
         "remote": status_before["remote"],
-        "message": f"Updated to {display_version(after)}",
+        "message": f"Updated to {display_version(after)} — restarting Bioversee…",
+        "launch_command": _launch_command(prefix),
     }
 
 
-def _restart_services() -> None:
-    for unit in ("bioversee-agent.service", "bioversee-wizard.service"):
-        try:
-            subprocess.run(
-                ["systemctl", "try-restart", unit],
-                check=False,
-                capture_output=True,
-                text=True,
+def _launch_command(prefix: Path) -> list[str]:
+    launcher = prefix / "bin" / "bioversee-launch"
+    venv_app = prefix / ".venv" / "bin" / "bioversee"
+    if launcher.is_file():
+        return [str(launcher)]
+    if venv_app.is_file():
+        return [str(venv_app)]
+    return ["bioversee"]
+
+
+def _post_update_privileged(prefix: Path) -> None:
+    """Single sudo: install privileged helper + sudoers, restart agent units only."""
+    prefix = Path(prefix)
+    src = prefix / "packaging" / "bioversee-privileged"
+    # Prefer the invoking desktop user (SUDO_USER when update.sh runs as root).
+    user = os.environ.get("SUDO_USER") or os.environ.get("USER") or "pi"
+    if user == "root":
+        user = "pi"
+
+    # Prefer the helper we just unpacked; fall back to restarting agent only.
+    if not src.is_file():
+        _restart_agent_fallback()
+        return
+
+    # One shell under sudo → one password / polkit prompt.
+    script = f"""
+set -euo pipefail
+PREFIX={prefix!s}
+USER_NAME={user!s}
+mkdir -p "$PREFIX/bin"
+cp "$PREFIX/packaging/bioversee-privileged" "$PREFIX/bin/bioversee-privileged"
+chmod 755 "$PREFIX/bin/bioversee-privileged"
+if [[ -f "$PREFIX/packaging/sudoers.bioversee" ]]; then
+  sed "s|SERVICE_USER_PLACEHOLDER|$USER_NAME|g; s|/opt/bioversee-pi|$PREFIX|g" \\
+    "$PREFIX/packaging/sudoers.bioversee" > /etc/sudoers.d/bioversee-pi
+  chmod 440 /etc/sudoers.d/bioversee-pi
+  if ! visudo -cf /etc/sudoers.d/bioversee-pi >/dev/null 2>&1; then
+    rm -f /etc/sudoers.d/bioversee-pi
+  fi
+fi
+# Drop legacy wizard unit (desktop app only) — was causing a 2nd auth prompt.
+systemctl disable --now bioversee-wizard.service 2>/dev/null || true
+rm -f /etc/systemd/system/bioversee-wizard.service
+systemctl daemon-reload
+"$PREFIX/bin/bioversee-privileged" restart-agents
+"""
+    try:
+        result = subprocess.run(
+            ["sudo", "bash", "-c", script],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            log.warning(
+                "Privileged post-update failed (%s): %s",
+                result.returncode,
+                (result.stderr or result.stdout or "").strip(),
             )
-        except FileNotFoundError:
-            break
+            _restart_agent_fallback()
+    except FileNotFoundError:
+        _restart_agent_fallback()
+
+
+def _restart_agent_fallback() -> None:
+    """Last resort: restart only bioversee-agent.service (never the old wizard)."""
+    try:
+        subprocess.run(
+            ["sudo", "systemctl", "try-restart", "bioversee-agent.service"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        pass
 
 
 def main() -> None:
