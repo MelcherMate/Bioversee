@@ -36,7 +36,7 @@ _IDLE = "#EEF2F0"
 _BUSY = "#6366F1"
 _UNKNOWN = "#CBD5E1"
 
-STEPS = ("account", "device", "wiring", "done")
+STEPS = ("account", "device", "service", "wiring", "done")
 
 
 def _run_async(coro, on_ok: Callable[[Any], None], on_err: Callable[[Exception], None]) -> None:
@@ -324,6 +324,7 @@ class WizardApp:
         self.frames["project"] = self._frame_project()
         self.frames["account"] = self._frame_account()
         self.frames["device"] = self._frame_device()
+        self.frames["service"] = self._frame_service()
         self.frames["wiring"] = self._frame_wiring()
         self.frames["done"] = self._frame_done()
 
@@ -468,6 +469,7 @@ class WizardApp:
         self.frames["project"] = self._frame_project()
         self.frames["account"] = self._frame_account()
         self.frames["device"] = self._frame_device()
+        self.frames["service"] = self._frame_service()
         self.frames["wiring"] = self._frame_wiring()
         self.frames["done"] = self._frame_done()
         # Rebuild footer sim buttons with new labels
@@ -492,6 +494,8 @@ class WizardApp:
             self._start_wiring_poll()
         if current == "device":
             self._load_devices()
+        if current == "service":
+            self._refresh_service_step()
 
     def _toggle_profile_menu(self) -> None:
         if self._profile_menu is not None:
@@ -1260,6 +1264,118 @@ class WizardApp:
         self.device_list.pack(fill="both", expand=True)
         return f
 
+    def _frame_service(self):
+        ctk = self.ctk
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
+        ctk.CTkLabel(
+            f,
+            text=self._tr("service_step_title"),
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            f,
+            text=self._tr("service_step_sub"),
+            text_color=_MUTED,
+            wraplength=700,
+            justify="left",
+        ).pack(anchor="w", pady=(6, 16))
+
+        self._service_step_state: dict[str, Any] = {"unit": None, "by_label": {}}
+
+        ctk.CTkLabel(f, text=self._tr("service_select"), text_color=_MUTED).pack(anchor="w")
+        self.service_step_menu = ctk.CTkOptionMenu(f, values=["—"], width=360)
+        self.service_step_menu.pack(anchor="w", pady=(4, 6))
+        self.service_step_file = ctk.CTkLabel(f, text="", text_color=_MUTED, font=ctk.CTkFont(size=11))
+        self.service_step_file.pack(anchor="w")
+        self.service_step_status = ctk.CTkLabel(f, text="", text_color=_MUTED)
+        self.service_step_status.pack(anchor="w", pady=(4, 12))
+
+        create_row = ctk.CTkFrame(f, fg_color="transparent")
+        create_row.pack(fill="x", pady=(0, 10))
+        self.service_step_name = ctk.CTkEntry(
+            create_row, height=38, placeholder_text=self._tr("service_name_ph")
+        )
+        self.service_step_name.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(
+            create_row,
+            text=self._tr("service_create"),
+            width=120,
+            height=38,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_ACCENT,
+            command=self._service_step_create,
+        ).pack(side="right")
+
+        svc_row = ctk.CTkFrame(f, fg_color="transparent")
+        svc_row.pack(fill="x", pady=(4, 8))
+        self.service_step_start = ctk.CTkButton(
+            svc_row,
+            text=self._tr("start_service"),
+            height=34,
+            width=100,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            command=lambda: self._service_step_action(
+                lambda: services.agent_service_start(self._service_step_unit())
+            ),
+        )
+        self.service_step_stop = ctk.CTkButton(
+            svc_row,
+            text=self._tr("stop_service"),
+            height=34,
+            width=100,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_TEXT,
+            command=lambda: self._service_step_action(
+                lambda: services.agent_service_stop(self._service_step_unit())
+            ),
+        )
+        self.service_step_start.pack(side="left", padx=(0, 8))
+        self.service_step_stop.pack(side="left")
+
+        autostart_row = ctk.CTkFrame(f, fg_color="transparent")
+        autostart_row.pack(fill="x", pady=(8, 4))
+        ctk.CTkLabel(
+            autostart_row,
+            text=self._tr("service_autostart"),
+            text_color=_TEXT,
+            font=ctk.CTkFont(size=13),
+        ).pack(side="left")
+        self.service_step_autostart = ctk.CTkSwitch(
+            autostart_row,
+            text="",
+            width=48,
+            progress_color=_ACCENT,
+            button_color="#FFFFFF",
+            button_hover_color="#F3F4F6",
+            command=self._service_step_autostart_toggle,
+        )
+        self.service_step_autostart.pack(side="right")
+        ctk.CTkLabel(
+            f,
+            text=self._tr("service_autostart_sub"),
+            text_color=_MUTED,
+            font=ctk.CTkFont(size=11),
+            wraplength=700,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 16))
+
+        ctk.CTkButton(
+            f,
+            text=self._tr("service_continue"),
+            height=42,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            font=ctk.CTkFont(size=15, weight="bold"),
+            command=self._service_step_continue,
+        ).pack(anchor="w")
+        return f
+
     def _frame_wiring(self):
         ctk = self.ctk
         f = ctk.CTkFrame(self.content, fg_color="transparent")
@@ -1385,6 +1501,9 @@ class WizardApp:
         if not local.get("device_id") or not local.get("has_api_key"):
             self._show("device")
             self._load_devices()
+            return
+        if not local.get("agent_service_ready") or not local.get("has_agent_service"):
+            self._enter_service_step()
             return
         self._enter_wiring(simulate=bool(st.get("simulate_gpio")))
 
@@ -1535,10 +1654,7 @@ class WizardApp:
             return
         _run_async(
             services.create_device(self.settings, name=name, device_type="bioreactor"),
-            on_ok=lambda _r: self.root.after(
-                0,
-                lambda: self._enter_wiring(simulate=_probe_simulate()),
-            ),
+            on_ok=lambda _r: self.root.after(0, self._enter_service_step),
             on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
         )
 
@@ -1551,12 +1667,160 @@ class WizardApp:
                 device_name=device.get("name"),
                 device_type=device.get("type"),
             ),
-            on_ok=lambda _r: self.root.after(
-                0,
-                lambda: self._enter_wiring(simulate=_probe_simulate()),
-            ),
+            on_ok=lambda _r: self.root.after(0, self._enter_service_step),
             on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
         )
+
+    def _enter_service_step(self) -> None:
+        self._show("service")
+        self._refresh_service_step()
+
+    def _service_step_unit(self) -> str | None:
+        return (self._service_step_state or {}).get("unit")
+
+    def _refresh_service_step(self, listed: dict[str, Any] | None = None) -> None:
+        if not hasattr(self, "service_step_menu"):
+            return
+        data = listed or services.list_agent_services()
+        rows = data.get("services") or []
+        active = data.get("active_unit")
+        labels: list[str] = []
+        by_label: dict[str, str] = {}
+        for row in rows:
+            label = f"{row.get('name')}  ({row.get('unit')})"
+            labels.append(label)
+            by_label[label] = str(row["unit"])
+        if not labels:
+            labels = ["—"]
+        self._service_step_state = {"unit": None, "by_label": by_label, "refreshing": False}
+        self.service_step_menu.configure(values=labels, command=self._service_step_pick)
+        chosen = next((label for label, unit in by_label.items() if unit == active), labels[0])
+        self.service_step_menu.set(chosen)
+        self._service_step_state["unit"] = by_label.get(chosen)
+        self._refresh_service_step_status()
+
+    def _service_step_pick(self, choice: str) -> None:
+        unit = (self._service_step_state or {}).get("by_label", {}).get(choice)
+        if not unit:
+            return
+        self._service_step_state["unit"] = unit
+
+        def ok(_r: dict[str, Any]) -> None:
+            self.root.after(0, self._refresh_service_step_status)
+
+        def err(exc: Exception) -> None:
+            self.root.after(0, lambda: self._set_banner(str(exc)))
+
+        _run_sync(lambda: services.set_active_agent_service(unit), on_ok=ok, on_err=err)
+
+    def _refresh_service_step_status(self, st: dict[str, Any] | None = None) -> None:
+        unit = self._service_step_unit()
+        data = st if st and "installed" in st else services.agent_service_status(unit)
+        unit = data.get("unit") or unit
+        if unit:
+            self.service_step_file.configure(text=self._tr("service_file", file=unit))
+        if not data.get("installed"):
+            label = self._tr("service_missing")
+        elif data.get("active"):
+            label = self._tr("service_running")
+        elif data.get("state") in ("inactive", "failed", "dead"):
+            label = self._tr("service_stopped")
+        else:
+            label = f"{self._tr('service_unknown')} ({data.get('state')})"
+        self.service_step_status.configure(text=label, text_color=_MUTED)
+        installed = bool(data.get("installed"))
+        self.service_step_start.configure(
+            state="normal" if installed and not data.get("active") else "disabled"
+        )
+        self.service_step_stop.configure(
+            state="normal" if installed and data.get("active") else "disabled"
+        )
+        self._service_step_state["refreshing"] = True
+        try:
+            if installed and data.get("enabled"):
+                self.service_step_autostart.select()
+            else:
+                self.service_step_autostart.deselect()
+            self.service_step_autostart.configure(state="normal" if installed else "disabled")
+        finally:
+            self._service_step_state["refreshing"] = False
+
+    def _service_step_action(self, fn: Callable[[], dict[str, Any]]) -> None:
+        self.service_step_status.configure(text=self._tr("working"))
+
+        def ok(result: dict[str, Any]) -> None:
+            def apply() -> None:
+                if result.get("services") is not None:
+                    self._refresh_service_step(result)
+                else:
+                    self._refresh_service_step_status(result.get("status") or result)
+
+            self.root.after(0, apply)
+
+        def err(exc: Exception) -> None:
+            self.root.after(
+                0,
+                lambda: (
+                    self.service_step_status.configure(text=str(exc), text_color=_DANGER),
+                    self._refresh_service_step_status(),
+                ),
+            )
+
+        _run_sync(fn, on_ok=ok, on_err=err)
+
+    def _service_step_create(self) -> None:
+        name = self.service_step_name.get().strip()
+        if not name:
+            self.service_step_status.configure(
+                text=self._tr("service_need_name"), text_color=_DANGER
+            )
+            return
+        self._service_step_action(
+            lambda: services.create_agent_service(name, settings=self.settings, make_active=True)
+        )
+        self.service_step_name.delete(0, "end")
+
+    def _service_step_autostart_toggle(self) -> None:
+        if (self._service_step_state or {}).get("refreshing"):
+            return
+        enabled = bool(self.service_step_autostart.get())
+        unit = self._service_step_unit()
+        self.service_step_autostart.configure(state="disabled")
+        self.service_step_status.configure(text=self._tr("working"))
+
+        def ok(result: dict[str, Any]) -> None:
+            self.root.after(0, lambda: self._refresh_service_step_status(result))
+
+        def err(exc: Exception) -> None:
+            self.root.after(
+                0,
+                lambda: (
+                    self.service_step_status.configure(text=str(exc), text_color=_DANGER),
+                    self._refresh_service_step_status(),
+                ),
+            )
+
+        _run_sync(
+            lambda: services.agent_service_set_autostart(enabled, unit),
+            on_ok=ok,
+            on_err=err,
+        )
+
+    def _service_step_continue(self) -> None:
+        self._clear_banner()
+        unit = self._service_step_unit()
+        if not unit:
+            self._set_banner(self._tr("service_need_select"))
+            return
+
+        def ok(_r: dict[str, Any]) -> None:
+            self.root.after(0, lambda: self._enter_wiring(simulate=_probe_simulate()))
+
+        def err(exc: Exception) -> None:
+            self.root.after(0, lambda: self._set_banner(str(exc)))
+
+        self.service_step_status.configure(text=self._tr("working"))
+        _run_sync(lambda: services.confirm_service_setup(unit), on_ok=ok, on_err=err)
 
     def _enter_wiring(self, *, simulate: bool) -> None:
         data = services.gpio_header()

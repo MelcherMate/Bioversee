@@ -114,6 +114,9 @@ async def status(settings: AppSettings) -> dict[str, Any]:
             "wiring": [w.model_dump() for w in cfg.wiring],
             "agent_enabled": cfg.agent_enabled,
             "language": cfg.language or "en",
+            "active_agent_unit": cfg.active_agent_unit,
+            "agent_service_ready": bool(cfg.agent_service_ready),
+            "has_agent_service": _unit_path(cfg.active_agent_unit or _DEFAULT_AGENT_UNIT).exists(),
         },
     }
 
@@ -248,6 +251,7 @@ async def select_device(
     cfg.supabase_url = settings.supabase_url
     cfg.supabase_anon_key = settings.supabase_anon_key
     cfg.wiring = []
+    cfg.agent_service_ready = False
     save_local_config(cfg)
     return {
         "ok": True,
@@ -295,6 +299,7 @@ def gpio_confirm(event_id: str, peripheral_id: str | None = None) -> dict[str, A
     cfg = load_local_config()
     cfg.wiring = [w for w in cfg.wiring if not _same_wire(w, entry)]
     cfg.wiring.append(entry)
+    _sync_wiring_to_active_service(cfg)
     save_local_config(cfg)
     return {"ok": True, "wiring": entry.model_dump()}
 
@@ -371,6 +376,7 @@ def gpio_manual(
     cfg = load_local_config()
     cfg.wiring = [w for w in cfg.wiring if not _same_wire(w, entry)]
     cfg.wiring.append(entry)
+    _sync_wiring_to_active_service(cfg)
     save_local_config(cfg)
     return {"ok": True, "wiring": entry.model_dump()}
 
@@ -380,6 +386,7 @@ def gpio_remove_confirmed(index: int) -> dict[str, Any]:
     if index < 0 or index >= len(cfg.wiring):
         raise RuntimeError("Unknown confirmed entry")
     removed = cfg.wiring.pop(index)
+    _sync_wiring_to_active_service(cfg)
     save_local_config(cfg)
     return {"ok": True, "removed": removed.model_dump(), "remaining": len(cfg.wiring)}
 
@@ -388,6 +395,7 @@ def gpio_clear_confirmed() -> dict[str, Any]:
     cfg = load_local_config()
     count = len(cfg.wiring)
     cfg.wiring = []
+    _sync_wiring_to_active_service(cfg)
     save_local_config(cfg)
     return {"ok": True, "cleared": count}
 
@@ -466,6 +474,35 @@ def _same_wire(a: WiringEntry, b: WiringEntry) -> bool:
 
 _DEFAULT_AGENT_UNIT = "bioversee-agent.service"
 _SYSTEMD_DIR = Path("/etc/systemd/system")
+
+
+def _ensure_service_entry(cfg: Any, unit: str, name: str | None = None) -> AgentServiceEntry:
+    for entry in cfg.agent_services:
+        if entry.unit == unit:
+            if name:
+                entry.name = name
+            return entry
+    entry = AgentServiceEntry(
+        unit=unit,
+        name=name or unit.replace(".service", ""),
+        wiring=list(cfg.wiring),
+    )
+    cfg.agent_services.append(entry)
+    return entry
+
+
+def _sync_wiring_to_active_service(cfg: Any) -> None:
+    """Keep the active service entry's wiring in sync with LocalConfig.wiring."""
+    unit = cfg.active_agent_unit or _DEFAULT_AGENT_UNIT
+    entry = _ensure_service_entry(cfg, unit)
+    entry.wiring = list(cfg.wiring)
+
+
+def _load_wiring_from_service(cfg: Any, unit: str) -> None:
+    entry = next((s for s in cfg.agent_services if s.unit == unit), None)
+    if entry is not None:
+        cfg.wiring = list(entry.wiring)
+    # else keep current wiring (first time for this unit)
 
 
 def _run_sudo(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -601,9 +638,34 @@ def list_agent_services() -> dict[str, Any]:
 def set_active_agent_service(unit: str) -> dict[str, Any]:
     unit = _active_unit(unit)
     cfg = load_local_config()
+    # Persist current wiring onto the previous active service before switching.
+    _sync_wiring_to_active_service(cfg)
     cfg.active_agent_unit = unit
+    _ensure_service_entry(cfg, unit)
+    _load_wiring_from_service(cfg, unit)
     save_local_config(cfg)
     return {"ok": True, **list_agent_services(), "status": agent_service_status(unit)}
+
+
+def confirm_service_setup(unit: str | None = None) -> dict[str, Any]:
+    """Mark the selected service as ready and load its wiring for the wiring step."""
+    unit = _active_unit(unit)
+    path = _unit_path(unit)
+    if not path.exists():
+        raise RuntimeError("Create or select a service file first")
+    cfg = load_local_config()
+    _sync_wiring_to_active_service(cfg)
+    cfg.active_agent_unit = unit
+    _ensure_service_entry(cfg, unit)
+    _load_wiring_from_service(cfg, unit)
+    cfg.agent_service_ready = True
+    save_local_config(cfg)
+    return {
+        "ok": True,
+        "unit": unit,
+        "wiring_count": len(cfg.wiring),
+        **list_agent_services(),
+    }
 
 
 def create_agent_service(
@@ -638,10 +700,14 @@ def create_agent_service(
         raise RuntimeError(detail or "systemctl daemon-reload failed")
 
     cfg = load_local_config()
-    cfg.agent_services = [s for s in cfg.agent_services if s.unit != unit]
-    cfg.agent_services.append(AgentServiceEntry(unit=unit, name=display))
     if make_active:
+        # Keep previous service wiring, then switch to a fresh map for the new unit.
+        _sync_wiring_to_active_service(cfg)
         cfg.active_agent_unit = unit
+        cfg.wiring = []
+        cfg.agent_service_ready = False
+    cfg.agent_services = [s for s in cfg.agent_services if s.unit != unit]
+    cfg.agent_services.append(AgentServiceEntry(unit=unit, name=display, wiring=[]))
     save_local_config(cfg)
     return {
         "ok": True,
