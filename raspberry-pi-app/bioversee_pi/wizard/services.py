@@ -104,6 +104,7 @@ async def status(settings: AppSettings) -> dict[str, Any]:
         "supabase_url": settings.supabase_url,
         "website_url": settings.website_url.rstrip("/"),
         "simulate_gpio": probe_service.simulate,
+        "language": cfg.language or "en",
         "local": {
             "device_id": cfg.device_id,
             "device_name": cfg.device_name,
@@ -111,8 +112,27 @@ async def status(settings: AppSettings) -> dict[str, Any]:
             "has_api_key": bool(cfg.api_key),
             "wiring": [w.model_dump() for w in cfg.wiring],
             "agent_enabled": cfg.agent_enabled,
+            "language": cfg.language or "en",
         },
     }
+
+
+def get_language() -> str:
+    return load_local_config().language or "en"
+
+
+def set_language(language: str) -> str:
+    lang = (language or "en").strip().lower()
+    if lang not in ("en", "de", "hu"):
+        lang = "en"
+    cfg = load_local_config()
+    cfg.language = lang
+    save_local_config(cfg)
+    return lang
+
+
+def logout() -> None:
+    auth.logout()
 
 
 def _prune_pending_logins() -> None:
@@ -381,9 +401,21 @@ def _same_wire(a: WiringEntry, b: WiringEntry) -> bool:
     return False
 
 
+_AGENT_UNIT = "bioversee-agent.service"
+_AGENT_UNIT_PATH = Path("/etc/systemd/system/bioversee-agent.service")
+
+
+def _run_sudo(cmd: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["sudo", *cmd],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
 def _enable_agent_service() -> dict[str, Any]:
-    system_unit = Path("/etc/systemd/system/bioversee-agent.service")
-    if not system_unit.exists():
+    if not _AGENT_UNIT_PATH.exists():
         return {
             "enabled": False,
             "message": "Service unit not installed — run packaging/install.sh",
@@ -392,12 +424,20 @@ def _enable_agent_service() -> dict[str, Any]:
 
     errors: list[str] = []
     for cmd in (
-        ["sudo", "systemctl", "daemon-reload"],
-        ["sudo", "systemctl", "enable", "--now", "bioversee-agent.service"],
+        ["systemctl", "daemon-reload"],
+        ["systemctl", "enable", "--now", _AGENT_UNIT],
     ):
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
-        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            result = _run_sudo(cmd)
+            if result.returncode != 0:
+                errors.append(result.stderr.strip() or result.stdout.strip() or str(cmd))
+                return {
+                    "enabled": False,
+                    "message": "Could not enable systemd unit",
+                    "errors": errors,
+                    "hint": "sudo systemctl enable --now bioversee-agent",
+                }
+        except FileNotFoundError as exc:
             errors.append(str(exc))
             return {
                 "enabled": False,
@@ -407,3 +447,165 @@ def _enable_agent_service() -> dict[str, Any]:
             }
 
     return {"enabled": True, "message": "bioversee-agent enabled on boot"}
+
+
+def agent_service_status() -> dict[str, Any]:
+    """Return live systemd status for the background agent."""
+    unit_exists = _AGENT_UNIT_PATH.exists()
+    if not unit_exists:
+        return {
+            "ok": True,
+            "installed": False,
+            "active": False,
+            "enabled": False,
+            "state": "missing",
+            "message": "Service unit not installed",
+        }
+
+    active = False
+    enabled = False
+    state = "unknown"
+    try:
+        active_res = subprocess.run(
+            ["systemctl", "is-active", _AGENT_UNIT],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        state = (active_res.stdout or active_res.stderr or "unknown").strip() or "unknown"
+        active = state == "active"
+
+        enabled_res = subprocess.run(
+            ["systemctl", "is-enabled", _AGENT_UNIT],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        enabled = (enabled_res.stdout or "").strip() == "enabled"
+    except FileNotFoundError:
+        return {
+            "ok": False,
+            "installed": True,
+            "active": False,
+            "enabled": False,
+            "state": "unknown",
+            "message": "systemctl not available",
+        }
+
+    return {
+        "ok": True,
+        "installed": True,
+        "active": active,
+        "enabled": enabled,
+        "state": state,
+        "message": state,
+    }
+
+
+def agent_service_start() -> dict[str, Any]:
+    if not _AGENT_UNIT_PATH.exists():
+        raise RuntimeError("Service unit not installed — run packaging/install.sh")
+    for cmd in (
+        ["systemctl", "daemon-reload"],
+        ["systemctl", "enable", "--now", _AGENT_UNIT],
+    ):
+        result = _run_sudo(cmd)
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            raise RuntimeError(detail or "Could not start bioversee-agent")
+    cfg = load_local_config()
+    cfg.agent_enabled = True
+    save_local_config(cfg)
+    return {"ok": True, **agent_service_status()}
+
+
+def agent_service_stop() -> dict[str, Any]:
+    if not _AGENT_UNIT_PATH.exists():
+        raise RuntimeError("Service unit not installed")
+    result = _run_sudo(["systemctl", "stop", _AGENT_UNIT])
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(detail or "Could not stop bioversee-agent")
+    cfg = load_local_config()
+    cfg.agent_enabled = False
+    save_local_config(cfg)
+    return {"ok": True, **agent_service_status()}
+
+
+def agent_service_delete() -> dict[str, Any]:
+    """Stop, disable, and remove the systemd unit file."""
+    errors: list[str] = []
+    for cmd in (
+        ["systemctl", "disable", "--now", _AGENT_UNIT],
+        ["systemctl", "daemon-reload"],
+    ):
+        result = _run_sudo(cmd)
+        if result.returncode != 0 and _AGENT_UNIT_PATH.exists():
+            errors.append((result.stderr or result.stdout or "").strip() or str(cmd))
+
+    if _AGENT_UNIT_PATH.exists():
+        rm = _run_sudo(["rm", "-f", str(_AGENT_UNIT_PATH)])
+        if rm.returncode != 0:
+            detail = (rm.stderr or rm.stdout or "").strip()
+            raise RuntimeError(detail or "Could not delete service file")
+        _run_sudo(["systemctl", "daemon-reload"])
+
+    cfg = load_local_config()
+    cfg.agent_enabled = False
+    save_local_config(cfg)
+    return {
+        "ok": True,
+        "deleted": True,
+        "errors": errors,
+        "message": "bioversee-agent service file removed",
+        **agent_service_status(),
+    }
+
+
+def uninstall_app(settings: AppSettings | None = None) -> dict[str, Any]:
+    """Remove the installed app, service, desktop entries, and local config."""
+    settings = settings or AppSettings()
+    prefix = Path(settings.install_prefix)
+
+    # Stop & remove agent first so nothing holds files open.
+    try:
+        agent_service_delete()
+    except RuntimeError:
+        pass
+
+    paths_to_remove = [
+        str(prefix),
+        "/usr/share/applications/bioversee.desktop",
+        "/usr/share/pixmaps/bioversee.png",
+        "/usr/share/icons/hicolor/48x48/apps/bioversee.png",
+        "/etc/bioversee",
+    ]
+
+    # User desktop shortcut(s)
+    home = Path.home()
+    paths_to_remove.append(str(home / "Desktop" / "Bioversee.desktop"))
+    paths_to_remove.append(str(CONFIG_PATH.parent))
+
+    removed: list[str] = []
+    errors: list[str] = []
+    for path in paths_to_remove:
+        if not Path(path).exists():
+            continue
+        result = _run_sudo(["rm", "-rf", path])
+        if result.returncode != 0:
+            errors.append((result.stderr or result.stdout or path).strip())
+        else:
+            removed.append(path)
+
+    # Clear in-process session even if file wipe failed.
+    auth.logout()
+
+    if errors and not removed:
+        raise RuntimeError("; ".join(errors) or "Uninstall failed")
+
+    return {
+        "ok": True,
+        "removed": removed,
+        "errors": errors,
+        "message": "Bioversee removed from this Pi",
+    }

@@ -35,6 +35,7 @@ class LocalConfig(BaseModel):
     supabase_anon_key: str | None = None
     wiring: list[WiringEntry] = Field(default_factory=list)
     agent_enabled: bool = False
+    language: str = "en"
 
 
 class AppSettings(BaseSettings):
@@ -90,6 +91,9 @@ def load_local_config() -> LocalConfig:
     with CONFIG_PATH.open("rb") as fh:
         data = tomllib.load(fh)
     wiring_raw = data.get("wiring") or []
+    language = str(data.get("language") or "en").strip().lower()
+    if language not in ("en", "de", "hu"):
+        language = "en"
     return LocalConfig(
         device_id=data.get("device_id"),
         device_name=data.get("device_name"),
@@ -100,6 +104,7 @@ def load_local_config() -> LocalConfig:
         supabase_anon_key=data.get("supabase_anon_key"),
         wiring=[WiringEntry.model_validate(w) for w in wiring_raw],
         agent_enabled=bool(data.get("agent_enabled", False)),
+        language=language,
     )
 
 
@@ -114,6 +119,7 @@ def save_local_config(cfg: LocalConfig) -> None:
         "supabase_url": cfg.supabase_url,
         "supabase_anon_key": cfg.supabase_anon_key,
         "agent_enabled": cfg.agent_enabled,
+        "language": cfg.language or "en",
         "wiring": [w.model_dump(exclude_none=True) for w in cfg.wiring],
     }
     with CONFIG_PATH.open("wb") as fh:

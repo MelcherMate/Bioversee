@@ -6,9 +6,11 @@ import asyncio
 import logging
 import threading
 import tkinter as tk
+from pathlib import Path
 from typing import Any, Callable
 
 from bioversee_pi.devices import DevicesError
+from bioversee_pi.i18n import LANGUAGE_OPTIONS, AppLanguage, normalize_language, t
 from bioversee_pi.version import display_version
 from bioversee_pi.wizard import oauth_webview, services
 from bioversee_pi.wizard.callback_server import CallbackServer
@@ -49,6 +51,18 @@ def _run_async(coro, on_ok: Callable[[Any], None], on_err: Callable[[Exception],
     threading.Thread(target=worker, name="bioversee-async", daemon=True).start()
 
 
+def _run_sync(fn: Callable[[], Any], on_ok: Callable[[Any], None], on_err: Callable[[Exception], None]) -> None:
+    def worker() -> None:
+        try:
+            result = fn()
+        except Exception as exc:  # noqa: BLE001
+            on_err(exc)
+            return
+        on_ok(result)
+
+    threading.Thread(target=worker, name="bioversee-sync", daemon=True).start()
+
+
 def _try_import_ctk():
     try:
         import customtkinter as ctk
@@ -62,6 +76,31 @@ def _try_import_ctk():
         ) from exc
 
 
+def _resolve_logo_path() -> Path | None:
+    candidates = [
+        Path(__file__).resolve().parents[2] / "packaging" / "bioversee.png",
+        Path("/opt/bioversee-pi/packaging/bioversee.png"),
+        Path("/usr/share/pixmaps/bioversee.png"),
+        Path("/usr/share/icons/hicolor/48x48/apps/bioversee.png"),
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
+def _initials_from_email(email: str | None) -> str:
+    if not email:
+        return "?"
+    local = email.split("@", 1)[0].strip()
+    if not local:
+        return "?"
+    parts = [p for p in local.replace(".", " ").replace("_", " ").split() if p]
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[1][0]).upper()
+    return local[:2].upper()
+
+
 class WizardApp:
     def __init__(self) -> None:
         self.ctk = _try_import_ctk()
@@ -69,6 +108,9 @@ class WizardApp:
         self.ctk.set_default_color_theme("green")
 
         self.settings = services.load_settings()
+        self.lang: AppLanguage = normalize_language(services.get_language())
+        self.user_email: str | None = None
+
         self.root = self.ctk.CTk()
         self.root.title("Bioversee")
         self.root.geometry("980x720")
@@ -84,6 +126,10 @@ class WizardApp:
         self._pin_labels: dict[int, Any] = {}
         self._busy = False
         self._catalog_by_label: dict[str, str] = {}
+        self._logo_image = None
+        self._profile_menu: Any | None = None
+        self._settings_win: Any | None = None
+        self._version_display = display_version()
 
         self.callback = CallbackServer(
             host="127.0.0.1",
@@ -98,9 +144,13 @@ class WizardApp:
         )
         self.callback.start()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.bind("<Button-1>", self._on_root_click, add="+")
 
         self._build_shell()
         self._show_boot()
+
+    def _tr(self, key: str, **kwargs: object) -> str:
+        return t(key, self.lang, **kwargs)
 
     def run(self) -> None:
         self.root.mainloop()
@@ -114,6 +164,19 @@ class WizardApp:
             pass
         self.root.destroy()
 
+    def _on_root_click(self, event: Any) -> None:
+        if self._profile_menu is None:
+            return
+        widget = event.widget
+        try:
+            if str(widget).startswith(str(self._profile_menu)):
+                return
+            if str(widget).startswith(str(self.avatar_btn)):
+                return
+        except Exception:  # noqa: BLE001
+            pass
+        self._close_profile_menu()
+
     def _build_shell(self) -> None:
         ctk = self.ctk
         top = ctk.CTkFrame(self.root, fg_color="transparent")
@@ -121,32 +184,41 @@ class WizardApp:
 
         brand = ctk.CTkFrame(top, fg_color="transparent")
         brand.pack(side="left")
-        mark = ctk.CTkFrame(brand, width=40, height=40, corner_radius=12, fg_color=_ACCENT)
-        mark.pack(side="left", padx=(0, 12))
-        mark.pack_propagate(False)
+        self._logo_image = self._load_logo_image()
+        if self._logo_image is not None:
+            logo = ctk.CTkLabel(brand, text="", image=self._logo_image, width=40, height=40)
+            logo.pack(side="left", padx=(0, 12))
+        else:
+            mark = ctk.CTkFrame(brand, width=40, height=40, corner_radius=12, fg_color=_ACCENT)
+            mark.pack(side="left", padx=(0, 12))
+            mark.pack_propagate(False)
         titles = ctk.CTkFrame(brand, fg_color="transparent")
         titles.pack(side="left")
-        ctk.CTkLabel(
+        self.eyebrow = ctk.CTkLabel(
             titles,
-            text="RASPBERRY PI",
+            text=self._tr("raspberry_pi"),
             text_color=_MUTED,
             font=ctk.CTkFont(size=11, weight="bold"),
-        ).pack(anchor="w")
+        )
+        self.eyebrow.pack(anchor="w")
         self.title_label = ctk.CTkLabel(
             titles,
-            text=f"Bioversee setup  {display_version()}",
+            text=f"{self._tr('setup_title')}  {self._version_display}",
             text_color=_TEXT,
             font=ctk.CTkFont(size=22, weight="bold"),
         )
         self.title_label.pack(anchor="w")
 
-        self.step_row = ctk.CTkFrame(top, fg_color="transparent")
-        self.step_row.pack(side="right")
+        right = ctk.CTkFrame(top, fg_color="transparent")
+        right.pack(side="right")
+
+        self.step_row = ctk.CTkFrame(right, fg_color="transparent")
+        self.step_row.pack(side="left", padx=(0, 12))
         self.step_pills: dict[str, Any] = {}
         for name in STEPS:
             pill = ctk.CTkLabel(
                 self.step_row,
-                text=name.title(),
+                text=self._tr(f"step_{name}"),
                 corner_radius=999,
                 fg_color=_LINE,
                 text_color=_MUTED,
@@ -156,6 +228,20 @@ class WizardApp:
             )
             pill.pack(side="left", padx=4)
             self.step_pills[name] = pill
+
+        self.avatar_btn = ctk.CTkButton(
+            right,
+            text="?",
+            width=40,
+            height=40,
+            corner_radius=20,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            text_color="#FFFFFF",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=self._toggle_profile_menu,
+        )
+        self.avatar_btn.pack(side="left")
 
         self.banner = ctk.CTkLabel(
             self.root,
@@ -169,6 +255,14 @@ class WizardApp:
         self.card = ctk.CTkFrame(self.root, fg_color=_CARD, corner_radius=18)
         self.card.pack(fill="both", expand=True, padx=28, pady=(4, 24))
 
+        # Sticky wiring footer — always visible at bottom of the card
+        self.wiring_footer = ctk.CTkFrame(self.card, fg_color="transparent")
+        self.wiring_footer.pack(side="bottom", fill="x", padx=24, pady=(0, 18))
+        self._build_wiring_footer()
+
+        self.content = ctk.CTkFrame(self.card, fg_color="transparent")
+        self.content.pack(fill="both", expand=True)
+
         self.frames: dict[str, Any] = {}
         self.frames["boot"] = self._frame_boot()
         self.frames["project"] = self._frame_project()
@@ -177,11 +271,85 @@ class WizardApp:
         self.frames["wiring"] = self._frame_wiring()
         self.frames["done"] = self._frame_done()
 
+    def _load_logo_image(self):
+        path = _resolve_logo_path()
+        if path is None:
+            log.warning("Bioversee logo not found — using placeholder")
+            return None
+        try:
+            from PIL import Image
+
+            img = Image.open(path)
+            return self.ctk.CTkImage(light_image=img, dark_image=img, size=(40, 40))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not load logo from %s: %s", path, exc)
+            return None
+
+    def _build_wiring_footer(self) -> None:
+        ctk = self.ctk
+        for child in self.wiring_footer.winfo_children():
+            child.destroy()
+
+        self.sim_row = ctk.CTkFrame(self.wiring_footer, fg_color="transparent")
+        self.sim_row.pack(side="left")
+        ctk.CTkButton(
+            self.sim_row,
+            text=self._tr("simulate_temp"),
+            width=120,
+            height=32,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_MUTED,
+            command=lambda: self._simulate("ds18b20"),
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            self.sim_row,
+            text=self._tr("simulate_ph"),
+            width=110,
+            height=32,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_MUTED,
+            command=lambda: self._simulate("ph_i2c"),
+        ).pack(side="left")
+        self.sim_row.pack_forget()
+
+        self.manual_menu = ctk.CTkOptionMenu(self.wiring_footer, values=["—"], width=180)
+        self.manual_menu.pack(side="left", padx=(0, 6))
+        self.add_manual_btn = ctk.CTkButton(
+            self.wiring_footer,
+            text=self._tr("add_manually"),
+            width=120,
+            height=32,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_ACCENT,
+            command=self._manual_add,
+        )
+        self.add_manual_btn.pack(side="left")
+
+        self.finish_btn = ctk.CTkButton(
+            self.wiring_footer,
+            text=self._tr("finish_setup"),
+            height=36,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            state="disabled",
+            command=self._finish,
+        )
+        self.finish_btn.pack(side="right")
+
     def _clear_banner(self) -> None:
         self.banner.configure(text="")
 
     def _set_banner(self, message: str) -> None:
         self.banner.configure(text=message or "")
+
+    def _update_avatar(self) -> None:
+        self.avatar_btn.configure(text=_initials_from_email(self.user_email))
 
     def _show(self, name: str) -> None:
         self.step = name
@@ -195,50 +363,531 @@ class WizardApp:
                 pill.configure(fg_color="#CCFBF1", text_color=_ACCENT_HOVER)
             else:
                 pill.configure(fg_color=_LINE, text_color=_MUTED)
+        # Footer stays packed; enable tools only on wiring
+        wiring_state = "normal" if name == "wiring" else "disabled"
+        try:
+            self.manual_menu.configure(state=wiring_state)
+            self.add_manual_btn.configure(state=wiring_state)
+            if name != "wiring":
+                self.finish_btn.configure(state="disabled")
+        except Exception:  # noqa: BLE001
+            pass
         if name != "wiring":
             self._stop_wiring_poll()
+            self.sim_row.pack_forget()
         if name != "account":
             self._stop_auth_poll()
 
+    def _apply_language(self) -> None:
+        self.eyebrow.configure(text=self._tr("raspberry_pi"))
+        self.title_label.configure(
+            text=f"{self._tr('setup_title')}  {self._version_display}"
+        )
+        for name, pill in self.step_pills.items():
+            pill.configure(text=self._tr(f"step_{name}"))
+        self.add_manual_btn.configure(text=self._tr("add_manually"))
+        self.finish_btn.configure(text=self._tr("finish_setup"))
+        # Rebuild step frames so static copy updates
+        current = self.step
+        for frame in self.frames.values():
+            frame.destroy()
+        self.frames["boot"] = self._frame_boot()
+        self.frames["project"] = self._frame_project()
+        self.frames["account"] = self._frame_account()
+        self.frames["device"] = self._frame_device()
+        self.frames["wiring"] = self._frame_wiring()
+        self.frames["done"] = self._frame_done()
+        # Rebuild footer sim buttons with new labels
+        was_sim = bool(self.sim_row.winfo_ismapped())
+        menu_values = list(self.manual_menu.cget("values") or ["—"])
+        menu_value = self.manual_menu.get()
+        finish_state = str(self.finish_btn.cget("state"))
+        self._build_wiring_footer()
+        if menu_values:
+            self.manual_menu.configure(values=menu_values)
+            if menu_value in menu_values:
+                self.manual_menu.set(menu_value)
+            else:
+                self.manual_menu.set(menu_values[0])
+        self.finish_btn.configure(state=finish_state)
+        if was_sim:
+            self.sim_row.pack(side="left")
+        if current == "wiring" and self.pins:
+            self._build_header_board()
+        self._show(current)
+        if current == "wiring":
+            self._start_wiring_poll()
+        if current == "device":
+            self._load_devices()
+
+    def _toggle_profile_menu(self) -> None:
+        if self._profile_menu is not None:
+            self._close_profile_menu()
+            return
+        ctk = self.ctk
+        menu = ctk.CTkToplevel(self.root)
+        menu.withdraw()
+        menu.overrideredirect(True)
+        menu.attributes("-topmost", True)
+        menu.configure(fg_color=_CARD)
+        frame = ctk.CTkFrame(
+            menu,
+            fg_color=_CARD,
+            corner_radius=12,
+            border_width=1,
+            border_color=_LINE,
+        )
+        frame.pack(fill="both", expand=True, padx=1, pady=1)
+
+        email = self.user_email or self._tr("not_signed_in")
+        ctk.CTkLabel(
+            frame,
+            text=email,
+            text_color=_TEXT,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w",
+            wraplength=220,
+            justify="left",
+        ).pack(fill="x", padx=14, pady=(12, 8))
+
+        ctk.CTkButton(
+            frame,
+            text=self._tr("settings"),
+            height=34,
+            fg_color="transparent",
+            text_color=_TEXT,
+            hover_color="#E8F5F3",
+            anchor="w",
+            command=lambda: (self._close_profile_menu(), self._open_settings()),
+        ).pack(fill="x", padx=8, pady=2)
+
+        ctk.CTkButton(
+            frame,
+            text=self._tr("log_out"),
+            height=34,
+            fg_color="transparent",
+            text_color=_DANGER,
+            hover_color="#FCEBEA",
+            anchor="w",
+            command=self._logout,
+        ).pack(fill="x", padx=8, pady=(2, 10))
+
+        self.root.update_idletasks()
+        ax = self.avatar_btn.winfo_rootx()
+        ay = self.avatar_btn.winfo_rooty() + self.avatar_btn.winfo_height() + 6
+        width = 240
+        menu.geometry(f"{width}x150+{ax + self.avatar_btn.winfo_width() - width}+{ay}")
+        menu.deiconify()
+        self._profile_menu = menu
+
+    def _close_profile_menu(self) -> None:
+        if self._profile_menu is not None:
+            try:
+                self._profile_menu.destroy()
+            except Exception:  # noqa: BLE001
+                pass
+            self._profile_menu = None
+
+    def _logout(self) -> None:
+        self._close_profile_menu()
+        services.logout()
+        self.user_email = None
+        self._update_avatar()
+        self._set_banner(self._tr("signed_out"))
+        self._show("account")
+
+    def _open_settings(self) -> None:
+        if self._settings_win is not None:
+            try:
+                self._settings_win.lift()
+                self._settings_win.focus()
+                return
+            except Exception:  # noqa: BLE001
+                self._settings_win = None
+
+        ctk = self.ctk
+        win = ctk.CTkToplevel(self.root)
+        win.title(self._tr("settings"))
+        win.geometry("460x620")
+        win.minsize(420, 520)
+        win.configure(fg_color=_BG)
+        win.transient(self.root)
+        win.grab_set()
+        self._settings_win = win
+
+        def on_close() -> None:
+            self._settings_win = None
+            win.destroy()
+
+        win.protocol("WM_DELETE_WINDOW", on_close)
+
+        body = ctk.CTkScrollableFrame(win, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=20, pady=16)
+
+        ctk.CTkLabel(
+            body,
+            text=self._tr("settings"),
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w", pady=(0, 12))
+
+        # Language
+        ctk.CTkLabel(
+            body,
+            text=self._tr("language"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w")
+        lang_labels = [f"{native} ({label})" for _code, label, native in LANGUAGE_OPTIONS]
+        lang_by_label = {
+            f"{native} ({label})": code for code, label, native in LANGUAGE_OPTIONS
+        }
+        current_label = next(
+            (f"{native} ({label})" for code, label, native in LANGUAGE_OPTIONS if code == self.lang),
+            lang_labels[0],
+        )
+        lang_menu = ctk.CTkOptionMenu(body, values=lang_labels, width=280)
+        lang_menu.set(current_label)
+        lang_menu.pack(anchor="w", pady=(6, 16))
+
+        def on_lang(choice: str) -> None:
+            code = lang_by_label.get(choice, "en")
+            services.set_language(code)
+            self.lang = normalize_language(code)
+            on_close()
+            self._apply_language()
+            self._open_settings()
+
+        lang_menu.configure(command=on_lang)
+
+        # Updates
+        ctk.CTkLabel(
+            body,
+            text=self._tr("updates"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w")
+        update_status = ctk.CTkLabel(body, text="", text_color=_MUTED, wraplength=400, justify="left")
+        update_status.pack(anchor="w", pady=(4, 8))
+        update_row = ctk.CTkFrame(body, fg_color="transparent")
+        update_row.pack(fill="x", pady=(0, 16))
+        update_btn = ctk.CTkButton(
+            update_row,
+            text=self._tr("update_now"),
+            height=34,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            state="disabled",
+            width=130,
+        )
+        check_btn = ctk.CTkButton(
+            update_row,
+            text=self._tr("check_updates"),
+            height=34,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_ACCENT,
+            width=150,
+        )
+        check_btn.pack(side="left", padx=(0, 8))
+        update_btn.pack(side="left")
+
+        def do_check() -> None:
+            check_btn.configure(state="disabled", text=self._tr("checking"))
+            update_status.configure(text="")
+
+            def ok(result: dict[str, Any]) -> None:
+                def apply() -> None:
+                    check_btn.configure(state="normal", text=self._tr("check_updates"))
+                    if not result.get("ok"):
+                        update_status.configure(
+                            text=str(result.get("error") or self._tr("update_failed")),
+                            text_color=_DANGER,
+                        )
+                        update_btn.configure(state="disabled")
+                        return
+                    if result.get("update_available"):
+                        update_status.configure(
+                            text=self._tr(
+                                "update_available",
+                                remote=result.get("remote_display"),
+                                current=result.get("current_display"),
+                            ),
+                            text_color=_ACCENT,
+                        )
+                        update_btn.configure(state="normal")
+                    else:
+                        update_status.configure(
+                            text=self._tr(
+                                "up_to_date",
+                                version=result.get("current_display") or self._version_display,
+                            ),
+                            text_color=_MUTED,
+                        )
+                        update_btn.configure(state="disabled")
+
+                win.after(0, apply)
+
+            def err(exc: Exception) -> None:
+                win.after(
+                    0,
+                    lambda: (
+                        check_btn.configure(state="normal", text=self._tr("check_updates")),
+                        update_status.configure(text=str(exc), text_color=_DANGER),
+                    ),
+                )
+
+            _run_sync(lambda: services.update_status(self.settings), on_ok=ok, on_err=err)
+
+        def do_update() -> None:
+            update_btn.configure(state="disabled", text=self._tr("updating"))
+            check_btn.configure(state="disabled")
+
+            def ok(result: dict[str, Any]) -> None:
+                def apply() -> None:
+                    update_btn.configure(text=self._tr("update_now"))
+                    check_btn.configure(state="normal")
+                    msg = result.get("message") or "OK"
+                    update_status.configure(text=str(msg), text_color=_ACCENT)
+                    if result.get("current_display"):
+                        self._version_display = str(result["current_display"])
+                        self.title_label.configure(
+                            text=f"{self._tr('setup_title')}  {self._version_display}"
+                        )
+
+                win.after(0, apply)
+
+            def err(exc: Exception) -> None:
+                win.after(
+                    0,
+                    lambda: (
+                        update_btn.configure(state="normal", text=self._tr("update_now")),
+                        check_btn.configure(state="normal"),
+                        update_status.configure(text=str(exc), text_color=_DANGER),
+                    ),
+                )
+
+            _run_sync(lambda: services.update_apply(self.settings), on_ok=ok, on_err=err)
+
+        check_btn.configure(command=do_check)
+        update_btn.configure(command=do_update)
+
+        # Agent service
+        ctk.CTkLabel(
+            body,
+            text=self._tr("agent_service"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w")
+        service_status = ctk.CTkLabel(body, text="", text_color=_MUTED)
+        service_status.pack(anchor="w", pady=(4, 8))
+        svc_row = ctk.CTkFrame(body, fg_color="transparent")
+        svc_row.pack(fill="x", pady=(0, 8))
+        start_btn = ctk.CTkButton(
+            svc_row,
+            text=self._tr("start_service"),
+            height=34,
+            width=100,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+        )
+        stop_btn = ctk.CTkButton(
+            svc_row,
+            text=self._tr("stop_service"),
+            height=34,
+            width=100,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_TEXT,
+        )
+        start_btn.pack(side="left", padx=(0, 8))
+        stop_btn.pack(side="left")
+
+        def refresh_service(st: dict[str, Any] | None = None) -> None:
+            data = st or services.agent_service_status()
+            if not data.get("installed"):
+                label = self._tr("service_missing")
+            elif data.get("active"):
+                label = self._tr("service_running")
+            elif data.get("state") in ("inactive", "failed", "dead"):
+                label = self._tr("service_stopped")
+            else:
+                label = f"{self._tr('service_unknown')} ({data.get('state')})"
+            service_status.configure(text=label)
+            installed = bool(data.get("installed"))
+            start_btn.configure(state="normal" if installed and not data.get("active") else "disabled")
+            stop_btn.configure(state="normal" if installed and data.get("active") else "disabled")
+
+        def svc_action(fn: Callable[[], dict[str, Any]]) -> None:
+            start_btn.configure(state="disabled")
+            stop_btn.configure(state="disabled")
+            service_status.configure(text=self._tr("working"))
+
+            def ok(result: dict[str, Any]) -> None:
+                win.after(0, lambda: refresh_service(result))
+
+            def err(exc: Exception) -> None:
+                win.after(
+                    0,
+                    lambda: (
+                        service_status.configure(text=str(exc), text_color=_DANGER),
+                        refresh_service(),
+                    ),
+                )
+
+            _run_sync(fn, on_ok=ok, on_err=err)
+
+        start_btn.configure(command=lambda: svc_action(services.agent_service_start))
+        stop_btn.configure(command=lambda: svc_action(services.agent_service_stop))
+        refresh_service()
+
+        # Danger zone
+        ctk.CTkLabel(
+            body,
+            text=self._tr("danger_zone"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=_DANGER,
+        ).pack(anchor="w", pady=(12, 6))
+
+        def confirm_action(message: str, action: Callable[[], dict[str, Any]], after: Callable[[], None]) -> None:
+            dialog = ctk.CTkToplevel(win)
+            dialog.title(self._tr("confirm"))
+            dialog.geometry("420x220")
+            dialog.configure(fg_color=_BG)
+            dialog.transient(win)
+            dialog.grab_set()
+            ctk.CTkLabel(
+                dialog,
+                text=message,
+                wraplength=380,
+                justify="left",
+                text_color=_TEXT,
+            ).pack(fill="x", padx=20, pady=(20, 12))
+            row = ctk.CTkFrame(dialog, fg_color="transparent")
+            row.pack(fill="x", padx=20, pady=12)
+
+            def go() -> None:
+                dialog.destroy()
+                service_status.configure(text=self._tr("working"))
+
+                def ok(_r: dict[str, Any]) -> None:
+                    win.after(0, after)
+
+                def err(exc: Exception) -> None:
+                    win.after(0, lambda: self._set_banner(str(exc)))
+
+                _run_sync(action, on_ok=ok, on_err=err)
+
+            ctk.CTkButton(
+                row,
+                text=self._tr("cancel"),
+                height=34,
+                fg_color="transparent",
+                border_width=1,
+                border_color=_LINE,
+                text_color=_MUTED,
+                command=dialog.destroy,
+            ).pack(side="left")
+            ctk.CTkButton(
+                row,
+                text=self._tr("confirm"),
+                height=34,
+                fg_color=_DANGER,
+                hover_color="#912018",
+                command=go,
+            ).pack(side="right")
+
+        ctk.CTkButton(
+            body,
+            text=self._tr("delete_service"),
+            height=36,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_DANGER,
+            text_color=_DANGER,
+            hover_color="#FCEBEA",
+            command=lambda: confirm_action(
+                self._tr("confirm_delete_service"),
+                services.agent_service_delete,
+                lambda: refresh_service(),
+            ),
+        ).pack(fill="x", pady=(0, 8))
+
+        def after_uninstall() -> None:
+            on_close()
+            self._set_banner(self._tr("delete_app"))
+            self.root.after(400, self._on_close)
+
+        ctk.CTkButton(
+            body,
+            text=self._tr("delete_app"),
+            height=36,
+            fg_color=_DANGER,
+            hover_color="#912018",
+            command=lambda: confirm_action(
+                self._tr("confirm_delete_app"),
+                lambda: services.uninstall_app(self.settings),
+                after_uninstall,
+            ),
+        ).pack(fill="x", pady=(0, 16))
+
+        ctk.CTkButton(
+            body,
+            text=self._tr("close"),
+            height=36,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_MUTED,
+            command=on_close,
+        ).pack(anchor="e", pady=(8, 0))
+
+        # Kick off an update check quietly
+        do_check()
+
     def _frame_boot(self):
         ctk = self.ctk
-        f = ctk.CTkFrame(self.card, fg_color="transparent")
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
         ctk.CTkLabel(
             f,
-            text="Starting Bioversee…",
+            text=self._tr("boot_title"),
             font=ctk.CTkFont(size=18, weight="bold"),
             text_color=_TEXT,
         ).pack(anchor="w", pady=(8, 4))
         ctk.CTkLabel(
             f,
-            text="Loading your local setup.",
+            text=self._tr("boot_sub"),
             text_color=_MUTED,
         ).pack(anchor="w")
         return f
 
     def _frame_project(self):
         ctk = self.ctk
-        f = ctk.CTkFrame(self.card, fg_color="transparent")
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
         ctk.CTkLabel(
-            f, text="Connect to Bioversee", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            f,
+            text=self._tr("project_title"),
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=_TEXT,
         ).pack(anchor="w")
         ctk.CTkLabel(
             f,
-            text="Paste the same Supabase URL and anon key used by the web app "
-            "(only needed if not baked into the installer).",
+            text=self._tr("project_sub"),
             text_color=_MUTED,
             wraplength=700,
             justify="left",
         ).pack(anchor="w", pady=(6, 16))
-        ctk.CTkLabel(f, text="Supabase URL", text_color=_MUTED).pack(anchor="w")
+        ctk.CTkLabel(f, text=self._tr("supabase_url"), text_color=_MUTED).pack(anchor="w")
         self.project_url = ctk.CTkEntry(f, height=40, placeholder_text="https://xxxx.supabase.co")
         self.project_url.pack(fill="x", pady=(4, 12))
-        ctk.CTkLabel(f, text="Anon / publishable key", text_color=_MUTED).pack(anchor="w")
+        ctk.CTkLabel(f, text=self._tr("anon_key"), text_color=_MUTED).pack(anchor="w")
         self.project_key = ctk.CTkEntry(f, height=40, show="•")
         self.project_key.pack(fill="x", pady=(4, 16))
         ctk.CTkButton(
             f,
-            text="Continue",
+            text=self._tr("continue"),
             height=42,
             fg_color=_ACCENT,
             hover_color=_ACCENT_HOVER,
@@ -248,28 +897,28 @@ class WizardApp:
 
     def _frame_account(self):
         ctk = self.ctk
-        f = ctk.CTkFrame(self.card, fg_color="transparent")
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
         ctk.CTkLabel(
-            f, text="Sign in", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            f, text=self._tr("sign_in_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
         ).pack(anchor="w")
         ctk.CTkLabel(
             f,
-            text="Sign in or create an account in this app. No system browser required.",
+            text=self._tr("sign_in_sub"),
             text_color=_MUTED,
             wraplength=700,
             justify="left",
         ).pack(anchor="w", pady=(6, 16))
 
-        self.email = ctk.CTkEntry(f, height=42, placeholder_text="Email")
+        self.email = ctk.CTkEntry(f, height=42, placeholder_text=self._tr("email"))
         self.email.pack(fill="x", pady=4)
-        self.password = ctk.CTkEntry(f, height=42, placeholder_text="Password", show="•")
+        self.password = ctk.CTkEntry(f, height=42, placeholder_text=self._tr("password"), show="•")
         self.password.pack(fill="x", pady=4)
 
         row = ctk.CTkFrame(f, fg_color="transparent")
         row.pack(fill="x", pady=(12, 8))
         ctk.CTkButton(
             row,
-            text="Sign in",
+            text=self._tr("sign_in"),
             height=42,
             fg_color=_ACCENT,
             hover_color=_ACCENT_HOVER,
@@ -278,7 +927,7 @@ class WizardApp:
         ).pack(side="left", padx=(0, 8))
         ctk.CTkButton(
             row,
-            text="Create account",
+            text=self._tr("create_account"),
             height=42,
             fg_color="transparent",
             border_width=1,
@@ -290,11 +939,11 @@ class WizardApp:
 
         divider = ctk.CTkFrame(f, fg_color="transparent")
         divider.pack(fill="x", pady=(20, 12))
-        ctk.CTkLabel(divider, text="or", text_color=_MUTED).pack()
+        ctk.CTkLabel(divider, text=self._tr("or"), text_color=_MUTED).pack()
 
         ctk.CTkButton(
             f,
-            text="Continue with Google",
+            text=self._tr("continue_google"),
             height=44,
             fg_color=_TEXT,
             hover_color="#111",
@@ -307,15 +956,15 @@ class WizardApp:
 
     def _frame_device(self):
         ctk = self.ctk
-        f = ctk.CTkFrame(self.card, fg_color="transparent")
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
         head = ctk.CTkFrame(f, fg_color="transparent")
         head.pack(fill="x")
         ctk.CTkLabel(
-            head, text="Your device", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            head, text=self._tr("device_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
         ).pack(side="left")
         ctk.CTkButton(
             head,
-            text="Refresh",
+            text=self._tr("refresh"),
             width=100,
             height=34,
             fg_color="transparent",
@@ -327,7 +976,7 @@ class WizardApp:
         ).pack(side="right")
         ctk.CTkLabel(
             f,
-            text="Create a new bioreactor device or select one from your profile.",
+            text=self._tr("device_sub"),
             text_color=_MUTED,
         ).pack(anchor="w", pady=(6, 12))
 
@@ -335,19 +984,19 @@ class WizardApp:
         create.pack(fill="x", pady=(0, 14))
         ctk.CTkLabel(
             create,
-            text="Create new device",
+            text=self._tr("create_new_device"),
             text_color=_TEXT,
             font=ctk.CTkFont(size=14, weight="bold"),
         ).pack(anchor="w", padx=14, pady=(12, 6))
         create_row = ctk.CTkFrame(create, fg_color="transparent")
         create_row.pack(fill="x", padx=14, pady=(0, 14))
         self.new_device_name = ctk.CTkEntry(
-            create_row, height=38, placeholder_text="Device name (e.g. Bench reactor 1)"
+            create_row, height=38, placeholder_text=self._tr("device_name_ph")
         )
         self.new_device_name.pack(side="left", fill="x", expand=True, padx=(0, 8))
         ctk.CTkButton(
             create_row,
-            text="Create & continue",
+            text=self._tr("create_continue"),
             width=150,
             height=38,
             fg_color=_ACCENT,
@@ -357,7 +1006,7 @@ class WizardApp:
 
         ctk.CTkLabel(
             f,
-            text="Existing devices",
+            text=self._tr("existing_devices"),
             text_color=_TEXT,
             font=ctk.CTkFont(size=14, weight="bold"),
         ).pack(anchor="w", pady=(4, 6))
@@ -367,13 +1016,13 @@ class WizardApp:
 
     def _frame_wiring(self):
         ctk = self.ctk
-        f = ctk.CTkFrame(self.card, fg_color="transparent")
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
         ctk.CTkLabel(
-            f, text="GPIO live status", font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            f, text=self._tr("gpio_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
         ).pack(anchor="w")
         ctk.CTkLabel(
             f,
-            text="All 40 pins update live: HIGH / LOW / idle. Detected sensors highlight automatically.",
+            text=self._tr("gpio_sub"),
             text_color=_MUTED,
         ).pack(anchor="w", pady=(4, 6))
 
@@ -407,7 +1056,7 @@ class WizardApp:
         left = ctk.CTkFrame(grid, fg_color="#F7FAF9", corner_radius=12)
         left.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         ctk.CTkLabel(
-            left, text="40-pin header", font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
+            left, text=self._tr("header_40"), font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
         ).pack(anchor="w", padx=12, pady=(12, 6))
         self.header_board = ctk.CTkScrollableFrame(left, fg_color="transparent", height=360)
         self.header_board.pack(fill="both", expand=True, padx=8, pady=(0, 8))
@@ -415,74 +1064,22 @@ class WizardApp:
         right = ctk.CTkFrame(grid, fg_color="transparent")
         right.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
         ctk.CTkLabel(
-            right, text="Detected", font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
+            right, text=self._tr("detected"), font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
         ).pack(anchor="w")
         self.guess_box = ctk.CTkScrollableFrame(right, fg_color="#F7FAF9", corner_radius=12, height=200)
         self.guess_box.pack(fill="both", expand=True, pady=(6, 10))
         ctk.CTkLabel(
-            right, text="Confirmed", font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
+            right, text=self._tr("confirmed"), font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
         ).pack(anchor="w")
         self.confirmed_box = ctk.CTkScrollableFrame(right, fg_color="#F7FAF9", corner_radius=12, height=120)
         self.confirmed_box.pack(fill="both", expand=True, pady=(6, 10))
-
-        tools = ctk.CTkFrame(f, fg_color="transparent")
-        tools.pack(fill="x", pady=(8, 0))
-        self.sim_row = ctk.CTkFrame(tools, fg_color="transparent")
-        self.sim_row.pack(side="left")
-        ctk.CTkButton(
-            self.sim_row,
-            text="Simulate temp",
-            width=120,
-            height=32,
-            fg_color="transparent",
-            border_width=1,
-            border_color=_LINE,
-            text_color=_MUTED,
-            command=lambda: self._simulate("ds18b20"),
-        ).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(
-            self.sim_row,
-            text="Simulate pH",
-            width=110,
-            height=32,
-            fg_color="transparent",
-            border_width=1,
-            border_color=_LINE,
-            text_color=_MUTED,
-            command=lambda: self._simulate("ph_i2c"),
-        ).pack(side="left")
-
-        self.manual_menu = ctk.CTkOptionMenu(tools, values=["—"], width=180)
-        self.manual_menu.pack(side="left", padx=(16, 6))
-        ctk.CTkButton(
-            tools,
-            text="Add manually",
-            width=120,
-            height=32,
-            fg_color="transparent",
-            border_width=1,
-            border_color=_LINE,
-            text_color=_ACCENT,
-            command=self._manual_add,
-        ).pack(side="left")
-
-        self.finish_btn = ctk.CTkButton(
-            tools,
-            text="Finish setup",
-            height=36,
-            fg_color=_ACCENT,
-            hover_color=_ACCENT_HOVER,
-            state="disabled",
-            command=self._finish,
-        )
-        self.finish_btn.pack(side="right")
         return f
 
     def _frame_done(self):
         ctk = self.ctk
-        f = ctk.CTkFrame(self.card, fg_color="transparent")
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
         ctk.CTkLabel(
-            f, text="You're set", font=ctk.CTkFont(size=22, weight="bold"), text_color=_TEXT
+            f, text=self._tr("done_title"), font=ctk.CTkFont(size=22, weight="bold"), text_color=_TEXT
         ).pack(anchor="w", pady=(8, 6))
         self.done_message = ctk.CTkLabel(f, text="", text_color=_MUTED, wraplength=700, justify="left")
         self.done_message.pack(anchor="w")
@@ -503,7 +1100,14 @@ class WizardApp:
 
     def _route_from_status(self, st: dict[str, Any]) -> None:
         if st.get("version_display"):
-            self.title_label.configure(text=f"Bioversee setup  {st['version_display']}")
+            self._version_display = str(st["version_display"])
+            self.title_label.configure(
+                text=f"{self._tr('setup_title')}  {self._version_display}"
+            )
+        if st.get("language"):
+            self.lang = normalize_language(str(st["language"]))
+        self.user_email = st.get("email")
+        self._update_avatar()
         if not st.get("has_project"):
             if st.get("supabase_url"):
                 self.project_url.insert(0, st["supabase_url"])
@@ -539,9 +1143,7 @@ class WizardApp:
         except Exception as exc:  # noqa: BLE001
             self._set_banner(str(exc))
             return
-        self.auth_wait.configure(
-            text="Complete Google sign-in in the window that opened… (keep this app open)"
-        )
+        self.auth_wait.configure(text=self._tr("auth_google_wait"))
         self._start_auth_poll()
 
     def _start_auth_poll(self) -> None:
@@ -562,6 +1164,8 @@ class WizardApp:
             self._stop_auth_poll()
             oauth_webview.close_oauth_window()
             self.auth_wait.configure(text="")
+            self.user_email = st.get("email")
+            self._update_avatar()
             self._show("device")
             self._load_devices()
 
@@ -575,11 +1179,18 @@ class WizardApp:
         email = self.email.get().strip()
         password = self.password.get()
         if not email or not password:
-            self._set_banner("Enter email and password.")
+            self._set_banner(self._tr("enter_email_password"))
             return
+
+        def ok(_r: Any) -> None:
+            self.user_email = email
+            self._update_avatar()
+            self._show("device")
+            self._load_devices()
+
         _run_async(
             services.sign_in(self.settings, email, password),
-            on_ok=lambda _r: self.root.after(0, lambda: (self._show("device"), self._load_devices())),
+            on_ok=lambda r: self.root.after(0, lambda: ok(r)),
             on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
         )
 
@@ -588,13 +1199,15 @@ class WizardApp:
         email = self.email.get().strip()
         password = self.password.get()
         if not email or not password:
-            self._set_banner("Enter email and password.")
+            self._set_banner(self._tr("enter_email_password"))
             return
 
         def ok(data: dict[str, Any]) -> None:
             if data.get("needs_confirmation"):
                 self._set_banner("Check your email to confirm, then sign in.")
                 return
+            self.user_email = email
+            self._update_avatar()
             self._show("device")
             self._load_devices()
 
@@ -608,7 +1221,7 @@ class WizardApp:
         self._clear_banner()
         for child in self.device_list.winfo_children():
             child.destroy()
-        self.ctk.CTkLabel(self.device_list, text="Loading…", text_color=_MUTED).pack(anchor="w")
+        self.ctk.CTkLabel(self.device_list, text=self._tr("loading"), text_color=_MUTED).pack(anchor="w")
 
         def ok(rows: list[dict[str, Any]]) -> None:
             self.devices = rows
@@ -628,7 +1241,7 @@ class WizardApp:
         if not self.devices:
             self.ctk.CTkLabel(
                 self.device_list,
-                text="No devices yet — create one above.",
+                text=self._tr("no_devices"),
                 text_color=_MUTED,
                 wraplength=640,
                 justify="left",
@@ -653,7 +1266,7 @@ class WizardApp:
         self._clear_banner()
         name = self.new_device_name.get().strip()
         if not name:
-            self._set_banner("Enter a device name.")
+            self._set_banner(self._tr("enter_device_name"))
             return
         _run_async(
             services.create_device(self.settings, name=name, device_type="bioreactor"),
@@ -689,7 +1302,7 @@ class WizardApp:
         self.manual_menu.configure(values=labels)
         self.manual_menu.set(labels[0])
         if simulate:
-            self.sim_row.pack(side="left")
+            self.sim_row.pack(side="left", before=self.manual_menu)
         else:
             self.sim_row.pack_forget()
         self._build_header_board()
@@ -813,14 +1426,14 @@ class WizardApp:
         pending = st.get("pending") or []
         if not pending:
             self.ctk.CTkLabel(
-                self.guess_box, text="Waiting for a connection…", text_color=_MUTED
+                self.guess_box, text=self._tr("waiting_connection"), text_color=_MUTED
             ).pack(anchor="w", padx=8, pady=8)
         for guess in pending:
             card = self.ctk.CTkFrame(self.guess_box, fg_color=_CARD, corner_radius=10)
             card.pack(fill="x", padx=6, pady=6)
             self.ctk.CTkLabel(
                 card,
-                text=f"Is this a {guess.get('label')}?",
+                text=self._tr("is_this", label=guess.get("label")),
                 font=self.ctk.CTkFont(size=13, weight="bold"),
                 text_color=_TEXT,
             ).pack(anchor="w", padx=10, pady=(8, 2))
@@ -843,7 +1456,7 @@ class WizardApp:
             row.pack(fill="x", padx=10, pady=(0, 10))
             self.ctk.CTkButton(
                 row,
-                text="Confirm",
+                text=self._tr("confirm_btn"),
                 width=100,
                 height=30,
                 fg_color=_ACCENT,
@@ -852,7 +1465,7 @@ class WizardApp:
             ).pack(side="left", padx=(0, 6))
             self.ctk.CTkButton(
                 row,
-                text="Ignore",
+                text=self._tr("ignore_btn"),
                 width=80,
                 height=30,
                 fg_color="transparent",
@@ -876,7 +1489,8 @@ class WizardApp:
                 text_color=_TEXT,
                 anchor="w",
             ).pack(fill="x", padx=8, pady=3)
-        self.finish_btn.configure(state="normal" if confirmed else "disabled")
+        if self.step == "wiring":
+            self.finish_btn.configure(state="normal" if confirmed else "disabled")
 
     def _confirm_guess(self, guess: dict[str, Any], label: str) -> None:
         peripheral_id = self._catalog_by_label.get(label) or guess.get("id")
@@ -919,9 +1533,9 @@ class WizardApp:
         self._stop_wiring_poll()
         agent = data.get("agent") or {}
         if agent.get("enabled"):
-            msg = "Monitoring will start automatically when this Pi boots. Control this device from the Bioversee website."
+            msg = self._tr("done_enabled")
         else:
-            msg = agent.get("message") or "Setup saved. Enable the agent service manually."
+            msg = agent.get("message") or self._tr("done_fallback")
         self.done_message.configure(text=msg)
         self.done_detail.delete("1.0", tk.END)
         detail = {
