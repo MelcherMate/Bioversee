@@ -129,6 +129,31 @@ sed "s/^User=pi$/User=${SERVICE_USER}/; s/^Group=pi$/Group=${SERVICE_USER}/" \
 systemctl disable --now bioversee-wizard.service 2>/dev/null || true
 rm -f /etc/systemd/system/bioversee-wizard.service
 
+# Icons — never install the full 1024² master into 48×48 (Pi OS Execute dialog
+# shows that PNG at native size and the window becomes huge).
+ICON_48="${PREFIX}/packaging/bioversee-48.png"
+ICON_128="${PREFIX}/packaging/bioversee-128.png"
+ICON_256="${PREFIX}/packaging/bioversee-256.png"
+mkdir -p \
+  /usr/share/icons/hicolor/48x48/apps \
+  /usr/share/icons/hicolor/128x128/apps \
+  /usr/share/icons/hicolor/256x256/apps \
+  /usr/share/pixmaps
+if [[ -f "${ICON_48}" ]]; then
+  cp "${ICON_48}" /usr/share/icons/hicolor/48x48/apps/bioversee.png
+  cp "${ICON_48}" /usr/share/pixmaps/bioversee.png
+elif [[ -f "${PREFIX}/packaging/bioversee.png" ]]; then
+  # Last resort only — prefer shipping bioversee-48.png.
+  cp "${PREFIX}/packaging/bioversee.png" /usr/share/pixmaps/bioversee.png
+fi
+[[ -f "${ICON_128}" ]] && cp "${ICON_128}" /usr/share/icons/hicolor/128x128/apps/bioversee.png
+[[ -f "${ICON_256}" ]] && cp "${ICON_256}" /usr/share/icons/hicolor/256x256/apps/bioversee.png
+# Absolute path so file-manager dialogs never pull a huge theme icon by mistake.
+ICON_PATH="/usr/share/pixmaps/bioversee.png"
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+  gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
+fi
+
 # Desktop application (menu + optional Desktop shortcut)
 APP_DESKTOP="/usr/share/applications/bioversee.desktop"
 cat > "${APP_DESKTOP}" <<EOF
@@ -139,22 +164,11 @@ Name=Bioversee
 GenericName=Process control
 Comment=Bioversee desktop app for this Raspberry Pi
 Exec=${LAUNCHER}
-Icon=bioversee
+Icon=${ICON_PATH}
 Terminal=false
 Categories=Science;Utility;
 StartupNotify=true
 EOF
-
-# Icon
-mkdir -p /usr/share/icons/hicolor/48x48/apps /usr/share/pixmaps
-if [[ -f "${PREFIX}/packaging/bioversee.png" ]]; then
-  cp "${PREFIX}/packaging/bioversee.png" /usr/share/icons/hicolor/48x48/apps/bioversee.png
-  cp "${PREFIX}/packaging/bioversee.png" /usr/share/pixmaps/bioversee.png
-elif [[ -f "${ROOT}/../ios/Bioversee/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png" ]]; then
-  cp "${ROOT}/../ios/Bioversee/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png" \
-    /usr/share/icons/hicolor/48x48/apps/bioversee.png
-  cp /usr/share/icons/hicolor/48x48/apps/bioversee.png /usr/share/pixmaps/bioversee.png
-fi
 
 # Shortcut on the user desktop
 if [[ -n "${USER_HOME}" && -d "${USER_HOME}" ]]; then
@@ -162,10 +176,12 @@ if [[ -n "${USER_HOME}" && -d "${USER_HOME}" ]]; then
   cp "${APP_DESKTOP}" "${USER_HOME}/Desktop/Bioversee.desktop"
   chmod 755 "${USER_HOME}/Desktop/Bioversee.desktop"
   chown "${SERVICE_USER}:${SERVICE_USER}" "${USER_HOME}/Desktop/Bioversee.desktop" || true
-  # Mark trusted so double-click runs (Pi OS)
+  # Mark trusted so double-click runs without the Execute/Cancel prompt (Pi OS).
   if command -v gio >/dev/null 2>&1; then
     sudo -u "${SERVICE_USER}" gio set "${USER_HOME}/Desktop/Bioversee.desktop" metadata::trusted true 2>/dev/null || true
   fi
+  # PCManFM also respects this chmod bit on some Pi OS builds.
+  chmod u+x "${USER_HOME}/Desktop/Bioversee.desktop" || true
 fi
 
 systemctl daemon-reload

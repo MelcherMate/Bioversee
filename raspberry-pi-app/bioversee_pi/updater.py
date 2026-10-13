@@ -226,6 +226,7 @@ def _post_update_privileged(prefix: Path) -> None:
 set -euo pipefail
 PREFIX={prefix!s}
 USER_NAME={user!s}
+USER_HOME=$(getent passwd "$USER_NAME" | cut -d: -f6 || true)
 mkdir -p "$PREFIX/bin"
 cp "$PREFIX/packaging/bioversee-privileged" "$PREFIX/bin/bioversee-privileged"
 chmod 755 "$PREFIX/bin/bioversee-privileged"
@@ -237,6 +238,46 @@ if [[ -f "$PREFIX/packaging/sudoers.bioversee" ]]; then
     rm -f /etc/sudoers.d/bioversee-pi
   fi
 fi
+# Replace oversized desktop icons (1024² master used to blow up the Execute dialog).
+mkdir -p /usr/share/icons/hicolor/48x48/apps \\
+  /usr/share/icons/hicolor/128x128/apps \\
+  /usr/share/icons/hicolor/256x256/apps \\
+  /usr/share/pixmaps
+if [[ -f "$PREFIX/packaging/bioversee-48.png" ]]; then
+  cp "$PREFIX/packaging/bioversee-48.png" /usr/share/icons/hicolor/48x48/apps/bioversee.png
+  cp "$PREFIX/packaging/bioversee-48.png" /usr/share/pixmaps/bioversee.png
+fi
+[[ -f "$PREFIX/packaging/bioversee-128.png" ]] && \\
+  cp "$PREFIX/packaging/bioversee-128.png" /usr/share/icons/hicolor/128x128/apps/bioversee.png
+[[ -f "$PREFIX/packaging/bioversee-256.png" ]] && \\
+  cp "$PREFIX/packaging/bioversee-256.png" /usr/share/icons/hicolor/256x256/apps/bioversee.png
+ICON_PATH=/usr/share/pixmaps/bioversee.png
+LAUNCHER="$PREFIX/bin/bioversee-launch"
+APP_DESKTOP=/usr/share/applications/bioversee.desktop
+if [[ -x "$LAUNCHER" ]]; then
+  cat > "$APP_DESKTOP" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Bioversee
+GenericName=Process control
+Comment=Bioversee desktop app for this Raspberry Pi
+Exec=$LAUNCHER
+Icon=$ICON_PATH
+Terminal=false
+Categories=Science;Utility;
+StartupNotify=true
+EOF
+  if [[ -n "$USER_HOME" && -d "$USER_HOME/Desktop" ]]; then
+    cp "$APP_DESKTOP" "$USER_HOME/Desktop/Bioversee.desktop"
+    chmod 755 "$USER_HOME/Desktop/Bioversee.desktop"
+    chown "$USER_NAME:$USER_NAME" "$USER_HOME/Desktop/Bioversee.desktop" || true
+    if command -v gio >/dev/null 2>&1; then
+      sudo -u "$USER_NAME" gio set "$USER_HOME/Desktop/Bioversee.desktop" metadata::trusted true 2>/dev/null || true
+    fi
+  fi
+fi
+gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
 # Drop legacy wizard unit (desktop app only) — was causing a 2nd auth prompt.
 systemctl disable --now bioversee-wizard.service 2>/dev/null || true
 rm -f /etc/systemd/system/bioversee-wizard.service
