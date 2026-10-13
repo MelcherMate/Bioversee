@@ -156,7 +156,6 @@ class WizardApp:
         self.devices: list[dict[str, Any]] = []
         self.catalog: list[dict[str, Any]] = []
         self.pins: list[dict[str, Any]] = []
-        self._poll_job: str | None = None
         self._auth_poll_job: str | None = None
         self._pin_labels: dict[int, Any] = {}
         self._busy = False
@@ -383,47 +382,6 @@ class WizardApp:
         for child in self.wiring_footer.winfo_children():
             child.destroy()
 
-        self.sim_row = ctk.CTkFrame(self.wiring_footer, fg_color="transparent")
-        self.sim_row.pack(side="left")
-        ctk.CTkButton(
-            self.sim_row,
-            text=self._tr("simulate_temp"),
-            width=120,
-            height=32,
-            fg_color="transparent",
-            border_width=1,
-            border_color=_LINE,
-            text_color=_MUTED,
-            command=lambda: self._simulate("ds18b20"),
-        ).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(
-            self.sim_row,
-            text=self._tr("simulate_ph"),
-            width=110,
-            height=32,
-            fg_color="transparent",
-            border_width=1,
-            border_color=_LINE,
-            text_color=_MUTED,
-            command=lambda: self._simulate("ph_i2c"),
-        ).pack(side="left")
-        self.sim_row.pack_forget()
-
-        self.manual_menu = ctk.CTkOptionMenu(self.wiring_footer, values=["—"], width=180)
-        self.manual_menu.pack(side="left", padx=(0, 6))
-        self.add_manual_btn = ctk.CTkButton(
-            self.wiring_footer,
-            text=self._tr("add_manually"),
-            width=120,
-            height=32,
-            fg_color="transparent",
-            border_width=1,
-            border_color=_LINE,
-            text_color=_ACCENT,
-            command=self._manual_add,
-        )
-        self.add_manual_btn.pack(side="left")
-
         self.finish_btn = ctk.CTkButton(
             self.wiring_footer,
             text=self._tr("finish_setup"),
@@ -496,7 +454,7 @@ class WizardApp:
         elif name == "service":
             self._enter_service_step()
         elif name == "wiring":
-            self._enter_wiring(simulate=_probe_simulate())
+            self._enter_wiring()
         elif name == "done":
             self._show("done")
 
@@ -531,20 +489,10 @@ class WizardApp:
             self.content.pack_forget()
             self.wiring_footer.pack(side="bottom", fill="x", padx=24, pady=(0, 18))
             self.content.pack(fill="both", expand=True)
-            try:
-                self.manual_menu.configure(state="normal")
-                self.add_manual_btn.configure(state="normal")
-            except Exception:  # noqa: BLE001
-                pass
         else:
             self.wiring_footer.pack_forget()
             if not self.content.winfo_ismapped():
                 self.content.pack(fill="both", expand=True)
-            self._stop_wiring_poll()
-            try:
-                self.sim_row.pack_forget()
-            except Exception:  # noqa: BLE001
-                pass
         if name != "account":
             self._stop_auth_poll()
 
@@ -559,7 +507,6 @@ class WizardApp:
             self.step_caption.configure(
                 text=self._tr(f"step_{self.step}_hint") if self.step in STEPS else ""
             )
-        self.add_manual_btn.configure(text=self._tr("add_manually"))
         self.finish_btn.configure(text=self._tr("finish_setup"))
         # Rebuild step frames so static copy updates
         current = self.step
@@ -572,26 +519,13 @@ class WizardApp:
         self.frames["service"] = self._frame_service()
         self.frames["wiring"] = self._frame_wiring()
         self.frames["done"] = self._frame_done()
-        # Rebuild footer sim buttons with new labels
-        was_sim = bool(self.sim_row.winfo_ismapped())
-        menu_values = list(self.manual_menu.cget("values") or ["—"])
-        menu_value = self.manual_menu.get()
         finish_state = str(self.finish_btn.cget("state"))
         self._build_wiring_footer()
-        if menu_values:
-            self.manual_menu.configure(values=menu_values)
-            if menu_value in menu_values:
-                self.manual_menu.set(menu_value)
-            else:
-                self.manual_menu.set(menu_values[0])
         self.finish_btn.configure(state=finish_state)
-        if was_sim:
-            self.sim_row.pack(side="left")
-        if current == "wiring" and self.pins:
-            self._build_header_board()
-        self._show(current)
         if current == "wiring":
-            self._start_wiring_poll()
+            self._enter_wiring()
+        else:
+            self._show(current)
         if current == "device":
             self._load_devices()
         if current == "service":
@@ -1530,57 +1464,53 @@ class WizardApp:
         ctk = self.ctk
         f = ctk.CTkFrame(self.content, fg_color="transparent")
         ctk.CTkLabel(
-            f, text=self._tr("gpio_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=_TEXT
+            f,
+            text=self._tr("gpio_title"),
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=_TEXT,
         ).pack(anchor="w")
         ctk.CTkLabel(
             f,
             text=self._tr("gpio_sub"),
             text_color=_MUTED,
-        ).pack(anchor="w", pady=(4, 6))
+            wraplength=900,
+            justify="left",
+        ).pack(anchor="w", pady=(4, 8))
 
         legend = ctk.CTkFrame(f, fg_color="transparent")
         legend.pack(fill="x", pady=(0, 8))
-        for label, color in (
-            ("HIGH", _HIGH),
-            ("LOW", _LOW),
-            ("Idle", _IDLE),
-            ("Detect", _ACTIVE),
-            ("Confirmed", _CONFIRMED),
-            ("Power", _POWER),
-            ("GND", _GND),
+        for label_key, color in (
+            ("pin_used", _CONFIRMED),
+            ("pin_free", _IDLE),
+            ("pin_power", _POWER),
+            ("pin_gnd", _GND),
         ):
             chip = ctk.CTkLabel(
                 legend,
-                text=f" {label} ",
+                text=f" {self._tr(label_key)} ",
                 corner_radius=6,
                 fg_color=color,
-                text_color="#111" if color in (_IDLE, _POWER, _HIGH) else "#fff",
+                text_color="#111" if color in (_IDLE, _POWER) else "#fff",
                 font=ctk.CTkFont(size=11, weight="bold"),
             )
             chip.pack(side="left", padx=(0, 6))
 
-        grid = ctk.CTkFrame(f, fg_color="transparent")
-        grid.pack(fill="both", expand=True)
-        grid.grid_columnconfigure(0, weight=1)
-        grid.grid_columnconfigure(1, weight=1)
-        grid.grid_rowconfigure(0, weight=1)
-
-        left = ctk.CTkFrame(grid, fg_color="#F7FAF9", corner_radius=12)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        header_card = ctk.CTkFrame(f, fg_color="#F7FAF9", corner_radius=12)
+        header_card.pack(fill="x", pady=(0, 12))
         ctk.CTkLabel(
-            left, text=self._tr("header_40"), font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
+            header_card,
+            text=self._tr("header_40"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=_TEXT,
         ).pack(anchor="w", padx=12, pady=(12, 6))
-        self.header_board = ctk.CTkScrollableFrame(left, fg_color="transparent", height=360)
-        self.header_board.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        self.header_board = ctk.CTkScrollableFrame(
+            header_card, fg_color="transparent", height=280
+        )
+        self.header_board.pack(fill="x", padx=8, pady=(0, 10))
 
-        right = ctk.CTkFrame(grid, fg_color="transparent")
-        right.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
-        ctk.CTkLabel(
-            right, text=self._tr("detected"), font=ctk.CTkFont(size=14, weight="bold"), text_color=_TEXT
-        ).pack(anchor="w")
-        self.guess_box = ctk.CTkScrollableFrame(right, fg_color="#F7FAF9", corner_radius=12, height=200)
-        self.guess_box.pack(fill="both", expand=True, pady=(6, 10))
-        conf_head = ctk.CTkFrame(right, fg_color="transparent")
+        sensors = ctk.CTkFrame(f, fg_color="transparent")
+        sensors.pack(fill="both", expand=True)
+        conf_head = ctk.CTkFrame(sensors, fg_color="transparent")
         conf_head.pack(fill="x")
         ctk.CTkLabel(
             conf_head,
@@ -1602,8 +1532,34 @@ class WizardApp:
             command=self._clear_confirmed,
         )
         self.clear_confirmed_btn.pack(side="right")
-        self.confirmed_box = ctk.CTkScrollableFrame(right, fg_color="#F7FAF9", corner_radius=12, height=120)
-        self.confirmed_box.pack(fill="both", expand=True, pady=(6, 10))
+
+        ctk.CTkLabel(
+            sensors,
+            text=self._tr("wiring_add_sub"),
+            text_color=_MUTED,
+            wraplength=900,
+            justify="left",
+        ).pack(anchor="w", pady=(4, 8))
+
+        add_row = ctk.CTkFrame(sensors, fg_color="transparent")
+        add_row.pack(fill="x", pady=(0, 8))
+        self.manual_menu = ctk.CTkOptionMenu(add_row, values=["—"], width=280)
+        self.manual_menu.pack(side="left", padx=(0, 8))
+        self.add_manual_btn = ctk.CTkButton(
+            add_row,
+            text=self._tr("add_sensor"),
+            width=140,
+            height=32,
+            fg_color=_ACCENT,
+            hover_color=_ACCENT_HOVER,
+            command=self._manual_add,
+        )
+        self.add_manual_btn.pack(side="left")
+
+        self.confirmed_box = ctk.CTkScrollableFrame(
+            sensors, fg_color="#F7FAF9", corner_radius=12, height=160
+        )
+        self.confirmed_box.pack(fill="both", expand=True)
         return f
 
     def _frame_done(self):
@@ -1666,7 +1622,7 @@ class WizardApp:
         if local.get("agent_enabled"):
             # Returning after a finished setup — unlock Done and land on wiring.
             self._update_progress(setup_done=True)
-        self._enter_wiring(simulate=bool(st.get("simulate_gpio")))
+        self._enter_wiring()
 
     def _save_project(self) -> None:
         self._clear_banner()
@@ -1888,7 +1844,7 @@ class WizardApp:
         def ok(_r: dict[str, Any]) -> None:
             def go() -> None:
                 self._update_progress(service_ready=True)
-                self._enter_wiring(simulate=_probe_simulate())
+                self._enter_wiring()
 
             self.root.after(0, go)
 
@@ -1903,7 +1859,7 @@ class WizardApp:
 
         _run_sync(work, on_ok=ok, on_err=err)
 
-    def _enter_wiring(self, *, simulate: bool) -> None:
+    def _enter_wiring(self) -> None:
         data = services.gpio_header()
         self.pins = data.get("pins") or []
         self.catalog = data.get("catalog") or []
@@ -1911,13 +1867,9 @@ class WizardApp:
         self._catalog_by_label = {c["label"]: c["id"] for c in self.catalog}
         self.manual_menu.configure(values=labels)
         self.manual_menu.set(labels[0])
-        if simulate:
-            self.sim_row.pack(side="left", before=self.manual_menu)
-        else:
-            self.sim_row.pack_forget()
         self._build_header_board()
         self._show("wiring")
-        self._start_wiring_poll()
+        self._refresh_wiring_view()
 
     def _build_header_board(self) -> None:
         for child in self.header_board.winfo_children():
@@ -1944,13 +1896,16 @@ class WizardApp:
                 elif kind == "gnd":
                     color = _GND
                     text = "#fff"
+                elif kind == "id":
+                    color = _UNKNOWN
+                    text = "#111"
                 else:
                     color = _IDLE
                     text = "#111"
                 lbl = self.ctk.CTkLabel(
                     line,
                     text=f" {pin['physical']:2d}  {pin['label']} ",
-                    width=150,
+                    width=170,
                     height=22,
                     corner_radius=6,
                     fg_color=color,
@@ -1958,132 +1913,34 @@ class WizardApp:
                     font=self.ctk.CTkFont(size=11),
                     anchor="w",
                 )
-                lbl.pack(side="left", padx=2)
+                lbl.pack(side="left", padx=2, expand=True, fill="x")
                 self._pin_labels[int(pin["physical"])] = (lbl, kind)
 
-    def _paint_pins(
-        self,
-        *,
-        pin_levels: dict[str, str] | dict[int, str],
-        active: list[int],
-        confirmed: list[int],
-    ) -> None:
-        active_set = set(active)
-        confirmed_set = set(confirmed)
+    def _paint_used_pins(self, used: list[int]) -> None:
+        used_set = set(used)
         for physical, (lbl, kind) in self._pin_labels.items():
-            level = pin_levels.get(physical) or pin_levels.get(str(physical)) or "idle"
             if kind in ("5v", "3v3"):
                 base, text = _POWER, "#111"
             elif kind == "gnd":
                 base, text = _GND, "#fff"
             elif kind == "id":
                 base, text = _UNKNOWN, "#111"
-            elif level == "high":
-                base, text = _HIGH, "#111"
-            elif level == "low":
-                base, text = _LOW, "#fff"
-            elif level == "busy":
-                base, text = _BUSY, "#fff"
-            elif level == "unknown":
-                base, text = _UNKNOWN, "#111"
+            elif physical in used_set:
+                base, text = _CONFIRMED, "#fff"
             else:
                 base, text = _IDLE, "#111"
-
-            # Overlay detection / confirmation on top of live electrical state.
-            if physical in confirmed_set:
-                base, text = _CONFIRMED, "#fff"
-            elif physical in active_set:
-                base, text = _ACTIVE, "#fff"
             lbl.configure(fg_color=base, text_color=text)
 
-    def _start_wiring_poll(self) -> None:
-        self._stop_wiring_poll()
-
-        def tick() -> None:
-            _run_async(
-                services.gpio_state(),
-                on_ok=lambda st: self.root.after(0, lambda: self._render_wiring_state(st)),
-                on_err=lambda e: self.root.after(0, lambda: self._set_banner(str(e))),
-            )
-            self._poll_job = self.root.after(800, tick)
-
-        self._poll_job = self.root.after(200, tick)
-
-    def _stop_wiring_poll(self) -> None:
-        if self._poll_job:
-            self.root.after_cancel(self._poll_job)
-            self._poll_job = None
-
     def _stop_polls(self) -> None:
-        self._stop_wiring_poll()
         self._stop_auth_poll()
 
-    def _render_wiring_state(self, st: dict[str, Any]) -> None:
-        levels_raw = st.get("pin_levels") or {}
-        levels: dict[int, str] = {}
-        for key, value in levels_raw.items():
-            try:
-                levels[int(key)] = str(value)
-            except (TypeError, ValueError):
-                continue
-        self._paint_pins(
-            pin_levels=levels,
-            active=st.get("active_physical") or [],
-            confirmed=st.get("confirmed_physical") or [],
-        )
-        for child in self.guess_box.winfo_children():
-            child.destroy()
-        pending = st.get("pending") or []
-        if not pending:
-            self.ctk.CTkLabel(
-                self.guess_box, text=self._tr("waiting_connection"), text_color=_MUTED
-            ).pack(anchor="w", padx=8, pady=8)
-        for guess in pending:
-            card = self.ctk.CTkFrame(self.guess_box, fg_color=_CARD, corner_radius=10)
-            card.pack(fill="x", padx=6, pady=6)
-            self.ctk.CTkLabel(
-                card,
-                text=self._tr("is_this", label=guess.get("label")),
-                font=self.ctk.CTkFont(size=13, weight="bold"),
-                text_color=_TEXT,
-            ).pack(anchor="w", padx=10, pady=(8, 2))
-            self.ctk.CTkLabel(
-                card,
-                text=f"{guess.get('detail')} · {int((guess.get('confidence') or 0) * 100)}%",
-                text_color=_MUTED,
-                wraplength=320,
-                justify="left",
-            ).pack(anchor="w", padx=10)
-            labels = [c["label"] for c in self.catalog] or [guess.get("label") or "—"]
-            menu = self.ctk.CTkOptionMenu(card, values=labels, width=200)
-            preferred = next(
-                (c["label"] for c in self.catalog if c["id"] == guess.get("id")),
-                labels[0],
-            )
-            menu.set(preferred)
-            menu.pack(anchor="w", padx=10, pady=6)
-            row = self.ctk.CTkFrame(card, fg_color="transparent")
-            row.pack(fill="x", padx=10, pady=(0, 10))
-            self.ctk.CTkButton(
-                row,
-                text=self._tr("confirm_btn"),
-                width=100,
-                height=30,
-                fg_color=_ACCENT,
-                hover_color=_ACCENT_HOVER,
-                command=lambda g=guess, m=menu: self._confirm_guess(g, m.get()),
-            ).pack(side="left", padx=(0, 6))
-            self.ctk.CTkButton(
-                row,
-                text=self._tr("ignore_btn"),
-                width=80,
-                height=30,
-                fg_color="transparent",
-                border_width=1,
-                border_color=_LINE,
-                text_color=_MUTED,
-                command=lambda g=guess: self._ignore_guess(g),
-            ).pack(side="left")
+    def _refresh_wiring_view(self) -> None:
+        try:
+            st = services.gpio_wiring_snapshot()
+        except Exception as exc:  # noqa: BLE001
+            self._set_banner(str(exc))
+            return
+        self._paint_used_pins(st.get("confirmed_physical") or [])
 
         for child in self.confirmed_box.winfo_children():
             child.destroy()
@@ -2097,16 +1954,18 @@ class WizardApp:
         for w in confirmed:
             row = self.ctk.CTkFrame(self.confirmed_box, fg_color=_CARD, corner_radius=8)
             row.pack(fill="x", padx=6, pady=4)
+            pins = ", ".join(map(str, w.get("physical") or [])) or "—"
+            catalog_label = w.get("name") or w.get("driver") or "sensor"
+            for c in self.catalog:
+                if c.get("name") == w.get("name") and c.get("driver") == w.get("driver"):
+                    catalog_label = c["label"]
+                    break
             self.ctk.CTkLabel(
                 row,
-                text=(
-                    f"{w.get('name')} · {w.get('driver')} · "
-                    f"BCM {w.get('bcm') if w.get('bcm') is not None else '—'} · "
-                    f"pins {', '.join(map(str, w.get('physical') or []))}"
-                ),
+                text=f"{catalog_label}  ·  pins {pins}",
                 text_color=_TEXT,
                 anchor="w",
-                wraplength=260,
+                wraplength=700,
                 justify="left",
             ).pack(side="left", fill="x", expand=True, padx=8, pady=8)
             idx = int(w.get("index", -1))
@@ -2126,34 +1985,17 @@ class WizardApp:
         if self.step == "wiring":
             self.finish_btn.configure(state="normal" if confirmed else "disabled")
 
-    def _confirm_guess(self, guess: dict[str, Any], label: str) -> None:
-        peripheral_id = self._catalog_by_label.get(label) or guess.get("id")
-        try:
-            services.gpio_confirm(str(guess["event_id"]), peripheral_id)
-        except Exception as exc:  # noqa: BLE001
-            self._set_banner(str(exc))
-
-    def _ignore_guess(self, guess: dict[str, Any]) -> None:
-        try:
-            services.gpio_ignore(str(guess["event_id"]))
-        except Exception as exc:  # noqa: BLE001
-            self._set_banner(str(exc))
-
-    def _simulate(self, peripheral_id: str) -> None:
-        try:
-            services.gpio_simulate(peripheral_id)
-        except Exception as exc:  # noqa: BLE001
-            self._set_banner(str(exc))
-
     def _remove_confirmed(self, index: int) -> None:
         try:
             services.gpio_remove_confirmed(index)
+            self._refresh_wiring_view()
         except Exception as exc:  # noqa: BLE001
             self._set_banner(str(exc))
 
     def _clear_confirmed(self) -> None:
         try:
             services.gpio_clear_confirmed()
+            self._refresh_wiring_view()
         except Exception as exc:  # noqa: BLE001
             self._set_banner(str(exc))
 
@@ -2230,6 +2072,7 @@ class WizardApp:
             # Fallback for older catalog entries without wire metadata
             try:
                 services.gpio_manual(str(item["id"]))
+                self._refresh_wiring_view()
             except Exception as exc:  # noqa: BLE001
                 self._set_banner(str(exc))
             return
@@ -2307,6 +2150,7 @@ class WizardApp:
                 err.configure(text=str(exc))
                 return
             win.destroy()
+            self._refresh_wiring_view()
 
         ctk.CTkButton(
             actions,
@@ -2336,7 +2180,6 @@ class WizardApp:
         )
 
     def _show_done(self, data: dict[str, Any]) -> None:
-        self._stop_wiring_poll()
         agent = data.get("agent") or {}
         if agent.get("enabled"):
             msg = self._tr("done_enabled")
@@ -2352,12 +2195,6 @@ class WizardApp:
         self.done_detail.insert("1.0", str(detail))
         self._update_progress(setup_done=True)
         self._show("done")
-
-
-def _probe_simulate() -> bool:
-    from bioversee_pi.gpio.probe import probe_service
-
-    return bool(probe_service.simulate)
 
 
 def main() -> None:

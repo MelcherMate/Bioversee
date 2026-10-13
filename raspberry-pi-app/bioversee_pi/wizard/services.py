@@ -264,11 +264,9 @@ def gpio_header() -> dict[str, Any]:
     return {"pins": header_as_dict(), "catalog": catalog_as_dict()}
 
 
-async def gpio_state() -> dict[str, Any]:
+def gpio_wiring_snapshot() -> dict[str, Any]:
+    """Confirmed wiring only — no live probe / auto-detect."""
     cfg = load_local_config()
-    claimed_bcm = {w.bcm for w in cfg.wiring if w.bcm is not None}
-    await probe_service.poll_once(claimed_bcm=claimed_bcm)
-    snap = probe_service.snapshot()
     confirmed_physical = sorted({p for w in cfg.wiring for p in (w.physical or [])})
     confirmed = []
     for index, w in enumerate(cfg.wiring):
@@ -276,10 +274,18 @@ async def gpio_state() -> dict[str, Any]:
         row["index"] = index
         confirmed.append(row)
     return {
-        **snap,
         "confirmed": confirmed,
         "confirmed_physical": confirmed_physical,
     }
+
+
+async def gpio_state() -> dict[str, Any]:
+    """Legacy probe snapshot (unused by the manual wiring UI)."""
+    cfg = load_local_config()
+    claimed_bcm = {w.bcm for w in cfg.wiring if w.bcm is not None}
+    await probe_service.poll_once(claimed_bcm=claimed_bcm)
+    snap = probe_service.snapshot()
+    return {**snap, **gpio_wiring_snapshot()}
 
 
 def gpio_confirm(event_id: str, peripheral_id: str | None = None) -> dict[str, Any]:
