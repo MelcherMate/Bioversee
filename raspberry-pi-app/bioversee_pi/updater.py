@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -221,7 +222,36 @@ def _post_update_privileged(prefix: Path) -> None:
         _restart_agent_fallback()
         return
 
+    launcher_path = prefix / "bin" / "bioversee-launch"
+    icon_path = "/usr/share/pixmaps/bioversee.png"
+    launcher_body = f"""#!/usr/bin/env bash
+set -euo pipefail
+ENV_FILE="/etc/bioversee/pi.env"
+if [[ -r "${{ENV_FILE}}" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${{ENV_FILE}}"
+  set +a
+fi
+exec "{prefix}/.venv/bin/bioversee" "$@"
+"""
+    desktop_body = f"""[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Bioversee
+GenericName=Process control
+Comment=Bioversee desktop app for this Raspberry Pi
+Exec={launcher_path}
+Icon={icon_path}
+Terminal=false
+Categories=Science;Utility;
+StartupNotify=true
+"""
+    launcher_b64 = base64.b64encode(launcher_body.encode()).decode("ascii")
+    desktop_b64 = base64.b64encode(desktop_body.encode()).decode("ascii")
+
     # One shell under sudo → one password / polkit prompt.
+    # File payloads are base64 (no nested heredocs inside bash -c).
     script = f"""
 set -euo pipefail
 PREFIX={prefix!s}
@@ -247,34 +277,24 @@ if [[ -f "$PREFIX/packaging/bioversee-48.png" ]]; then
   cp "$PREFIX/packaging/bioversee-48.png" /usr/share/icons/hicolor/48x48/apps/bioversee.png
   cp "$PREFIX/packaging/bioversee-48.png" /usr/share/pixmaps/bioversee.png
 fi
-[[ -f "$PREFIX/packaging/bioversee-128.png" ]] && \\
+if [[ -f "$PREFIX/packaging/bioversee-128.png" ]]; then
   cp "$PREFIX/packaging/bioversee-128.png" /usr/share/icons/hicolor/128x128/apps/bioversee.png
-[[ -f "$PREFIX/packaging/bioversee-256.png" ]] && \\
+fi
+if [[ -f "$PREFIX/packaging/bioversee-256.png" ]]; then
   cp "$PREFIX/packaging/bioversee-256.png" /usr/share/icons/hicolor/256x256/apps/bioversee.png
-ICON_PATH=/usr/share/pixmaps/bioversee.png
+fi
 LAUNCHER="$PREFIX/bin/bioversee-launch"
 APP_DESKTOP=/usr/share/applications/bioversee.desktop
-if [[ -x "$LAUNCHER" ]]; then
-  cat > "$APP_DESKTOP" <<EOF
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Bioversee
-GenericName=Process control
-Comment=Bioversee desktop app for this Raspberry Pi
-Exec=$LAUNCHER
-Icon=$ICON_PATH
-Terminal=false
-Categories=Science;Utility;
-StartupNotify=true
-EOF
-  if [[ -n "$USER_HOME" && -d "$USER_HOME/Desktop" ]]; then
-    cp "$APP_DESKTOP" "$USER_HOME/Desktop/Bioversee.desktop"
-    chmod 755 "$USER_HOME/Desktop/Bioversee.desktop"
-    chown "$USER_NAME:$USER_NAME" "$USER_HOME/Desktop/Bioversee.desktop" || true
-    if command -v gio >/dev/null 2>&1; then
-      sudo -u "$USER_NAME" gio set "$USER_HOME/Desktop/Bioversee.desktop" metadata::trusted true 2>/dev/null || true
-    fi
+echo '{launcher_b64}' | base64 -d > "$LAUNCHER"
+chmod 755 "$LAUNCHER"
+echo '{desktop_b64}' | base64 -d > "$APP_DESKTOP"
+chmod 644 "$APP_DESKTOP"
+if [[ -n "$USER_HOME" && -d "$USER_HOME/Desktop" ]]; then
+  cp "$APP_DESKTOP" "$USER_HOME/Desktop/Bioversee.desktop"
+  chmod 755 "$USER_HOME/Desktop/Bioversee.desktop"
+  chown "$USER_NAME:$USER_NAME" "$USER_HOME/Desktop/Bioversee.desktop" || true
+  if command -v gio >/dev/null 2>&1; then
+    sudo -u "$USER_NAME" gio set "$USER_HOME/Desktop/Bioversee.desktop" metadata::trusted true 2>/dev/null || true
   fi
 fi
 gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
@@ -282,7 +302,7 @@ gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
 systemctl disable --now bioversee-wizard.service 2>/dev/null || true
 rm -f /etc/systemd/system/bioversee-wizard.service
 systemctl daemon-reload
-"$PREFIX/bin/bioversee-privileged" restart-agents
+"$PREFIX/bin/bioversee-privileged" restart-agents || true
 """
     try:
         result = subprocess.run(

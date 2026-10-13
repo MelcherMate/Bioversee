@@ -148,8 +148,15 @@ class WizardApp:
 
         self.root = self.ctk.CTk()
         self.root.title("Bioversee")
-        self.root.geometry("1240x760")
-        self.root.minsize(1100, 680)
+        # Fit the Pi display — a minsize larger than the screen can make the
+        # window never appear (looks like the app "won't open").
+        self.root.update_idletasks()
+        screen_w = int(self.root.winfo_screenwidth() or 1280)
+        screen_h = int(self.root.winfo_screenheight() or 800)
+        width = min(1240, max(800, screen_w - 48))
+        height = min(760, max(520, screen_h - 72))
+        self.root.geometry(f"{width}x{height}")
+        self.root.minsize(min(800, screen_w), min(520, screen_h))
         self.root.configure(fg_color=_BG)
 
         self.step = "account"
@@ -2342,6 +2349,7 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     import os
+    import traceback
 
     from bioversee_pi.config import bootstrap_env_from_system
 
@@ -2352,7 +2360,22 @@ def main() -> None:
             "No display available. Bioversee is a desktop app — "
             "open it from the Raspberry Pi desktop, not over SSH without X."
         )
-    WizardApp().run()
+    try:
+        WizardApp().run()
+    except Exception as exc:  # noqa: BLE001
+        log.exception("Bioversee failed to start")
+        detail = f"{exc}\n\n{traceback.format_exc()}"
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Bioversee failed to start", detail[:2000])
+            root.destroy()
+        except Exception:  # noqa: BLE001
+            print(detail, file=sys.stderr)
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":
