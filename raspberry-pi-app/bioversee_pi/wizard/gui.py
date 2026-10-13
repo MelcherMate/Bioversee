@@ -1509,10 +1509,9 @@ class WizardApp:
             text=self._tr("header_40"),
             font=ctk.CTkFont(size=14, weight="bold"),
             text_color=_TEXT,
-        ).pack(anchor="w", padx=12, pady=(12, 6))
-        self.header_board = ctk.CTkScrollableFrame(
-            header_card, fg_color="transparent", height=280
-        )
+        ).pack(anchor="w", padx=12, pady=(10, 4))
+        # Compact horizontal 2×20 header (odd row / even row).
+        self.header_board = ctk.CTkFrame(header_card, fg_color="transparent")
         self.header_board.pack(fill="x", padx=8, pady=(0, 10))
 
         sensors = ctk.CTkFrame(f, fg_color="transparent")
@@ -1878,64 +1877,62 @@ class WizardApp:
         self._show("wiring")
         self._refresh_wiring_view()
 
+    def _pin_chip_text(self, pin: dict[str, Any]) -> str:
+        """Short label for the compact horizontal header."""
+        physical = int(pin["physical"])
+        kind = str(pin.get("kind") or "gpio")
+        if kind in ("5v", "3v3"):
+            return f"{physical} {pin.get('label')}"
+        if kind == "gnd":
+            return f"{physical} GND"
+        if kind == "id":
+            return f"{physical} ID"
+        return str(physical)
+
+    def _pin_base_colors(self, kind: str) -> tuple[str, str]:
+        if kind in ("5v", "3v3"):
+            return _POWER, "#111"
+        if kind == "gnd":
+            return _GND, "#fff"
+        if kind == "id":
+            return _UNKNOWN, "#111"
+        return _IDLE, "#111"
+
     def _build_header_board(self) -> None:
         for child in self.header_board.winfo_children():
             child.destroy()
         self._pin_labels.clear()
-        by_row: dict[int, list[dict[str, Any] | None]] = {}
-        for pin in self.pins:
-            row = int(pin.get("row", (pin["physical"] - 1) // 2))
-            col = int(pin.get("col", 0 if pin["physical"] % 2 == 1 else 1))
-            by_row.setdefault(row, [None, None])
-            by_row[row][col] = pin
-
-        for row in sorted(by_row):
+        by_phys = {int(p["physical"]): p for p in self.pins}
+        # Horizontal Pi header: top = odd pins 1…39, bottom = even pins 2…40.
+        for row_pins in (range(1, 40, 2), range(2, 41, 2)):
             line = self.ctk.CTkFrame(self.header_board, fg_color="transparent")
             line.pack(fill="x", pady=1)
-            for col in (0, 1):
-                pin = by_row[row][col]
+            for physical in row_pins:
+                pin = by_phys.get(physical)
                 if not pin:
                     continue
-                kind = pin.get("kind")
-                if kind in ("5v", "3v3"):
-                    color = _POWER
-                    text = "#111"
-                elif kind == "gnd":
-                    color = _GND
-                    text = "#fff"
-                elif kind == "id":
-                    color = _UNKNOWN
-                    text = "#111"
-                else:
-                    color = _IDLE
-                    text = "#111"
+                kind = str(pin.get("kind") or "gpio")
+                color, text = self._pin_base_colors(kind)
                 lbl = self.ctk.CTkLabel(
                     line,
-                    text=f" {pin['physical']:2d}  {pin['label']} ",
-                    width=170,
-                    height=22,
-                    corner_radius=6,
+                    text=self._pin_chip_text(pin),
+                    height=26,
+                    corner_radius=5,
                     fg_color=color,
                     text_color=text,
-                    font=self.ctk.CTkFont(size=11),
-                    anchor="w",
+                    font=self.ctk.CTkFont(size=10, weight="bold"),
                 )
-                lbl.pack(side="left", padx=2, expand=True, fill="x")
-                self._pin_labels[int(pin["physical"])] = (lbl, kind)
+                lbl.pack(side="left", padx=1, expand=True, fill="x")
+                self._pin_labels[physical] = (lbl, kind)
 
     def _paint_used_pins(self, used: list[int]) -> None:
         used_set = set(used)
         for physical, (lbl, kind) in self._pin_labels.items():
-            if kind in ("5v", "3v3"):
-                base, text = _POWER, "#111"
-            elif kind == "gnd":
-                base, text = _GND, "#fff"
-            elif kind == "id":
-                base, text = _UNKNOWN, "#111"
-            elif physical in used_set:
+            # Mapped power/GND/GPIO all show as used (teal).
+            if physical in used_set:
                 base, text = _CONFIRMED, "#fff"
             else:
-                base, text = _IDLE, "#111"
+                base, text = self._pin_base_colors(kind)
             lbl.configure(fg_color=base, text_color=text)
 
     def _stop_polls(self) -> None:
