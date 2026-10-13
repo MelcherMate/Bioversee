@@ -83,6 +83,16 @@ _STRINGS: dict[AppLanguage, dict[str, str]] = {
         "simulate_ph": "Simulate pH",
         "add_manually": "Add manually",
         "add_sensor": "Add sensor",
+        "view_stream": "Data stream",
+        "stream_title": "Live data · {label}",
+        "stream_sub": "Readings refresh about once per second while this window is open.",
+        "stream_waiting": "Waiting for first reading…",
+        "stream_live": "Receiving data",
+        "stream_no_data": (
+            "No reading yet. For DS18B20, enable 1-Wire (dtoverlay=w1-gpio) "
+            "and check the pull-up on the data pin."
+        ),
+        "stream_history": "Recent readings",
         "finish_setup": "Finish setup",
         "manual_wiring_title": "Map sensor cables",
         "manual_wiring_sub": "For each cable, choose which pin it is connected to on the 40-pin header.",
@@ -222,6 +232,16 @@ _STRINGS: dict[AppLanguage, dict[str, str]] = {
         "simulate_ph": "pH simulieren",
         "add_manually": "Manuell hinzufügen",
         "add_sensor": "Sensor hinzufügen",
+        "view_stream": "Datenstrom",
+        "stream_title": "Live-Daten · {label}",
+        "stream_sub": "Die Werte aktualisieren sich etwa einmal pro Sekunde, solange dieses Fenster offen ist.",
+        "stream_waiting": "Warte auf ersten Messwert…",
+        "stream_live": "Empfange Daten",
+        "stream_no_data": (
+            "Noch kein Messwert. Für DS18B20: 1-Wire aktivieren (dtoverlay=w1-gpio) "
+            "und den Pull-up am Datenpin prüfen."
+        ),
+        "stream_history": "Letzte Messwerte",
         "finish_setup": "Setup abschließen",
         "manual_wiring_title": "Kabel zuordnen",
         "manual_wiring_sub": "Wähle für jedes Kabel den Pin auf dem 40-Pin-Header.",
@@ -361,6 +381,16 @@ _STRINGS: dict[AppLanguage, dict[str, str]] = {
         "simulate_ph": "pH szimulálása",
         "add_manually": "Kézi hozzáadás",
         "add_sensor": "Szenzor hozzáadása",
+        "view_stream": "Adatfolyam",
+        "stream_title": "Élő adat · {label}",
+        "stream_sub": "Az értékek körülbelül másodpercenként frissülnek, amíg ez az ablak nyitva van.",
+        "stream_waiting": "Várakozás az első mérésre…",
+        "stream_live": "Adat érkezik",
+        "stream_no_data": (
+            "Még nincs mérés. DS18B20-hoz kapcsold be az 1-Wire-t (dtoverlay=w1-gpio) "
+            "és ellenőrizd a data pin pull-upját."
+        ),
+        "stream_history": "Utóbbi mérések",
         "finish_setup": "Telepítés befejezése",
         "manual_wiring_title": "Kábelek hozzárendelése",
         "manual_wiring_sub": "Minden kábelhez válaszd ki, melyik pinre van csatlakoztatva a 40-pines headeren.",

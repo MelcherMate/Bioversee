@@ -1965,12 +1965,30 @@ class WizardApp:
                 text=f"{catalog_label}  ·  pins {pins}",
                 text_color=_TEXT,
                 anchor="w",
-                wraplength=700,
+                wraplength=520,
                 justify="left",
             ).pack(side="left", fill="x", expand=True, padx=8, pady=8)
             idx = int(w.get("index", -1))
+            actions = self.ctk.CTkFrame(row, fg_color="transparent")
+            actions.pack(side="right", padx=4, pady=4)
+            if str(w.get("role") or "sensor") == "sensor":
+                self.ctk.CTkButton(
+                    actions,
+                    text=self._tr("view_stream"),
+                    width=110,
+                    height=28,
+                    fg_color="transparent",
+                    border_width=1,
+                    border_color=_ACCENT,
+                    text_color=_ACCENT,
+                    hover_color="#E8F5F3",
+                    font=self.ctk.CTkFont(size=11),
+                    command=lambda i=idx, label=catalog_label: self._open_sensor_stream(
+                        i, label
+                    ),
+                ).pack(side="left", padx=(0, 6))
             self.ctk.CTkButton(
-                row,
+                actions,
                 text=self._tr("remove"),
                 width=70,
                 height=28,
@@ -1981,9 +1999,130 @@ class WizardApp:
                 hover_color="#FCEBEA",
                 font=self.ctk.CTkFont(size=11),
                 command=lambda i=idx: self._remove_confirmed(i),
-            ).pack(side="right", padx=6, pady=6)
+            ).pack(side="left")
         if self.step == "wiring":
             self.finish_btn.configure(state="normal" if confirmed else "disabled")
+
+    def _open_sensor_stream(self, index: int, label: str) -> None:
+        """Popup with live readings for one confirmed sensor."""
+        ctk = self.ctk
+        win = ctk.CTkToplevel(self.root)
+        win.title(self._tr("stream_title", label=label))
+        win.geometry("420x480")
+        win.minsize(380, 420)
+        win.configure(fg_color=_BG)
+        win.transient(self.root)
+        win.grab_set()
+
+        body = ctk.CTkFrame(win, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=20, pady=16)
+
+        ctk.CTkLabel(
+            body,
+            text=label,
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            body,
+            text=self._tr("stream_sub"),
+            text_color=_MUTED,
+            wraplength=360,
+            justify="left",
+        ).pack(anchor="w", pady=(4, 16))
+
+        value_lbl = ctk.CTkLabel(
+            body,
+            text="—",
+            font=ctk.CTkFont(size=42, weight="bold"),
+            text_color=_ACCENT,
+        )
+        value_lbl.pack(anchor="center", pady=(8, 4))
+        unit_lbl = ctk.CTkLabel(body, text="", text_color=_MUTED, font=ctk.CTkFont(size=14))
+        unit_lbl.pack(anchor="center")
+        status_lbl = ctk.CTkLabel(
+            body,
+            text=self._tr("stream_waiting"),
+            text_color=_MUTED,
+            wraplength=360,
+            justify="center",
+        )
+        status_lbl.pack(anchor="center", pady=(10, 12))
+
+        ctk.CTkLabel(
+            body,
+            text=self._tr("stream_history"),
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=_TEXT,
+        ).pack(anchor="w")
+        history = ctk.CTkTextbox(body, height=180, fg_color="#F7FAF9", state="disabled")
+        history.pack(fill="both", expand=True, pady=(6, 12))
+
+        poll_job: dict[str, Any] = {"id": None, "closed": False}
+
+        def append_history(line: str) -> None:
+            history.configure(state="normal")
+            history.insert("1.0", line + "\n")
+            history.configure(state="disabled")
+
+        def sample() -> None:
+            if poll_job["closed"]:
+                return
+            try:
+                reading = services.gpio_read_wiring(index)
+            except Exception as exc:  # noqa: BLE001
+                value_lbl.configure(text="—")
+                status_lbl.configure(text=str(exc), text_color=_DANGER)
+            else:
+                unit = str(reading.get("unit") or "")
+                unit_lbl.configure(text=unit)
+                if reading.get("has_reading") and reading.get("value") is not None:
+                    val = float(reading["value"])
+                    # Temperature often wants 1 decimal; others up to 3.
+                    shown = f"{val:.1f}" if unit == "°C" else f"{val:.3g}"
+                    value_lbl.configure(text=shown, text_color=_ACCENT)
+                    status_lbl.configure(
+                        text=self._tr("stream_live"), text_color=_MUTED
+                    )
+                    from datetime import datetime
+
+                    stamp = datetime.now().strftime("%H:%M:%S")
+                    suffix = f" {unit}" if unit else ""
+                    append_history(f"{stamp}  {shown}{suffix}")
+                else:
+                    value_lbl.configure(text="—", text_color=_MUTED)
+                    status_lbl.configure(
+                        text=self._tr("stream_no_data"), text_color=_DANGER
+                    )
+            if not poll_job["closed"]:
+                poll_job["id"] = win.after(1000, sample)
+
+        def on_close() -> None:
+            poll_job["closed"] = True
+            job = poll_job.get("id")
+            if job is not None:
+                try:
+                    win.after_cancel(job)
+                except Exception:  # noqa: BLE001
+                    pass
+            try:
+                win.grab_release()
+            except Exception:  # noqa: BLE001
+                pass
+            win.destroy()
+
+        ctk.CTkButton(
+            body,
+            text=self._tr("close"),
+            height=36,
+            fg_color="transparent",
+            border_width=1,
+            border_color=_LINE,
+            text_color=_MUTED,
+            command=on_close,
+        ).pack(anchor="e")
+        win.protocol("WM_DELETE_WINDOW", on_close)
+        sample()
 
     def _remove_confirmed(self, index: int) -> None:
         try:

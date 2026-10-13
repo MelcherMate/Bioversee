@@ -371,6 +371,10 @@ def gpio_manual(
                 physical_pins_for_bcm(resolved_bcm) if resolved_bcm is not None else []
             )
 
+    one_wire_id: str | None = None
+    if p.driver == "ds18b20":
+        one_wire_id = _discover_one_wire_id()
+
     entry = WiringEntry(
         bcm=resolved_bcm,
         physical=resolved_physical,
@@ -378,6 +382,7 @@ def gpio_manual(
         name=p.name,
         driver=p.driver,
         confirmed=True,
+        one_wire_id=one_wire_id,
     )
     cfg = load_local_config()
     cfg.wiring = [w for w in cfg.wiring if not _same_wire(w, entry)]
@@ -385,6 +390,17 @@ def gpio_manual(
     _sync_wiring_to_active_service(cfg)
     save_local_config(cfg)
     return {"ok": True, "wiring": entry.model_dump()}
+
+
+def _discover_one_wire_id() -> str | None:
+    """Pick the first DS18B20 ROM id from sysfs, if the kernel w1 bus is up."""
+    root = Path("/sys/bus/w1/devices")
+    if not root.is_dir():
+        return None
+    for entry in sorted(root.iterdir()):
+        if entry.name.startswith("28-"):
+            return entry.name
+    return None
 
 
 def gpio_remove_confirmed(index: int) -> dict[str, Any]:
@@ -404,6 +420,50 @@ def gpio_clear_confirmed() -> dict[str, Any]:
     _sync_wiring_to_active_service(cfg)
     save_local_config(cfg)
     return {"ok": True, "cleared": count}
+
+
+_SENSOR_UNITS: dict[str, str] = {
+    "temperature": "°C",
+    "ph": "pH",
+    "dissolvedOxygen": "mg/L",
+    "orp": "mV",
+    "conductivity": "µS/cm",
+    "turbidity": "NTU",
+    "ammonia": "mg/L",
+    "nitrate": "mg/L",
+    "chlorine": "mg/L",
+    "cod": "mg/L",
+    "pressure": "psi",
+    "level": "m",
+    "levelHydrostatic": "m",
+    "flow": "L/min",
+    "floatLevel": "",
+}
+
+
+def gpio_read_wiring(index: int) -> dict[str, Any]:
+    """Take one live sample from a confirmed wiring entry."""
+    from bioversee_pi.agent.drivers import read_sensor
+
+    cfg = load_local_config()
+    if index < 0 or index >= len(cfg.wiring):
+        raise RuntimeError("Unknown sensor")
+    wire = cfg.wiring[index]
+    value = read_sensor(wire)
+    unit = _SENSOR_UNITS.get(wire.name, "")
+    return {
+        "ok": True,
+        "index": index,
+        "name": wire.name,
+        "driver": wire.driver,
+        "role": wire.role,
+        "bcm": wire.bcm,
+        "physical": list(wire.physical or []),
+        "one_wire_id": wire.one_wire_id,
+        "value": value,
+        "unit": unit,
+        "has_reading": value is not None,
+    }
 
 
 async def finish_setup(settings: AppSettings) -> dict[str, Any]:
