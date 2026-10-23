@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { LOGO_WORDMARK, WORDMARK_RATIO } from "../../components/BrandLogo/logoSvgs";
 import SegmentedControl from "../../components/SegmentedControl";
 import { accentForResolvedTheme, ACCENT_PRESETS, DEFAULT_ACCENT } from "../../lib/appearance";
 /** Stable public logo assets (src/public/assets/logo). Mark OR wordmark — never both. */
@@ -6,7 +7,6 @@ const WORDMARK_PNG = "/assets/logo/g-wordmark-light-480.png";
 const MARK_PNG = "/assets/logo/d-mark-light-256.png";
 const AVATAR_PNG = "/assets/logo/icon-192.png";
 const WORDMARK_SVG = { light: "/assets/logo/g-wordmark-light.svg", dark: "/assets/logo/g-wordmark-dark.svg" };
-const WORDMARK_RATIO = 433.8 / 71.7;
 import { tokenBlock } from "./cssAudit";
 import "./Templates.css";
 
@@ -227,7 +227,7 @@ function buildEmailHtml(d: EmailData) {
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:${BRAND.card};border:1px solid ${BRAND.line};border-radius:20px;">
 <tr><td style="padding:28px 32px 0;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="vertical-align:middle;"><img src="${esc(d.logoUrl)}" width="160" height="26" alt="Bioversee" style="display:block;border:0;width:160px;height:26px;"></td>
+<td style="vertical-align:middle;"><img src="${esc(d.logoUrl)}" width="160" height="28" alt="Bioversee" style="display:block;border:0;width:160px;height:28px;"></td>
 </tr></table>
 </td></tr>
 <tr><td style="padding:28px 32px 0;background-color:${BRAND.card};">
@@ -597,7 +597,167 @@ function useLogoImage(theme: "light" | "dark") {
   return img;
 }
 
+/* ------------------------------------------------------------------ */
+/* 2a-ii. LinkedIn banners (company page + personal profile)           */
+/* ------------------------------------------------------------------ */
+
+const BANNERS = {
+  company: { w: 1128, h: 191, label: "Banner · Company page 1128×191" },
+  profile: { w: 1584, h: 396, label: "Banner · Personal profile 1584×396" },
+} as const;
+type BannerKind = keyof typeof BANNERS;
+type BannerStyle = "light" | "dark" | "teal";
+
+/** Wordmark colours per banner style (teal follows app-tile option 1: white + ink accent). */
+const BANNER_STYLES: Record<BannerStyle, { bg: [string, string]; fg: string; ac: string; trk: string; tag: string; sub: string; line: string }> = {
+  light: { bg: ["#ffffff", "#f5f5f7"], fg: "#1d1d1f", ac: "#0d9488", trk: "0.2", tag: "#1d1d1f", sub: "#6e6e73", line: "rgba(13,148,136,0.16)" },
+  dark: { bg: ["#1d1d1f", "#101012"], fg: "#f5f5f7", ac: "#69bdb5", trk: "0.3", tag: "#f5f5f7", sub: "#a0a0a8", line: "rgba(105,189,181,0.18)" },
+  teal: { bg: ["#0d9488", "#0f766e"], fg: "#ffffff", ac: "#1d1d1f", trk: "0.3", tag: "#ffffff", sub: "rgba(255,255,255,0.8)", line: "rgba(255,255,255,0.16)" },
+};
+
+function bannerWordmarkSrc(style: BannerStyle) {
+  const s = BANNER_STYLES[style];
+  const svg = LOGO_WORDMARK.replace(/var\(--bv-logo-track, ?[\d.]+\)/g, s.trk).replace(/var\(--bv-text\)/g, s.fg).replace(/var\(--bv-accent\)/g, s.ac);
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/** Dial-arc line motif: concentric 270° gauges with a setpoint dot, like the mark's sweep. */
+function dialMotif(ctx: CanvasRenderingContext2D, cx: number, cy: number, radii: number[], color: string, lw: number) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = lw;
+  ctx.lineCap = "round";
+  const a0 = (135 * Math.PI) / 180;
+  radii.forEach((r, i) => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, a0, a0 + (270 * Math.PI) / 180);
+    ctx.stroke();
+    const sweep = a0 + ((150 + i * 35) * Math.PI) / 180;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(sweep) * r, cy + Math.sin(sweep) * r, lw * 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function drawBanner(ctx: CanvasRenderingContext2D, kind: BannerKind, style: BannerStyle, tagline: string, subline: string, logo: HTMLImageElement | null, scale = 1) {
+  const { w, h } = BANNERS[kind];
+  const s = BANNER_STYLES[style];
+  ctx.save();
+  ctx.scale(scale, scale);
+  const lin = ctx.createLinearGradient(0, 0, w, h);
+  lin.addColorStop(0, s.bg[0]);
+  lin.addColorStop(1, s.bg[1]);
+  ctx.fillStyle = lin;
+  ctx.fillRect(0, 0, w, h);
+  if (style !== "teal") {
+    const g = ctx.createRadialGradient(w * 0.7, -h * 0.2, 0, w * 0.7, -h * 0.2, w * 0.6);
+    g.addColorStop(0, rgba("#0d9488", style === "dark" ? 0.2 : 0.1));
+    g.addColorStop(1, rgba("#0d9488", 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  if (kind === "profile") {
+    // Avatar covers ~x 0–568 in the lower half: motif lives top-left, all content is right-aligned.
+    dialMotif(ctx, 250, 150, [70, 120, 170, 220, 270], s.line, 2);
+    const right = w - 224; // mobile crops ~200px per side
+    const maxW = right - 600;
+    const wh = 54;
+    let y = 104;
+    if (logo) ctx.drawImage(logo, right - wh * WORDMARK_RATIO, y, wh * WORDMARK_RATIO, wh);
+    y += wh + 34;
+    y += fitText(ctx, tagline, right, y, maxW, { size: 40, min: 26, weight: 600, family: DISPLAY, lh: 1.15, color: s.tag, maxLines: 2, tracking: -0.025, align: "right" }) + 12;
+    fitText(ctx, subline, right, y, maxW, { size: 20, min: 15, weight: 450, family: UI, lh: 1.35, color: s.sub, maxLines: 1, align: "right" });
+  } else {
+    // Company logo square sits bottom-left and mobile crops the sides: centre the stack, motif on the far right.
+    dialMotif(ctx, w - 70, h * 0.5, [40, 70, 100, 130], s.line, 1.5);
+    const cx = w / 2;
+    const maxW = 560;
+    const wh = 36;
+    let y = 34;
+    if (logo) ctx.drawImage(logo, cx - (wh * WORDMARK_RATIO) / 2, y, wh * WORDMARK_RATIO, wh);
+    y += wh + 20;
+    y += fitText(ctx, tagline, cx, y, maxW, { size: 26, min: 18, weight: 600, family: DISPLAY, lh: 1.15, color: s.tag, maxLines: 1, tracking: -0.02, align: "center" }) + 8;
+    fitText(ctx, subline, cx, y, maxW, { size: 15, min: 12, weight: 450, family: UI, lh: 1.3, color: s.sub, maxLines: 1, align: "center" });
+  }
+  ctx.restore();
+}
+
+function BannerEditor({ kind, sizeField }: { kind: BannerKind; sizeField: ReactNode }) {
+  const [style, setStyle] = useState<BannerStyle>("light");
+  const [tagline, setTagline] = useState("Automation that feels like child's play");
+  const [subline, setSubline] = useState("Bioreactor control from the browser · bioversee.com");
+  const [logo, setLogo] = useState<HTMLImageElement | null>(null);
+  const [fontsReady, setFontsReady] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { w, h } = BANNERS[kind];
+
+  useEffect(() => {
+    void document.fonts.load(`600 40px "Outfit"`).finally(() => setFontsReady(true));
+  }, []);
+  useEffect(() => {
+    const i = new Image();
+    i.onload = () => setLogo(i);
+    i.src = bannerWordmarkSrc(style);
+  }, [style]);
+  useEffect(() => {
+    const c = canvasRef.current;
+    const ctx = c?.getContext("2d");
+    if (!c || !ctx) return;
+    c.width = w * 2;
+    c.height = h * 2;
+    drawBanner(ctx, kind, style, tagline, subline, logo, 2);
+  }, [kind, style, tagline, subline, logo, fontsReady, w, h]);
+
+  const download = (type: "png" | "jpg", scale: number) => {
+    const c = document.createElement("canvas");
+    c.width = w * scale;
+    c.height = h * scale;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    drawBanner(ctx, kind, style, tagline, subline, logo, scale);
+    c.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `bioversee-linkedin-banner-${kind}-${style}-${c.width}x${c.height}.${type}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, type === "png" ? "image/png" : "image/jpeg", 0.92);
+  };
+
+  return (
+    <div className="tpl">
+      <form className="tpl-form ds-auth-demo" onSubmit={(e) => e.preventDefault()}>
+        {sizeField}
+        <Field label="Tagline"><input value={tagline} onChange={(e) => setTagline(e.target.value)} /></Field>
+        <Field label="Subline"><input value={subline} onChange={(e) => setSubline(e.target.value)} /></Field>
+        <div className="tpl-field">
+          <span className="tpl-label">Style</span>
+          <SegmentedControl<BannerStyle> shape="pill" aria-label="Banner style" value={style} onChange={setStyle} options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "teal", label: "Teal" }]} />
+        </div>
+        <p className="tpl-cap">
+          {kind === "profile"
+            ? "Safe zone: your round photo covers the lower-left (~0–568px) and mobile crops the sides, so content sits right of centre."
+            : "Safe zone: the logo square overlaps the lower-left and mobile crops the sides, so content stays centred."}
+        </p>
+        <div className="tpl-actions landing">
+          <button type="button" className="landing-btn landing-btn--primary" onClick={() => download("png", 1)}>PNG {w}×{h}</button>
+          <button type="button" className="landing-btn landing-btn--ghost" onClick={() => download("jpg", 1)}>JPG</button>
+          {kind === "company" ? <button type="button" className="landing-btn landing-btn--ghost" onClick={() => download("png", 2)}>PNG @2x {w * 2}×{h * 2}</button> : null}
+        </div>
+      </form>
+      <div className="tpl-preview tpl-preview--canvas">
+        <canvas ref={canvasRef} className="tpl-canvas" data-testid="linkedin-banner-canvas" style={{ aspectRatio: `${w} / ${h}`, width: "100%" }} aria-label={`LinkedIn ${BANNERS[kind].label} preview`} />
+      </div>
+    </div>
+  );
+}
+
 export function LinkedInGraphicSection() {
+  const [banner, setBanner] = useState<BannerKind | null>(null);
   const [d, setD] = useState<PostData>({
     size: "square",
     layout: "announcement",
@@ -661,14 +821,30 @@ export function LinkedInGraphicSection() {
     r.readAsDataURL(file);
   };
 
+  const sizeField = (
+    <Field label="Size">
+      <select
+        value={banner ? `banner-${banner}` : d.size}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v.startsWith("banner-")) setBanner(v.slice(7) as BannerKind);
+          else {
+            setBanner(null);
+            set("size", v as SizeId);
+          }
+        }}
+      >
+        {(Object.keys(SIZES) as SizeId[]).map((s) => <option key={s} value={s}>{SIZES[s].label}</option>)}
+        {(Object.keys(BANNERS) as BannerKind[]).map((k) => <option key={k} value={`banner-${k}`}>{BANNERS[k].label}</option>)}
+      </select>
+    </Field>
+  );
+  if (banner) return <BannerEditor kind={banner} sizeField={sizeField} />;
+
   return (
     <div className="tpl">
       <form className="tpl-form ds-auth-demo" onSubmit={(e) => e.preventDefault()}>
-        <Field label="Size">
-          <select value={d.size} onChange={(e) => set("size", e.target.value as SizeId)}>
-            {(Object.keys(SIZES) as SizeId[]).map((s) => <option key={s} value={s}>{SIZES[s].label}</option>)}
-          </select>
-        </Field>
+        {sizeField}
         <div className="tpl-field">
           <span className="tpl-label">Layout</span>
           <SegmentedControl<LayoutId>

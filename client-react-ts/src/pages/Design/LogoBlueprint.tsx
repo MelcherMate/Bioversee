@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { LogoAssetGallery } from "./LogoAssets";
 import { BLUEPRINT_MARK, BLUEPRINT_WORD } from "./logoBlueprint";
-import { LOGO_MARK, LOGO_MARK_SMALL, LOGO_TILE, LOGO_WORDMARK, LOGO_WORDMARK_SMALL } from "../../components/BrandLogo/logoSvgs";
+import { LOGO_MARK, LOGO_MARK_SMALL, LOGO_TILE, LOGO_WORDMARK, LOGO_WORDMARK_SMALL, WORDMARK_RATIO } from "../../components/BrandLogo/logoSvgs";
 
 /** Inline SVG from the generated geometry module (trusted, build-time strings). */
 function Svg({ src, className, style, label }: { src: string; className?: string; style?: CSSProperties; label: string }) {
@@ -42,7 +42,7 @@ const WORD_SPECS: [string, string][] = [
   ["Mark-‘o’", "The D mark replaces the ‘o’: real o advance and side-bearings; Ø 51.5 incl. overshoot, centred on the x-height middle"],
   ["Mark-‘o’ angles", "Same as the mark: sweep −135° → +45°, dot Ø 1.25 × ring stroke"],
   ["Mark-‘o’ (per 100 em)", "Ring 8 · gap 3 · vessel wall 6 · bore r 8.75 · liquid 1.2 below centre — combined weight ≈ the o stem (13.8)"],
-  ["Small wordmark (< 160px wide)", "Ring 10 · gap 3.5 · vessel drawn solid with a teal lower half, so the liquid never turns to mush"],
+  ["Small wordmark (< 160px wide)", "The 'o' is the small mark (favicon master): 270° teal arc, vessel ring, liquid — no track, no dot. Same outer size and centre as the large 'o'"],
 ];
 
 const COLOURS: [string, string, string, string][] = [
@@ -91,13 +91,13 @@ export function LogoBlueprintSection() {
       <Block title="Mark or wordmark — never both" note="Rendered from the tokens, so they follow the theme toggle.">
         <div className="lb-grid">
           <div className="lb-stage"><Svg src={LOGO_MARK} label="Mark" style={{ height: 120, width: 120 }} /><span className="ds-cap">Mark</span></div>
-          <div className="lb-stage lb-stage--wide"><Svg src={LOGO_WORDMARK} label="Wordmark" style={{ height: 52, width: 52 * 6.05 }} /><span className="ds-cap">Wordmark</span></div>
+          <div className="lb-stage lb-stage--wide"><Svg src={LOGO_WORDMARK} label="Wordmark" style={{ height: 52, width: 52 * WORDMARK_RATIO }} /><span className="ds-cap">Wordmark</span></div>
           <div className="lb-stage lb-row">
             {[48, 32, 16].map((s) => <Svg key={s} src={LOGO_MARK_SMALL} label={`Small mark ${s}px`} style={{ width: s, height: s }} />)}
             <span className="ds-cap">Small mark · 48 / 32 / 16px</span>
           </div>
           <div className="lb-stage lb-row">
-            {[150, 120, 90].map((w) => <Svg key={w} src={LOGO_WORDMARK_SMALL} label={`Small wordmark ${w}px`} style={{ width: w, height: w / 6.05 }} />)}
+            {[150, 120, 90].map((w) => <Svg key={w} src={LOGO_WORDMARK_SMALL} label={`Small wordmark ${w}px`} style={{ width: w, height: w / WORDMARK_RATIO }} />)}
             <span className="ds-cap">Small wordmark · 150 / 120 / 90px</span>
           </div>
           <div className="lb-stage"><Svg src={LOGO_TILE} label="App icon tile" style={{ height: 96, width: 96, borderRadius: 22, overflow: "hidden" }} /><span className="ds-cap">App-icon tile</span></div>
@@ -107,7 +107,7 @@ export function LogoBlueprintSection() {
       <Block title="Clear space & minimum size" note="x = cap height of ‘B’ (= the mark’s ring diameter ÷ 2 for the mark). Keep ≥ 0.5x around the mark and ≥ 1x around the wordmark.">
         <div className="lb-grid">
           <div className="lb-stage"><span className="lb-clear lb-clear--half"><Svg src={LOGO_MARK} label="Mark with clear space" style={{ height: 72, width: 72 }} /></span><span className="ds-cap">Mark · 0.5x</span></div>
-          <div className="lb-stage"><span className="lb-clear"><Svg src={LOGO_WORDMARK} label="Wordmark with clear space" style={{ height: 34, width: 34 * 6.05 }} /></span><span className="ds-cap">Wordmark · 1x</span></div>
+          <div className="lb-stage"><span className="lb-clear"><Svg src={LOGO_WORDMARK} label="Wordmark with clear space" style={{ height: 34, width: 34 * WORDMARK_RATIO }} /></span><span className="ds-cap">Wordmark · 1x</span></div>
           <div className="lb-stage lb-mins">
             <span><b>Mark</b> 16px (small master below 48px)</span>
             <span><b>Wordmark</b> 72px wide (small variant below 160px)</span>
@@ -131,14 +131,14 @@ export function LogoBlueprintSection() {
 
       <Block title="Do / don’t">
         <div className="lb-grid lb-grid--dd">
-          <div className="lb-stage lb-do"><Svg src={LOGO_WORDMARK} label="Correct" style={{ height: 30, width: 30 * 6.05 }} /><span className="ds-cap">Do · wordmark alone where there is room</span></div>
+          <div className="lb-stage lb-do"><Svg src={LOGO_WORDMARK} label="Correct" style={{ height: 30, width: 30 * WORDMARK_RATIO }} /><span className="ds-cap">Do · wordmark alone where there is room</span></div>
           <div className="lb-stage lb-do lb-stage--teal"><Svg src={LOGO_TILE} label="Correct on tile" style={{ height: 72, width: 72, borderRadius: 16, overflow: "hidden" }} /><span className="ds-cap">Do · use the tile on colour</span></div>
           {DONTS.map((d) => (
             <div key={d.label} className="lb-stage lb-dont" style={d.bg ? { background: d.bg } : undefined}>
               {d.combo ? (
                 <span className="lb-combo">
                   <Svg src={LOGO_MARK} label={d.label} style={{ height: 40, width: 40 }} />
-                  <Svg src={LOGO_WORDMARK} label="" style={{ height: 22, width: 22 * 6.05 }} />
+                  <Svg src={LOGO_WORDMARK} label="" style={{ height: 22, width: 22 * WORDMARK_RATIO }} />
                 </span>
               ) : (
                 <Svg src={LOGO_MARK} label={d.label} style={{ height: 72, width: 72, ...d.style }} />

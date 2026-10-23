@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import "./BrandLogo.css";
-import { LOGO_MARK, LOGO_MARK_SMALL, LOGO_WORDMARK, LOGO_WORDMARK_SMALL } from "./logoSvgs";
+import { LOGO_MARK, LOGO_MARK_SMALL, LOGO_WORDMARK, LOGO_WORDMARK_SMALL, WORDMARK_RATIO } from "./logoSvgs";
 
 /**
  * Brand rule: use EITHER the mark OR the wordmark — never both together.
@@ -24,7 +24,7 @@ export function LogoMark({ size = 32, className, style, title }: Common & { size
 
 /** “Bioversee” wordmark with the mark as the ‘o’. Below 160px wide the small-size variant is used. */
 export function Wordmark({ height = 24, className, style, title = "Bioversee" }: Common & { height?: number }) {
-  const width = height * (433.8 / 71.7);
+  const width = height * WORDMARK_RATIO;
   return (
     <span
       className={`bv-logo bv-logo--word ${className ?? ""}`}
