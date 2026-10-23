@@ -80,7 +80,11 @@ def _try_import_ctk():
 
 
 def _resolve_logo_path() -> Path | None:
+    # Header shows the D mark alone (small master, transparent); the teal tile
+    # (bioversee*.png) stays the desktop/app icon.
     candidates = [
+        Path(__file__).resolve().parents[2] / "packaging" / "bioversee-mark.png",
+        Path("/opt/bioversee-pi/packaging/bioversee-mark.png"),
         Path(__file__).resolve().parents[2] / "packaging" / "bioversee.png",
         Path("/opt/bioversee-pi/packaging/bioversee.png"),
         Path("/usr/share/pixmaps/bioversee.png"),

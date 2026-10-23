@@ -22,26 +22,16 @@ struct LoginView: View {
                 VStack(spacing: 0) {
                     // Header
                     HStack(alignment: .top, spacing: 14) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
-                                .fill(Color.white)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: BVTheme.radiusPanel, style: .continuous)
-                                        .stroke(BVTheme.accentBorder, lineWidth: 1)
-                                )
-                            Image("BioverseeLogo")
+                        VStack(alignment: .leading, spacing: 4) {
+                            // Brand rule: wordmark alone (never mark + wordmark together).
+                            // Small variant below 160pt wide keeps the liquid line clean.
+                            Image("BioverseeWordmarkSmall")
                                 .resizable()
                                 .renderingMode(.original)
                                 .scaledToFit()
-                                .frame(width: 34, height: 34)
-                        }
-                        .frame(width: 48, height: 48)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("BIOVERSEE")
-                                .font(.system(size: 11, weight: .bold))
-                                .tracking(1.4)
-                                .foregroundStyle(BVTheme.textSecondary)
+                                .frame(height: 20)
+                                .accessibilityLabel("Bioversee")
+                                .padding(.bottom, 6)
                             Text(session.isAddingAccount ? "Add account" : "Welcome")
                                 .font(.system(size: 24, weight: .semibold))
                                 .tracking(-0.5)
