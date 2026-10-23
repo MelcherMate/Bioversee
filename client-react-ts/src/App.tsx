@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BrowserRouter,
@@ -29,6 +29,10 @@ import PiLogin from "./pages/PiLogin";
 import PiSetup from "./pages/PiSetup";
 import PressureVessel from "./pages/PressureVessel";
 import WaterPurifier from "./pages/WaterPurifier";
+
+// Internal design-system reference (unlinked, noindex). Lazy so it never
+// weighs on the main bundle.
+const DesignSystem = lazy(() => import("./pages/Design"));
 
 function safeNextPath(raw: string | null): string | null {
   if (!raw) return null;
@@ -176,6 +180,7 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
     pathname === "/about" ||
     pathname === "/pi-setup" ||
     pathname === "/pi-login" ||
+    pathname === "/design" ||
     (pathname === "/" && !user);
   // App chrome (device + / settings) only outside the marketing landing pages.
   const showChrome =
@@ -261,6 +266,14 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
           <Route path="/about" element={<About />} />
           <Route path="/pi-setup" element={<PiSetup />} />
           <Route path="/pi-login" element={<PiLogin />} />
+          <Route
+            path="/design"
+            element={
+              <Suspense fallback={null}>
+                <DesignSystem />
+              </Suspense>
+            }
+          />
           <Route
             path="/settings"
             element={<Navigate to={APP_HOME_PATH} replace />}
