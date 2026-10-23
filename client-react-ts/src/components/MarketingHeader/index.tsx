@@ -14,7 +14,7 @@ import { LANGUAGE_OPTIONS, type AppLanguage } from "../../lib/appearance";
 import { useAppearance } from "../../lib/AppearanceProvider";
 import { APP_HOME_PATH } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
-import Logo from "../../utils/svgs/new_logo.svg";
+import { LogoMark, Wordmark } from "../BrandLogo";
 import AccountMenu from "../AccountMenu";
 import "../Navbar/Navbar.css";
 import "./MarketingHeader.css";
@@ -117,10 +117,8 @@ function MarketingHeader({ user = null }: MarketingHeaderProps) {
     <header className="mkt-header">
       <div className="mkt-header__start">
         <Link to="/about" className="mkt-header__brand">
-          <span className="mkt-header__mark" aria-hidden="true">
-            <img src={Logo} alt="" width={28} height={28} />
-          </span>
-          <span className="mkt-header__name">{t("common.brand")}</span>
+          <Wordmark height={20} className="mkt-header__wordmark" title={t("common.brand")} />
+          <LogoMark size={30} className="mkt-header__logo-mark" title={t("common.brand")} />
         </Link>
         {user && (
           <Link to={APP_HOME_PATH} className="mkt-header__back">

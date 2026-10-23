@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import Logo from "../../utils/svgs/new_logo.svg";
 import "./PiSetup.css";
 
 const SETUP_HREF = "/downloads/bioversee-pi-setup.sh";
@@ -57,7 +56,7 @@ function PiSetup() {
   return (
     <div className="pi-setup" data-theme="light">
       <div className="pi-setup__card">
-        <img className="pi-setup__logo" src={Logo} alt="" width={72} height={72} />
+        <img className="pi-setup__logo" src="/assets/logo/d-mark-light.svg" alt="Bioversee" width={64} height={64} />
         <p className="pi-setup__kicker">{t("piSetup.kicker")}</p>
         <h1 className="pi-setup__title">{t("piSetup.title")}</h1>
         <p className="pi-setup__lede">{t("piSetup.lede")}</p>

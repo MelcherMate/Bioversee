@@ -651,3 +651,13 @@
     transform: none;
   }
 }
+
+/* Brand: wordmark in the card header, mark alone in compact states. */
+.auth-card__eyebrow--logo {
+  margin-bottom: 10px;
+  line-height: 0;
+}
+
+.auth-card__logo-mark {
+  margin-bottom: 14px;
+}

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import SegmentedControl from "../../components/SegmentedControl";
-import LogoPng from "../../img/new_logo.png";
 import { accentForResolvedTheme, ACCENT_PRESETS, DEFAULT_ACCENT } from "../../lib/appearance";
-import LogoSvg from "../../utils/svgs/new_logo.svg";
+/** Stable public logo assets (src/public/assets/logo). Mark OR wordmark — never both. */
+const WORDMARK_PNG = "/assets/logo/g-wordmark-light-480.png";
+const MARK_PNG = "/assets/logo/d-mark-light-256.png";
+const AVATAR_PNG = "/assets/logo/icon-192.png";
+const WORDMARK_SVG = { light: "/assets/logo/g-wordmark-light.svg", dark: "/assets/logo/g-wordmark-dark.svg" };
+const WORDMARK_RATIO = 433.8 / 71.7;
 import { tokenBlock } from "./cssAudit";
 import "./Templates.css";
 
@@ -223,8 +227,7 @@ function buildEmailHtml(d: EmailData) {
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:${BRAND.card};border:1px solid ${BRAND.line};border-radius:20px;">
 <tr><td style="padding:28px 32px 0;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="vertical-align:middle;"><img src="${esc(d.logoUrl)}" width="36" height="36" alt="Bioversee" style="display:block;border:0;width:36px;height:36px;"></td>
-<td style="vertical-align:middle;padding-left:10px;font-family:${EMAIL_DISPLAY};font-size:18px;font-weight:700;letter-spacing:-0.02em;color:${BRAND.text};">Bioversee</td>
+<td style="vertical-align:middle;"><img src="${esc(d.logoUrl)}" width="160" height="26" alt="Bioversee" style="display:block;border:0;width:160px;height:26px;"></td>
 </tr></table>
 </td></tr>
 <tr><td style="padding:28px 32px 0;background-color:${BRAND.card};">
@@ -268,7 +271,7 @@ function buildSignatureHtml(d: EmailData) {
   const ink = accentInk(d.accent);
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:${EMAIL_BODY};">
 <tr>
-<td style="vertical-align:top;padding:0 14px 0 0;border-right:2px solid ${d.accent};"><img src="${esc(d.logoUrl)}" width="48" height="48" alt="Bioversee" style="display:block;border:0;width:48px;height:48px;"></td>
+<td style="vertical-align:top;padding:0 14px 0 0;border-right:2px solid ${d.accent};"><img src="${esc(absoluteUrl(MARK_PNG))}" width="48" height="48" alt="Bioversee" style="display:block;border:0;width:48px;height:48px;"></td>
 <td style="vertical-align:top;padding:0 0 0 14px;">
 <p style="margin:0;font-family:${EMAIL_DISPLAY};font-size:16px;font-weight:700;letter-spacing:-0.02em;color:${BRAND.text};line-height:1.3;">${esc(d.name)}</p>
 <p style="margin:0 0 6px;font-size:13px;color:${BRAND.text2};line-height:1.4;">${esc(d.role)} · <span style="color:${ink};font-weight:600;">Bioversee</span></p>
@@ -299,7 +302,7 @@ const DEFAULT_EMAIL: EmailData = {
 };
 
 export function EmailTemplateSection({ initial = "email" }: { initial?: "email" | "signature" }) {
-  const [d, setD] = useState<EmailData>(() => ({ ...DEFAULT_EMAIL, logoUrl: absoluteUrl(LogoPng) }));
+  const [d, setD] = useState<EmailData>(() => ({ ...DEFAULT_EMAIL, logoUrl: absoluteUrl(WORDMARK_PNG) }));
   const [kind, setKind] = useState<"email" | "signature">(initial);
   const [flash, setFlash] = useFlash();
   const html = useMemo(() => (kind === "email" ? buildEmailHtml(d) : buildSignatureHtml(d)), [d, kind]);
@@ -310,7 +313,10 @@ export function EmailTemplateSection({ initial = "email" }: { initial?: "email" 
       : `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#fff;">${html}</body></html>`;
 
   // Preview uses the local logo so it renders even before the PNG is deployed.
-  const previewHtml = previewDoc.split(esc(d.logoUrl)).join(LogoPng.startsWith("data:") ? LogoPng : new URL(LogoPng, window.location.href).toString());
+  const local = (path: string) => new URL(path, window.location.href).toString();
+  const previewHtml = previewDoc
+    .split(esc(absoluteUrl(WORDMARK_PNG))).join(local(WORDMARK_PNG))
+    .split(esc(absoluteUrl(MARK_PNG))).join(local(MARK_PNG));
 
   return (
     <div className="tpl">
@@ -495,14 +501,12 @@ function drawPost(ctx: CanvasRenderingContext2D, d: PostData, logo: HTMLImageEle
     else top = iy + ih - 4 * u;
   }
 
-  // Brand lockup
+  // Brand: wordmark alone (never mark + wordmark together)
   const markS = 7 * u;
-  if (logo) ctx.drawImage(logo, pad, pad, markS, markS);
-  ctx.font = `700 ${3.6 * u}px ${DISPLAY}`;
-  ctx.fillStyle = text;
+  const wordH = 4.4 * u;
+  if (logo) ctx.drawImage(logo, pad, pad + (markS - wordH) / 2, wordH * WORDMARK_RATIO, wordH);
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText("Bioversee", pad + markS + 2 * u, pad + markS / 2);
   if (d.size === "carousel") {
     ctx.font = `650 ${2.6 * u}px ${UI}`;
     ctx.fillStyle = text3;
@@ -588,13 +592,13 @@ const LAYOUT_DEFAULTS: Record<LayoutId, Partial<PostData>> = {
   event: { eyebrow: "We’re hiring", headline: "Join us to make automation feel like child's play", subtext: "Frontend engineer · React + TypeScript · Remote (EU)\nApply: hello@bioversee.com" },
 };
 
-function useLogoImage() {
+function useLogoImage(theme: "light" | "dark") {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   useEffect(() => {
     const i = new Image();
     i.onload = () => setImg(i);
-    i.src = LogoSvg;
-  }, []);
+    i.src = WORDMARK_SVG[theme];
+  }, [theme]);
   return img;
 }
 
@@ -616,7 +620,7 @@ export function LinkedInGraphicSection() {
     image: null,
     ...LAYOUT_DEFAULTS.announcement,
   });
-  const logo = useLogoImage();
+  const logo = useLogoImage(d.theme);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [fontsReady, setFontsReady] = useState(false);
   const { w, h } = SIZES[d.size];
@@ -779,7 +783,7 @@ export function LinkedInCopySection() {
       </form>
       <div className="tpl-preview tpl-li">
         <div className="tpl-li__head">
-          <img src={LogoSvg} alt="" width={44} height={44} />
+          <img src={AVATAR_PNG} alt="" width={44} height={44} style={{ borderRadius: 10 }} />
           <div>
             <strong>Bioversee</strong>
             <span>Industrial process control · now</span>

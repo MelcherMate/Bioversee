@@ -9,7 +9,7 @@ import {
   StripeDonateButton,
 } from "../../components/StripeDonateButton";
 import Mate from "../../img/Mate.png";
-import Logo from "../../utils/svgs/new_logo.svg";
+import { Wordmark } from "../../components/BrandLogo";
 import "./About.css";
 
 /** Early-access password for the Raspberry Pi installer (documented in repo README). */
@@ -84,16 +84,9 @@ function About() {
       <section className="landing-hero" aria-labelledby="landing-brand">
         <div className="landing-hero__veil" aria-hidden="true" />
         <div className="landing-hero__content">
-          <img
-            className="landing-hero__logo"
-            src={Logo}
-            alt=""
-            width={88}
-            height={88}
-          />
           <p className="landing-hero__eyebrow">{t("about.eyebrow")}</p>
           <h1 id="landing-brand" className="landing-hero__brand">
-            {t("common.brand")}
+            <Wordmark height={64} className="landing-hero__wordmark" title={t("common.brand")} />
           </h1>
           <p className="landing-hero__headline">{t("about.headline")}</p>
           <p className="landing-hero__body">{t("about.heroBody")}</p>

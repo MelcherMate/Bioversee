@@ -662,3 +662,10 @@
     transition: none;
   }
 }
+
+/* Hero wordmark (brand rule: wordmark alone, no separate mark above it). */
+.landing-hero__brand .landing-hero__wordmark {
+  width: auto !important;
+  height: clamp(40px, 8vw, 64px) !important;
+  aspect-ratio: 433.8 / 71.7;
+}

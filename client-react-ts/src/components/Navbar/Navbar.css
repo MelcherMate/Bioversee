@@ -910,8 +910,17 @@ button.topbar__account-row:hover:not(:disabled) {
   }
 }
 
+/* Brand rule: wordmark OR mark, never both. */
+.topbar .topbar__brand-mark {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .topbar__brand-text {
     display: none;
+  }
+
+  .topbar .topbar__brand-mark {
+    display: inline-block;
   }
 }

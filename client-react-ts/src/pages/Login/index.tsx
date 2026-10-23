@@ -12,7 +12,7 @@ import {
   useAnimationPreview,
   type AnimationPreviewId,
 } from "../../components/AnimationLab/preview";
-import Logo from "../../utils/svgs/new_logo.svg";
+import { Wordmark } from "../../components/BrandLogo";
 import SegmentedControl from "../../components/SegmentedControl";
 import { ToastStack, useToasts } from "../../components/Toast";
 import { upsertStoredSession } from "../../lib/accountSessions";
@@ -310,11 +310,10 @@ const Login = ({ mode: loginMode = "default" }: LoginProps) => {
       <div className="auth-card">
         <header className="auth-card__header">
           <div className="auth-card__header-start">
-            <div className="auth-card__mark">
-              <img src={Logo} alt="" />
-            </div>
             <div className="auth-card__headline">
-              <p className="auth-card__eyebrow">{t("common.brand")}</p>
+              <p className="auth-card__eyebrow auth-card__eyebrow--logo">
+                <Wordmark height={20} title={t("common.brand")} />
+              </p>
               <h1 className="auth-card__title">
                 {pendingVerifyEmail
                   ? verifyCopyVisible

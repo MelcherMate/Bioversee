@@ -20,14 +20,14 @@ import FacebookPng from "../../img/facebook.png";
 import GithubPng from "../../img/github.png";
 import GooglePng from "../../img/google.png";
 import Mate from "../../img/Mate.png";
-import LogoPng from "../../img/new_logo.png";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, LANGUAGE_OPTIONS } from "../../lib/appearance";
 import { VESSEL_SHAPE_OPTIONS } from "../../lib/bioreactorGeometry";
 import type { AppUser } from "../../lib/user";
-import LogoSvg from "../../utils/svgs/new_logo.svg";
+import { LogoMark, Wordmark } from "../../components/BrandLogo";
 import "../About/About.css";
 import "../Login/Login.css";
 import "./Design.css";
+import { LogoBlueprintSection } from "./LogoBlueprint";
 import { EmailTemplateSection, LinkedInCopySection, LinkedInGraphicSection } from "./Templates";
 import {
   classNames,
@@ -54,6 +54,7 @@ import {
 const SECTIONS = [
   { id: "overview", label: "Overview", group: "Design system" },
   { id: "brand", label: "Brand & logo" },
+  { id: "logo-blueprint", label: "Logo blueprint" },
   { id: "colour", label: "Colour tokens" },
   { id: "accents", label: "Accent & dark mode" },
   { id: "palette", label: "Literal palette" },
@@ -448,7 +449,7 @@ function DesignSystem() {
           aria-controls="ds-toc"
           onClick={() => setDrawerOpen((o) => !o)}
         >
-          <img src={LogoSvg} alt="" width={22} height={22} />
+          <LogoMark size={22} />
           <span className="ds-mobilebar__title">Design system</span>
           <span className="ds-mobilebar__current">{activeLabel}</span>
           <span className={`ds-mobilebar__chev${drawerOpen ? " is-open" : ""}`} aria-hidden="true">▾</span>
@@ -458,9 +459,8 @@ function DesignSystem() {
 
       <aside id="ds-toc" className={`ds-toc${drawerOpen ? " is-open" : ""}`} aria-label="Design system sections">
         <div className="ds-toc__brand">
-          <img src={LogoSvg} alt="" width={28} height={28} />
           <div>
-            <p className="ds-toc__name">Bioversee</p>
+            <p className="ds-toc__name"><Wordmark height={18} /></p>
             <p className="ds-toc__meta">Design system · internal</p>
           </div>
         </div>
@@ -515,7 +515,7 @@ function DesignSystem() {
         <section id="overview" className="ds-hero landing" aria-labelledby="overview-title">
           <div className="landing-hero__veil" aria-hidden="true" />
           <div className="ds-hero__inner">
-            <img className="landing-hero__logo" src={LogoSvg} alt="" width={72} height={72} />
+            <LogoMark size={72} className="landing-hero__logo" />
             <p className="landing-hero__eyebrow">Internal · not linked · noindex</p>
             <h1 id="overview-title" className="landing-hero__brand">Design language</h1>
             <p className="landing-hero__headline">Calm, Apple-style surfaces with a single teal accent.</p>
@@ -539,38 +539,33 @@ function DesignSystem() {
         </section>
 
         <Section id="brand" kicker="Brand" title="Logo & identity"
-          lede="One mark, used as SVG in the UI and PNG for raster contexts. The wordmark is the brand name set in Outfit 700 (hero) or the system stack (header).">
-          <Sub title="Logo variants" note={<>Sources: <Code>src/utils/svgs/new_logo.svg</Code> (favicon, headers, hero) and <Code>src/img/new_logo.png</Code>.</>}>
+          lede="Two signatures, never combined: the dial + vessel mark, and the Bioversee wordmark whose ‘o’ is the same mark.">
+          <Sub title="Logo set" note={<>Rule: use <b>either</b> the mark <b>or</b> the wordmark — never together. Components: <Code>{"<LogoMark size />"}</Code> and <Code>{"<Wordmark height />"}</Code> from <Code>src/components/BrandLogo</Code> (inline SVG, token colours, auto small master). Files: <Code>src/public/assets/logo/</Code>.</>}>
             <div className="ds-grid ds-grid--4">
-              <Stage><img src={LogoSvg} alt="Bioversee logo (SVG)" width={88} height={88} /><span className="ds-cap">SVG on light</span></Stage>
-              <Stage dark><img src={LogoSvg} alt="Bioversee logo on dark" width={88} height={88} /><span className="ds-cap">SVG on dark</span></Stage>
-              <Stage><img src={LogoPng} alt="Bioversee logo (PNG)" width={88} height={88} style={{ objectFit: "contain" }} /><span className="ds-cap">PNG</span></Stage>
-              <Stage>
-                <span className="mkt-header__brand ds-lockup">
-                  <span className="mkt-header__mark"><img src={LogoSvg} alt="" width={28} height={28} /></span>
-                  <span className="mkt-header__name">Bioversee</span>
-                </span>
-                <span className="ds-cap">Header lockup · 28px mark</span>
-              </Stage>
+              <Stage><LogoMark size={88} /><span className="ds-cap">Mark · light</span></Stage>
+              <Stage dark><img src="/assets/logo/d-mark-dark.svg" alt="" width={88} height={88} /><span className="ds-cap">Mark · dark</span></Stage>
+              <Stage><Wordmark height={30} /><span className="ds-cap">Wordmark</span></Stage>
+              <Stage dark><img src="/assets/logo/g-wordmark-dark.svg" alt="" height={30} /><span className="ds-cap">Wordmark · dark</span></Stage>
             </div>
           </Sub>
-          <Sub title="Sizes in use" note="Hero 72px (64px under 520px), header 28px, sidebar 22–28px, favicon (SVG).">
+          <Sub title="Placements" note="Wordmark where there is horizontal room (marketing header, signed-in navbar, auth card, About hero, emails, LinkedIn graphics). Mark alone in compact spots (≤520px marketing header, ≤640px navbar, Pi setup, favicon, app icons, avatars).">
             <Stage className="ds-row">
-              {[16, 22, 28, 48, 64, 72, 88].map((s) => (
-                <span key={s} className="ds-size"><img src={LogoSvg} alt="" width={s} height={s} /><span className="ds-cap">{s}px</span></span>
+              {[16, 22, 28, 48, 64, 88].map((s) => (
+                <span key={s} className="ds-size"><LogoMark size={s} /><span className="ds-cap">{s}px{s < 48 ? " · small" : ""}</span></span>
               ))}
             </Stage>
           </Sub>
-          <Sub title="Clear space" note="No formal spec in code. Usage keeps the hero mark 18px above the eyebrow and the header mark 10px from the wordmark — treat ≈ ¼ of the mark size as minimum clear space. The hero logo carries a soft accent drop-shadow (drop-shadow(0 12px 28px accent 28%)).">
-            <Stage className="ds-row landing">
-              <span className="ds-clear"><img src={LogoSvg} alt="" width={72} height={72} className="landing-hero__logo" style={{ margin: 0 }} /></span>
-            </Stage>
-          </Sub>
-          <Sub title="Favicon & app icons" note={<><Code>src/index.html</Code> declares a single <Code>{'<link rel="icon" type="image/svg+xml" href="./utils/svgs/new_logo.svg">'}</Code>. No apple-touch-icon, web manifest or PNG favicons exist in the repo.</>}>
+          <Sub title="Favicon & app icons" note={<><Code>src/index.html</Code>: <Code>favicon.svg</Code> (small mark, follows prefers-color-scheme), <Code>favicon-32.png</Code>, <Code>favicon-16.png</Code>, <Code>apple-touch-icon.png</Code> (180, teal tile) and <Code>site.webmanifest</Code> with 192/512 teal tiles.</>}>
             <Stage className="ds-row">
-              <span className="ds-favicon"><img src={LogoSvg} alt="" width={16} height={16} /> Bioversee</span>
+              <span className="ds-favicon"><img src="/assets/logo/favicon-16.png" alt="" width={16} height={16} /> Bioversee</span>
+              <img src="/assets/logo/apple-touch-icon.png" alt="" width={60} height={60} style={{ borderRadius: 14 }} />
             </Stage>
           </Sub>
+        </Section>
+
+        <Section id="logo-blueprint" kicker="Brand" title="Logo blueprint"
+          lede="Technical drawing of the final identity: the dial-and-vessel mark and the wordmark whose ‘o’ is that mark — never used together.">
+          <LogoBlueprintSection />
         </Section>
 
         <Section id="colour" kicker="Colour" title="Colour tokens"
@@ -1046,18 +1041,17 @@ function DesignSystem() {
         <Section id="cards" kicker="Components" title="Cards & surfaces"
           lede="Cards use --bv-card on --bv-surface with --bv-radius-lg and --bv-shadow-card; hover swaps to --bv-shadow-float and lifts 2px.">
           <div className="ds-grid ds-grid--3">
-            <Stage><InfoCard title="Sensor" subtitle="Temperature" content="Live readings every second." imagePath={LogoPng} imageContain /></Stage>
+            <Stage><InfoCard title="Sensor" subtitle="Temperature" content="Live readings every second." imagePath="/assets/logo/d-mark-light-512.png" imageContain /></Stage>
             <Stage className="ds-embed"><EmptyDeviceState /></Stage>
             <Stage className="ds-embed"><ConstructionPage /></Stage>
           </div>
-          <Sub title="Auth card" note=".auth-card — the Login card header (mark, eyebrow, title, subtitle).">
+          <Sub title="Auth card" note=".auth-card — the Login card header (wordmark, title, subtitle).">
             <Stage className="ds-auth-demo">
               <div className="auth-card ds-auth-card">
                 <header className="auth-card__header">
                   <div className="auth-card__header-start">
-                    <div className="auth-card__mark"><img src={LogoSvg} alt="" width={32} height={32} /></div>
                     <div className="auth-card__headline">
-                      <p className="auth-card__eyebrow">Bioversee</p>
+                      <p className="auth-card__eyebrow auth-card__eyebrow--logo"><Wordmark height={20} /></p>
                       <h3 className="auth-card__title">Welcome back</h3>
                       <p className="auth-card__subtitle">Sign in to monitor and control your Bioversee devices.</p>
                     </div>
@@ -1113,13 +1107,12 @@ function DesignSystem() {
 
         <Section id="patterns" kicker="Patterns" title="Page patterns" lede="Landing page (src/pages/About) composition, top to bottom.">
           <div className="landing ds-patterns">
-            <Pattern name="Hero" cls=".landing-hero" desc="Centred logo → eyebrow → display brand → headline → body over the radial accent veil; enters with landing-hero-in 0.7s.">
+            <Pattern name="Hero" cls=".landing-hero" desc="Eyebrow → wordmark → headline → body over the radial accent veil; enters with landing-hero-in 0.7s.">
               <section className="landing-hero">
                 <div className="landing-hero__veil" aria-hidden="true" />
                 <div className="landing-hero__content">
-                  <img className="landing-hero__logo" src={LogoSvg} alt="" width={64} height={64} />
                   <p className="landing-hero__eyebrow">Industrial Process Control</p>
-                  <p className="landing-hero__brand">Bioversee</p>
+                  <p className="landing-hero__brand"><Wordmark height={56} className="landing-hero__wordmark" /></p>
                   <p className="landing-hero__headline">Automation that feels like child's play</p>
                 </div>
               </section>
@@ -1221,7 +1214,7 @@ function DesignSystem() {
         <Section id="gaps" kicker="Notes" title="Not documented / gaps">
           <ul className="ds-gaps">
             <li>No spacing, font-size, z-index or breakpoint tokens exist — those sections show observed values, not a defined scale.</li>
-            <li>No apple-touch-icon, web manifest or raster favicon in the repo; no formal logo clear-space rule (derived from usage).</li>
+            
             <li>Signed-in chrome and data-bound widgets (Navbar, AccountMenu, AddDevicePanel, AppSettingsPanel, NotificationsPanel, SharePanel, DeviceSettingsPanel, DeviceContextMenu, OnboardingModal, DevDataPanel, AnimationLab, Chart, ControlClock, EquipmentChecklist, FluidPropertiesFields, Canvas / Canvas2 and the process drawings) need a session or device data, so they are listed with props and classes instead of rendered live.</li>
             <li>No tabs, accordion or badge components exist; SegmentedControl (role=tablist), the auth reveal (.auth-reveal) and .auth-last-used are the closest equivalents.</li>
             <li>Footer is implemented but not mounted on any route.</li>

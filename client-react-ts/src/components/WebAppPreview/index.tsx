@@ -1,3 +1,4 @@
+import { Wordmark } from "../BrandLogo";
 import { useTranslation } from "react-i18next";
 import "./WebAppPreview.css";
 
@@ -13,7 +14,7 @@ function WebAppPreview() {
       <header className="web-preview__nav" aria-hidden="true">
         <div className="web-preview__nav-left">
           <span className="web-preview__brand-dot" />
-          <span className="web-preview__brand-name">{t("common.brand")}</span>
+          <Wordmark height={11} className="web-preview__brand-name" title={t("common.brand")} />
           <span className="web-preview__nav-add" />
           <span className="web-preview__nav-device" />
           <span className="web-preview__nav-device" />

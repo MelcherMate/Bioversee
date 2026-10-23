@@ -6,6 +6,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { LogoMark, Wordmark } from "../BrandLogo";
 import { useTranslation } from "react-i18next";
 import {
   AddOutline,
@@ -472,7 +473,8 @@ const Navbar = ({ user }: NavbarProps) => {
               className={`topbar__mark topbar__mark--${connectivity}`}
               aria-hidden
             />
-            <span className="topbar__brand-text">{t("common.brand")}</span>
+            <Wordmark height={18} className="topbar__brand-text" title={t("common.brand")} />
+            <LogoMark size={26} className="topbar__brand-mark" title={t("common.brand")} />
             <span className="topbar__sr-only">{statusTitle}</span>
           </Link>
 

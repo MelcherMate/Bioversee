@@ -63,9 +63,19 @@
     font-size: 12px;
   }
 
-  .mkt-header__name {
+  .mkt-header__name,
+  .mkt-header__wordmark {
     display: none;
   }
+
+  .mkt-header .mkt-header__brand .mkt-header__logo-mark {
+    display: inline-block;
+  }
+}
+
+/* Brand rule: wordmark OR mark, never both — mark only where the wordmark can't fit. */
+.mkt-header .mkt-header__logo-mark {
+  display: none;
 }
 
 .mkt-header__account {
@@ -173,4 +183,11 @@
 .mkt-header__signin:hover {
   background: var(--bv-cta-hover);
   transform: translateY(-1px);
+}
+
+/* The header surface is always light (#fff 88%), so the logo uses the light variant here. */
+.mkt-header .bv-logo {
+  --bv-text: #1d1d1f;
+  --bv-accent: #0d9488;
+  --bv-logo-track: 0.2;
 }

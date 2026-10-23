@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import GoogleMark from "../../components/GoogleMark";
-import Logo from "../../utils/svgs/new_logo.svg";
+import { LogoMark, Wordmark } from "../../components/BrandLogo";
 import SegmentedControl from "../../components/SegmentedControl";
 import { upsertStoredSession } from "../../lib/accountSessions";
 import {
@@ -175,9 +175,7 @@ function PiLogin() {
       <div className="auth-shell pi-login">
         <div className="auth-shell__veil" aria-hidden />
         <div className="auth-card">
-          <div className="auth-card__mark">
-            <img src={Logo} alt="" />
-          </div>
+          <LogoMark size={56} className="auth-card__logo-mark" title={t("common.brand")} />
           <h1 className="auth-card__title">{t("piLogin.returning")}</h1>
           <p className="auth-card__subtitle">{t("piLogin.returningBody")}</p>
         </div>
@@ -191,11 +189,10 @@ function PiLogin() {
       <div className="auth-card">
         <header className="auth-card__header">
           <div className="auth-card__header-start">
-            <div className="auth-card__mark">
-              <img src={Logo} alt="" />
-            </div>
             <div className="auth-card__headline">
-              <p className="auth-card__eyebrow">{t("common.brand")}</p>
+              <p className="auth-card__eyebrow auth-card__eyebrow--logo">
+                <Wordmark height={20} title={t("common.brand")} />
+              </p>
               <h1 className="auth-card__title">{t("piLogin.title")}</h1>
               <p className="auth-card__subtitle">{t("piLogin.lede")}</p>
             </div>

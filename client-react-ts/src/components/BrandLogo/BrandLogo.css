@@ -1,0 +1,4 @@
+.bv-logo { display: inline-block; flex-shrink: 0; line-height: 0; vertical-align: middle; }
+.bv-logo > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+:root { --bv-logo-track: 0.2; }
+:root[data-theme="dark"] { --bv-logo-track: 0.3; }
