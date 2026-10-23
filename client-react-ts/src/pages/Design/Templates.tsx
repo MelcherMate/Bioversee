@@ -303,7 +303,7 @@ const DEFAULT_EMAIL: EmailData = {
 
 export function EmailTemplateSection({ initial = "email" }: { initial?: "email" | "signature" }) {
   const [d, setD] = useState<EmailData>(() => ({ ...DEFAULT_EMAIL, logoUrl: absoluteUrl(WORDMARK_PNG) }));
-  const [kind, setKind] = useState<"email" | "signature">(initial);
+  const kind = initial;
   const [flash, setFlash] = useFlash();
   const html = useMemo(() => (kind === "email" ? buildEmailHtml(d) : buildSignatureHtml(d)), [d, kind]);
   const set = (k: keyof EmailData) => (e: { target: { value: string } }) => setD((p) => ({ ...p, [k]: e.target.value }));
@@ -321,13 +321,6 @@ export function EmailTemplateSection({ initial = "email" }: { initial?: "email" 
   return (
     <div className="tpl">
       <form className="tpl-form ds-auth-demo" onSubmit={(e) => e.preventDefault()}>
-        <SegmentedControl<"email" | "signature">
-          shape="pill"
-          aria-label="Template"
-          value={kind}
-          onChange={setKind}
-          options={[{ value: "email", label: "Email" }, { value: "signature", label: "Signature" }]}
-        />
         {kind === "email" ? (
           <>
             <Field label="Eyebrow"><input value={d.eyebrow} onChange={set("eyebrow")} /></Field>
@@ -349,7 +342,9 @@ export function EmailTemplateSection({ initial = "email" }: { initial?: "email" 
           <Field label="Phone"><input value={d.phone} onChange={set("phone")} placeholder="+36 …" /></Field>
         </div>
         <Field label="Website"><input value={d.website} onChange={set("website")} /></Field>
-        <Field label="Logo URL" hint="Must be a public PNG — email clients block SVG and relative paths."><input value={d.logoUrl} onChange={set("logoUrl")} /></Field>
+        {kind === "email" ? (
+          <Field label="Logo URL" hint="Wordmark PNG — must be public; email clients block SVG and relative paths."><input value={d.logoUrl} onChange={set("logoUrl")} /></Field>
+        ) : null}
         <AccentPicker value={d.accent} onChange={(accent) => setD((p) => ({ ...p, accent }))} />
         <div className="tpl-actions landing">
           <button type="button" className="landing-btn landing-btn--primary" onClick={async () => setFlash((await copyText(html)) ? "HTML copied" : "Copy failed")}>Copy HTML</button>

@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { LogoAssetGallery } from "./LogoAssets";
 import { BLUEPRINT_MARK, BLUEPRINT_WORD } from "./logoBlueprint";
 import { LOGO_MARK, LOGO_MARK_SMALL, LOGO_TILE, LOGO_WORDMARK, LOGO_WORDMARK_SMALL } from "../../components/BrandLogo/logoSvgs";
 
@@ -42,7 +43,6 @@ const WORD_SPECS: [string, string][] = [
   ["Mark-‘o’ angles", "Same as the mark: sweep −135° → +45°, dot Ø 1.25 × ring stroke"],
   ["Mark-‘o’ (per 100 em)", "Ring 8 · gap 3 · vessel wall 6 · bore r 8.75 · liquid 1.2 below centre — combined weight ≈ the o stem (13.8)"],
   ["Small wordmark (< 160px wide)", "Ring 10 · gap 3.5 · vessel drawn solid with a teal lower half, so the liquid never turns to mush"],
-  ["Lockups", "None. The mark and the wordmark are never used together."],
 ];
 
 const COLOURS: [string, string, string, string][] = [
@@ -65,14 +65,6 @@ const DONTS: { label: string; style: CSSProperties; bg?: string; combo?: boolean
   { label: "Don’t use the large master below 48px", style: { width: 18, height: 18 } },
 ];
 
-const FILES = [
-  "d-mark-light.svg", "d-mark-dark.svg", "d-mark-small-light.svg", "d-mark-small-dark.svg",
-  "d-mark-mono-black.svg", "d-mark-mono-white.svg", "d-mark-small-mono-black.svg", "d-mark-small-mono-white.svg",
-  "g-wordmark-light.svg", "g-wordmark-dark.svg", "g-wordmark-small-light.svg", "g-wordmark-small-dark.svg",
-  "g-wordmark-mono-black.svg", "g-wordmark-mono-white.svg", "d-app-tile.svg", "d-app-tile-small.svg", "d-icon-square.svg",
-  "favicon.svg", "favicon-16.png", "favicon-32.png", "apple-touch-icon.png", "icon-192.png", "icon-512.png",
-  "d-mark-light-512.png", "d-mark-dark-512.png", "g-wordmark-light-480.png", "g-wordmark-dark-480.png", "g-wordmark-light-1200.png",
-];
 
 export function LogoBlueprintSection() {
   return (
@@ -157,10 +149,8 @@ export function LogoBlueprintSection() {
         </div>
       </Block>
 
-      <Block title="Downloads" note="Outlined SVGs (no font dependency) and PNG exports. Served from /assets/logo/.">
-        <div className="lb-downloads">
-          {FILES.map((f) => <a key={f} className="lb-dl" href={`/assets/logo/${f}`} download>{f}</a>)}
-        </div>
+      <Block title="Logo assets" note="Pick a variant, then download it as SVG, PNG or JPG.">
+        <LogoAssetGallery />
       </Block>
     </>
   );

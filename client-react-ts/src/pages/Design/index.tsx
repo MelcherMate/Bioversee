@@ -1200,7 +1200,7 @@ function DesignSystem() {
         </Section>
 
         <Section id="tpl-signature" kicker="Templates" title="Email signature"
-          lede="Paste into Gmail → Settings → Signature with Copy rendered. Logo must be a public PNG URL.">
+          lede="Paste into Gmail → Settings → Signature with Copy rendered. Uses the mark PNG from /assets/logo (public URL).">
           <EmailTemplateSection initial="signature" />
         </Section>
 
