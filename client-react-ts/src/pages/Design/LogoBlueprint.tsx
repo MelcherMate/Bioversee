@@ -49,7 +49,9 @@ const COLOURS: [string, string, string, string][] = [
   ["Ink (wordmark, dot, vessel)", "--bv-text", "#1d1d1f", "#e4e4e8"],
   ["Accent (sweep, liquid)", "--bv-accent", "#0d9488", "#69bdb5"],
   ["Track", "--bv-text @ opacity", "20%", "30%"],
-  ["App tile", "fixed", "#0d9488 + #ffffff", "same"],
+  ["App tile · ground", "fixed", "#0d9488", "same"],
+  ["App tile · arc + vessel wall", "fixed", "#ffffff", "same"],
+  ["App tile · dot + liquid (no track)", "fixed", "#1d1d1f", "same"],
   ["Monochrome", "fixed", "#000000", "#ffffff"],
 ];
 

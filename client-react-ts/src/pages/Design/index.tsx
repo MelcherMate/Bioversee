@@ -555,10 +555,13 @@ function DesignSystem() {
               ))}
             </Stage>
           </Sub>
-          <Sub title="Favicon & app icons" note={<><Code>src/index.html</Code>: <Code>favicon.svg</Code> (small mark, follows prefers-color-scheme), <Code>favicon-32.png</Code>, <Code>favicon-16.png</Code>, <Code>apple-touch-icon.png</Code> (180, teal tile) and <Code>site.webmanifest</Code> with 192/512 teal tiles.</>}>
+          <Sub title="Favicon & app icons" note={<><Code>src/index.html</Code>: <Code>favicon.svg</Code> (small mark, follows prefers-color-scheme), <Code>favicon-32.png</Code>, <Code>favicon-16.png</Code>, <Code>apple-touch-icon.png</Code> (180) and <Code>site.webmanifest</Code> 192/512 (maskable, mark inside the 80% safe zone). App tile: teal #0d9488 ground, white arc + vessel wall, ink #1d1d1f dot + liquid, no track; <Code>d-app-tile-small.svg</Code> at 32/16px.</>}>
             <Stage className="ds-row">
               <span className="ds-favicon"><img src="/assets/logo/favicon-16.png" alt="" width={16} height={16} /> Bioversee</span>
-              <img src="/assets/logo/apple-touch-icon.png" alt="" width={60} height={60} style={{ borderRadius: 14 }} />
+              <img src="/assets/logo/apple-touch-icon.png" alt="" width={120} height={120} style={{ borderRadius: 27 }} />
+              <img src="/assets/logo/apple-touch-icon.png" alt="" width={60} height={60} style={{ borderRadius: 13 }} />
+              <img src="/assets/logo/d-app-tile-small.svg" alt="" width={32} height={32} />
+              <img src="/assets/logo/d-app-tile-small.svg" alt="" width={16} height={16} />
             </Stage>
           </Sub>
         </Section>
