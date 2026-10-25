@@ -16,11 +16,15 @@ import Navbar from "./components/Navbar";
 import OnboardingModal from "./components/OnboardingModal";
 import { AppStatusProvider } from "./lib/appStatus";
 import { syncAccountVaultFromSession, enforceSessionMaxAge } from "./lib/accountSessions";
+import { PlantProvider } from "./lib/PlantContext";
 import { APP_HOME_PATH, legacyDashboardRedirect } from "./lib/sharing";
 import { supabase } from "./lib/supabase";
+import { useMouseHistoryButtons } from "./lib/useMouseHistoryButtons";
 import { type AppUser, toAppUser } from "./lib/user";
 import About from "./pages/About";
 import Bioreactor from "./pages/Bioreactor";
+import ControlPanel from "./pages/ControlPanel";
+import { isBlueprintSearch } from "./pages/ControlPanel/blueprintRoute";
 import Invite from "./pages/Invite";
 import IosAuthBridge from "./pages/IosAuthBridge";
 import Login from "./pages/Login";
@@ -172,7 +176,8 @@ type AppShellProps = {
 };
 
 function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  useMouseHistoryButtons();
   const addingAccount = pathname === "/add-account";
   const onInvite = pathname.startsWith("/invite/");
   const onIosAuth = pathname === "/ios-auth";
@@ -188,108 +193,120 @@ function AppShell({ user, devPanelOpen, setDevPanelOpen }: AppShellProps) {
   const showMarketingHeader =
     pathname === "/about" || (pathname === "/" && !user);
   const showOnboarding = Boolean(user) && showChrome && !onInvite;
+  const blueprint =
+    showChrome && pathname === APP_HOME_PATH && isBlueprintSearch(search);
 
   const loginRedirect = (next: string) => (
     <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   );
 
   return (
-    <div
-      className={[
-        "appContainer",
-        showChrome || onLanding ? "" : "appContainer--auth",
-        onLanding ? "appContainer--landing" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {showMarketingHeader && <MarketingHeader user={user} />}
-      {showChrome && user && <Navbar user={user} />}
-      <div className={`page-slot${onLanding ? " page-slot--landing" : ""}`}>
-        <Routes>
-          <Route path="/" element={user ? <HomeRedirect /> : <About />} />
-          <Route
-            path="/login"
-            element={user ? <HomeRedirect /> : <Login />}
+    <PlantProvider enabled={Boolean(user)}>
+      <div
+        className={[
+          "appContainer",
+          showChrome || onLanding ? "" : "appContainer--auth",
+          showChrome ? "appContainer--chrome" : "",
+          onLanding ? "appContainer--landing" : "",
+          blueprint ? "appContainer--blueprint" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {showMarketingHeader && <MarketingHeader user={user} />}
+        {showChrome && user && (
+          <div className="topbar-slot" aria-hidden={blueprint || undefined}>
+            <Navbar user={user} />
+          </div>
+        )}
+        <div className={`page-slot${onLanding ? " page-slot--landing" : ""}`}>
+          <Routes>
+            <Route path="/" element={user ? <HomeRedirect /> : <About />} />
+            <Route
+              path="/login"
+              element={user ? <HomeRedirect /> : <Login />}
+            />
+            <Route path="/add-account" element={<Login mode="add-account" />} />
+            <Route
+              path="/dashboard"
+              element={
+                user ? <ControlPanel user={user} /> : loginRedirect(APP_HOME_PATH)
+              }
+            />
+            <Route
+              path="/dashboard/bioreactor"
+              element={
+                user ? <Bioreactor user={user} /> : loginRedirect(APP_HOME_PATH)
+              }
+            />
+            <Route
+              path="/dashboard/pressure-vessel"
+              element={
+                user ? (
+                  <PressureVessel user={user} />
+                ) : (
+                  loginRedirect("/dashboard/pressure-vessel")
+                )
+              }
+            />
+            <Route
+              path="/dashboard/membrane-bioreactor"
+              element={
+                user ? (
+                  <MembraneBioreactor user={user} />
+                ) : (
+                  loginRedirect("/dashboard/membrane-bioreactor")
+                )
+              }
+            />
+            <Route
+              path="/dashboard/water-purifier"
+              element={
+                user ? (
+                  <WaterPurifier user={user} />
+                ) : (
+                  loginRedirect("/dashboard/water-purifier")
+                )
+              }
+            />
+            <Route path="/bioreactor" element={<LegacyProcessRedirect />} />
+            <Route path="/pressure-vessel" element={<LegacyProcessRedirect />} />
+            <Route
+              path="/membrane-bioreactor"
+              element={<LegacyProcessRedirect />}
+            />
+            <Route path="/waterpurifier" element={<LegacyProcessRedirect />} />
+            <Route path="/water-purifier" element={<LegacyProcessRedirect />} />
+            <Route path="/invite/:token" element={<Invite user={user} />} />
+            <Route path="/ios-auth" element={<IosAuthBridge />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/pi-setup" element={<PiSetup />} />
+            <Route path="/pi-login" element={<PiLogin />} />
+            <Route
+              path="/design"
+              element={
+                <Suspense fallback={null}>
+                  <DesignSystem />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/settings"
+              element={<Navigate to={APP_HOME_PATH} replace />}
+            />
+          </Routes>
+        </div>
+        {user && showOnboarding && <OnboardingModal user={user} />}
+        {user && showChrome && (
+          <DevDataPanel
+            open={devPanelOpen}
+            onClose={() => setDevPanelOpen(false)}
+            user={user}
           />
-          <Route path="/add-account" element={<Login mode="add-account" />} />
-          <Route
-            path="/dashboard"
-            element={<Navigate to={APP_HOME_PATH} replace />}
-          />
-          <Route
-            path="/dashboard/bioreactor"
-            element={
-              user ? <Bioreactor user={user} /> : loginRedirect(APP_HOME_PATH)
-            }
-          />
-          <Route
-            path="/dashboard/pressure-vessel"
-            element={
-              user ? (
-                <PressureVessel user={user} />
-              ) : (
-                loginRedirect("/dashboard/pressure-vessel")
-              )
-            }
-          />
-          <Route
-            path="/dashboard/membrane-bioreactor"
-            element={
-              user ? (
-                <MembraneBioreactor user={user} />
-              ) : (
-                loginRedirect("/dashboard/membrane-bioreactor")
-              )
-            }
-          />
-          <Route
-            path="/dashboard/water-purifier"
-            element={
-              user ? (
-                <WaterPurifier user={user} />
-              ) : (
-                loginRedirect("/dashboard/water-purifier")
-              )
-            }
-          />
-          <Route path="/bioreactor" element={<LegacyProcessRedirect />} />
-          <Route path="/pressure-vessel" element={<LegacyProcessRedirect />} />
-          <Route
-            path="/membrane-bioreactor"
-            element={<LegacyProcessRedirect />}
-          />
-          <Route path="/waterpurifier" element={<LegacyProcessRedirect />} />
-          <Route path="/water-purifier" element={<LegacyProcessRedirect />} />
-          <Route path="/invite/:token" element={<Invite user={user} />} />
-          <Route path="/ios-auth" element={<IosAuthBridge />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/pi-setup" element={<PiSetup />} />
-          <Route path="/pi-login" element={<PiLogin />} />
-          <Route
-            path="/design"
-            element={
-              <Suspense fallback={null}>
-                <DesignSystem />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/settings"
-            element={<Navigate to={APP_HOME_PATH} replace />}
-          />
-        </Routes>
+        )}
+        <AnimationLab />
       </div>
-      {user && showOnboarding && <OnboardingModal user={user} />}
-      {user && showChrome && (
-        <DevDataPanel
-          open={devPanelOpen}
-          onClose={() => setDevPanelOpen(false)}
-          user={user}
-        />
-      )}
-      <AnimationLab />
-    </div>
+    </PlantProvider>
   );
 }
 

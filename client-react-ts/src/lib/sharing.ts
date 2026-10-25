@@ -43,12 +43,11 @@ const PATH_BY_TYPE: Record<DeviceType, string> = {
   water_purifier: "/dashboard/water-purifier",
 };
 
-/** Default authenticated home (bioreactor dashboard). */
-export const APP_HOME_PATH = PATH_BY_TYPE.bioreactor;
+/** Default authenticated home (plant control panel). */
+export const APP_HOME_PATH = "/dashboard";
 
 /** Old top-level process URLs → new /dashboard/… paths. */
 const LEGACY_PATH_REDIRECTS: Record<string, string> = {
-  "/dashboard": PATH_BY_TYPE.bioreactor,
   "/bioreactor": PATH_BY_TYPE.bioreactor,
   "/pressure-vessel": PATH_BY_TYPE.pressure_vessel,
   "/membrane-bioreactor": PATH_BY_TYPE.membrane_bioreactor,
@@ -63,7 +62,6 @@ export function pathForDeviceType(type: DeviceType): string {
 export function deviceTypeFromPath(pathname: string): DeviceType | null {
   switch (pathname) {
     case "/dashboard/bioreactor":
-    case "/dashboard":
     case "/bioreactor":
       return "bioreactor";
     case "/dashboard/pressure-vessel":

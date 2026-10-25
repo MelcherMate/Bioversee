@@ -37,6 +37,8 @@ type AddDevicePanelProps = {
   onClose: () => void;
   onCreated: (deviceId: string, type: DeviceType) => void;
   defaultType?: DeviceType;
+  /** Plant to attach the new device to (active plant). */
+  plantId?: string | null;
 };
 
 type MemberDraft = {
@@ -66,6 +68,7 @@ function AddDevicePanel({
   open,
   onClose,
   onCreated,
+  plantId,
 }: AddDevicePanelProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -172,6 +175,7 @@ function AddDevicePanel({
       const deviceId = await createMyDevice({
         type: CREATE_DEVICE_TYPE,
         name: name.trim(),
+        plantId: plantId ?? null,
       });
       await updateMyDeviceConfig(deviceId, toBioreactorConfigPatch(config));
       for (const member of members) {

@@ -13,6 +13,8 @@ export type Device = {
   owner_id: string;
   type: DeviceType;
   name: string;
+  /** Owning plant (workspace). */
+  plant_id: string;
   /** Type-specific JSON (e.g. bioreactor geometry). */
   config: Record<string, unknown>;
   created_at: string;
@@ -47,7 +49,7 @@ const DEVICE_TYPES: DeviceType[] = [
 ];
 
 const DEVICE_SELECT =
-  "id, owner_id, type, name, config, created_at, updated_at";
+  "id, owner_id, type, name, plant_id, config, created_at, updated_at";
 
 function mapDevice(row: Record<string, unknown>): Device {
   const config =
@@ -59,6 +61,7 @@ function mapDevice(row: Record<string, unknown>): Device {
     owner_id: String(row.owner_id),
     type: row.type as DeviceType,
     name: String(row.name),
+    plant_id: String(row.plant_id ?? ""),
     config,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -274,6 +277,7 @@ export function ownerAvatarSrc(device: AccessibleDevice): string {
 export async function createMyDevice(input: {
   type: DeviceType;
   name: string;
+  plantId?: string | null;
   memberEmails?: string[];
   memberRole?: "admin" | "operator" | "viewer";
 }): Promise<string> {
@@ -282,12 +286,66 @@ export async function createMyDevice(input: {
     p_name: input.name,
     p_member_emails: input.memberEmails ?? [],
     p_member_role: input.memberRole ?? "viewer",
+    p_plant_id: input.plantId ?? null,
   });
   if (error) throw error;
   if (!data || typeof data !== "string") {
     throw new Error("Failed to create device");
   }
   return data;
+}
+
+export type DeviceCardMetric = {
+  name: string;
+  value: number;
+  created_at: string;
+};
+
+export type DeviceCardSnapshot = {
+  id: string;
+  name: string;
+  type: DeviceType;
+  plant_id: string;
+  updated_at: string;
+  metrics: DeviceCardMetric[];
+};
+
+export async function fetchDeviceCardSnapshots(
+  deviceIds: string[]
+): Promise<DeviceCardSnapshot[]> {
+  if (deviceIds.length === 0) return [];
+  const { data, error } = await supabase.rpc("device_card_snapshots", {
+    p_device_ids: deviceIds,
+  });
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => {
+    const r = row as Record<string, unknown>;
+    const metricsRaw = Array.isArray(r.metrics) ? r.metrics : [];
+    return {
+      id: String(r.id),
+      name: String(r.name),
+      type: r.type as DeviceType,
+      plant_id: String(r.plant_id ?? ""),
+      updated_at: String(r.updated_at ?? ""),
+      metrics: metricsRaw.map((m) => {
+        const metric = m as Record<string, unknown>;
+        return {
+          name: String(metric.name),
+          value: Number(metric.value),
+          created_at: String(metric.created_at),
+        };
+      }),
+    };
+  });
+}
+
+/** Devices the caller can access that belong to a plant. */
+export async function listAccessibleDevicesInPlant(
+  plantId: string
+): Promise<AccessibleDevice[]> {
+  const all = await listAccessibleDevices();
+  return all.filter((d) => d.plant_id === plantId);
 }
 
 export async function deleteMyDevice(deviceId: string): Promise<void> {

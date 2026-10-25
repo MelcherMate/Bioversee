@@ -62,12 +62,85 @@ export type Database = {
         };
         Relationships: [];
       };
+      plants: {
+        Row: {
+          id: string;
+          owner_id: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          name?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      plant_connections: {
+        Row: {
+          id: string;
+          plant_id: string;
+          source_device_id: string;
+          target_device_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          plant_id: string;
+          source_device_id: string;
+          target_device_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          plant_id?: string;
+          source_device_id?: string;
+          target_device_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      plant_node_layouts: {
+        Row: {
+          plant_id: string;
+          device_id: string;
+          x: number;
+          y: number;
+          updated_at: string;
+        };
+        Insert: {
+          plant_id: string;
+          device_id: string;
+          x?: number;
+          y?: number;
+          updated_at?: string;
+        };
+        Update: {
+          plant_id?: string;
+          device_id?: string;
+          x?: number;
+          y?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       devices: {
         Row: {
           id: string;
           owner_id: string;
           type: DeviceType;
           name: string;
+          plant_id: string;
           config: Json;
           created_at: string;
           updated_at: string;
@@ -77,6 +150,7 @@ export type Database = {
           owner_id: string;
           type: DeviceType;
           name: string;
+          plant_id: string;
           config?: Json;
           created_at?: string;
           updated_at?: string;
@@ -86,6 +160,7 @@ export type Database = {
           owner_id?: string;
           type?: DeviceType;
           name?: string;
+          plant_id?: string;
           config?: Json;
           created_at?: string;
           updated_at?: string;
@@ -360,8 +435,29 @@ export type Database = {
           p_name: string;
           p_member_emails?: string[];
           p_member_role?: DeviceMemberRole;
+          p_plant_id?: string | null;
         };
         Returns: string;
+      };
+      ensure_my_default_plant: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      create_my_plant: {
+        Args: { p_name: string };
+        Returns: string;
+      };
+      rename_my_plant: {
+        Args: { p_plant_id: string; p_name: string };
+        Returns: undefined;
+      };
+      delete_my_plant: {
+        Args: { p_plant_id: string };
+        Returns: undefined;
+      };
+      device_card_snapshots: {
+        Args: { p_device_ids: string[] };
+        Returns: Json;
       };
       delete_my_account: {
         Args: { p_delete_owned_devices?: boolean };

@@ -10,7 +10,8 @@ import {
   seedOnboardingSampleData,
   userOwnsAnyDevice,
 } from "../../lib/onboarding";
-import { pathForDeviceType } from "../../lib/sharing";
+import { useOptionalPlantContext } from "../../lib/PlantContext";
+import { APP_HOME_PATH } from "../../lib/sharing";
 import type { AppUser } from "../../lib/user";
 import { fetchUserPreferences } from "../../lib/userSettings";
 import "./OnboardingModal.css";
@@ -24,6 +25,7 @@ type OnboardingModalProps = {
 function OnboardingModal({ user }: OnboardingModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const plantCtx = useOptionalPlantContext();
   const [visible, setVisible] = useState(false);
   const [checking, setChecking] = useState(true);
   const [step, setStep] = useState<Step>("welcome");
@@ -89,6 +91,7 @@ function OnboardingModal({ user }: OnboardingModalProps) {
       const deviceId = await createMyDevice({
         type,
         name: t(DEVICE_TYPE_META[type].labelKey),
+        plantId: plantCtx?.activePlantId ?? null,
       });
 
       if (withSampleData) {
@@ -97,8 +100,9 @@ function OnboardingModal({ user }: OnboardingModalProps) {
 
       await markOnboardingCompleted(user.id);
       notifyDevicesChanged();
+      void plantCtx?.refreshPlants();
       setVisible(false);
-      navigate(`${pathForDeviceType(type)}?device=${deviceId}`);
+      navigate(APP_HOME_PATH);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : t("onboarding.couldNotFinish")

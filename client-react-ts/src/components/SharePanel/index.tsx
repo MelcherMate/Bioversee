@@ -34,6 +34,7 @@ type SharePanelProps = {
   onDevicesChanged?: () => void | Promise<void>;
   /** Prefer this device when the panel opens (e.g. from context menu). */
   initialDeviceId?: string | null;
+  className?: string;
 };
 
 function shortToken(token: string) {
@@ -46,6 +47,7 @@ function SharePanel({
   onClose,
   onDevicesChanged,
   initialDeviceId = null,
+  className,
 }: SharePanelProps) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -271,7 +273,7 @@ function SharePanel({
   if (!open) return null;
 
   return (
-    <div className="share-panel" ref={panelRef} role="dialog" aria-label={t("share.title")}>
+    <div className={className ? `share-panel ${className}` : "share-panel"} ref={panelRef} role="dialog" aria-label={t("share.title")}>
       <div className="share-panel__head">
         <div>
           <p className="share-panel__eyebrow">{t("share.title")}</p>

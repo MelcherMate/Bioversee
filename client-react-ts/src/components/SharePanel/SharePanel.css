@@ -13,6 +13,14 @@
   animation: share-in 0.2s var(--bv-ease);
 }
 
+.share-panel--floating {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 80;
+}
+
 .share-panel__head {
   display: flex;
   align-items: flex-start;

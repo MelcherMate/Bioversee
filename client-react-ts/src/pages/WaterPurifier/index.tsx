@@ -9,6 +9,8 @@ import { canOperateDevice } from "../../lib/devices";
 import { useProcessDevice } from "../../lib/useProcessDevice";
 import type { AppUser } from "../../lib/user";
 import useDimensions from "../../utils/hooks/useDimensions";
+import "../../components/bioreactor/BioreactorControls.css";
+import "../Bioreactor/Bioreactor.css";
 import "./WaterPurifier.css";
 
 interface Card {

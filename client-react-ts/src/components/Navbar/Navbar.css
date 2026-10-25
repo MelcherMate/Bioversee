@@ -79,6 +79,42 @@
   border: 0;
 }
 
+.topbar__plant {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.topbar__plant-select {
+  max-width: 140px;
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border: none;
+  border-radius: 12px;
+  background: var(--bv-fill);
+  color: var(--bv-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--bv-text-secondary) 50%),
+    linear-gradient(135deg, var(--bv-text-secondary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 14px,
+    calc(100% - 9px) 14px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.topbar__plant-select:hover,
+.topbar__plant-select:focus {
+  background-color: var(--bv-accent-soft);
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--bv-accent-border);
+  color: var(--bv-accent-hover);
+}
+
 .topbar__add {
   position: relative;
   flex-shrink: 0;

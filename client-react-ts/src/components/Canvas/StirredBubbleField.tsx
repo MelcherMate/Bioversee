@@ -271,14 +271,15 @@ export function StirredBubbleField({
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
-      const rect = parent.getBoundingClientRect();
       const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       // Match .stirred-bubble-field CSS overhang (±20px) so both walls are covered.
       // Keep full clip height — map particles into the filled band each frame so
       // springing water level never reallocates the canvas buffer.
+      // Layout size, not getBoundingClientRect(): the card is often drawn under a
+      // CSS scale (canvas zoom, Blueprint nodes) and this bitmap sits inside it.
       const overhang = 20;
-      const w = Math.max(1, Math.floor(rect.width + overhang * 2));
-      const h = Math.max(1, Math.floor(rect.height));
+      const w = Math.max(1, Math.floor(parent.clientWidth + overhang * 2));
+      const h = Math.max(1, Math.floor(parent.clientHeight));
       if (w === viewW && h === viewH && canvas.width > 0) return;
       viewW = w;
       viewH = h;

@@ -38,8 +38,13 @@ import {
 import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import { subscribeMyNotifications } from "../../lib/notificationsSync";
 import { subscribeMyDevices } from "../../lib/devicesSync";
+import { useOptionalPlantContext } from "../../lib/PlantContext";
 import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice, APP_HOME_PATH } from "../../lib/sharing";
-import { DEVICES_CHANGED_EVENT, OPEN_ADD_DEVICE_EVENT } from "../../lib/onboarding";
+import {
+  DEVICES_CHANGED_EVENT,
+  notifyDevicesChanged,
+  OPEN_ADD_DEVICE_EVENT,
+} from "../../lib/onboarding";
 import type { AppUser } from "../../lib/user";
 import { supabase } from "../../lib/supabase";
 import AccountMenu from "../AccountMenu";
@@ -65,6 +70,7 @@ const Navbar = ({ user }: NavbarProps) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { connectivity, issue } = useAppStatus();
+  const plantCtx = useOptionalPlantContext();
 
   const [showAccount, setShowAccount] = useState(false);
   const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
@@ -248,6 +254,13 @@ const Navbar = ({ user }: NavbarProps) => {
     (routeType && devices.find((device) => device.type === routeType)) ||
     null;
 
+  /** Owned devices for the active plant + all shared devices. */
+  const visibleDevices = devices.filter((device) => {
+    if (!device.isOwner) return true;
+    if (!plantCtx?.activePlantId) return true;
+    return device.plant_id === plantCtx.activePlantId;
+  });
+
   const otherAccounts = accounts.filter((account) => account.userId !== user.id);
 
   const statusTitle = issue
@@ -291,6 +304,10 @@ const Navbar = ({ user }: NavbarProps) => {
 
   const onDeviceCreated = async (deviceId: string, type: DeviceType) => {
     await refreshDevices();
+    if (location.pathname === APP_HOME_PATH) {
+      notifyDevicesChanged();
+      return;
+    }
     navigate(`${pathForDeviceType(type)}?device=${deviceId}`);
   };
 
@@ -468,7 +485,7 @@ const Navbar = ({ user }: NavbarProps) => {
     <header className="topbar">
       <div className="topbar__inner">
         <div className="topbar__left">
-          <Link to="/about" className="topbar__brand" title={statusTitle}>
+          <Link to={APP_HOME_PATH} className="topbar__brand" title={statusTitle}>
             <span
               className={`topbar__mark topbar__mark--${connectivity}`}
               aria-hidden
@@ -479,76 +496,13 @@ const Navbar = ({ user }: NavbarProps) => {
           </Link>
 
           <div className="topbar__add" ref={addRef}>
-            <button
-              type="button"
-              className={`topbar__round-btn topbar__add-btn ${
-                showAddDevice ? "is-active" : ""
-              }`}
-              aria-label={t("nav.addDevice")}
-              aria-expanded={showAddDevice}
-              title={t("nav.addDevice")}
-              onClick={() => {
-                setShowAccount(false);
-                setShareDevice(null);
-                setSettingsDevice(null);
-                setShowAppSettings(false);
-                setShowNotifications(false);
-                setAddDeviceDefaultType(routeType ?? "bioreactor");
-                setShowAddDevice((open) => !open);
-              }}
-            >
-              <AddOutline
-                color="var(--bv-accent-hover)"
-                height="18px"
-                width="18px"
-                title=""
-              />
-            </button>
             <AddDevicePanel
               open={showAddDevice}
               defaultType={addDeviceDefaultType}
+              plantId={plantCtx?.activePlantId ?? null}
               onClose={() => setShowAddDevice(false)}
               onCreated={onDeviceCreated}
             />
-          </div>
-
-          <div className="topbar__devices" ref={devicesRef} role="toolbar" aria-label={t("nav.devices")}>
-            {devices.map((device) => {
-              const active = activeDevice?.id === device.id;
-              return (
-                <button
-                  key={device.id}
-                  type="button"
-                  data-device-id={device.id}
-                  className={`topbar__device-chip ${active ? "is-active" : ""} ${
-                    device.isOwner ? "" : "is-shared"
-                  }`}
-                  title={device.name}
-                  aria-label={device.name}
-                  aria-pressed={active}
-                  onClick={() => onSelectDevice(device)}
-                  onContextMenu={(event) => onDeviceContextMenu(event, device)}
-                  onPointerDown={(event) => onDevicePointerDown(event, device)}
-                  onPointerUp={clearLongPress}
-                  onPointerCancel={clearLongPress}
-                  onPointerLeave={clearLongPress}
-                >
-                  <span className="topbar__device-chip-label">{device.name}</span>
-                  {!device.isOwner && (
-                    <span
-                      className="topbar__device-owner"
-                      title={
-                        device.ownerDisplayName
-                          ? t("nav.sharedBy", { name: device.ownerDisplayName })
-                          : t("nav.sharedDevice")
-                      }
-                    >
-                      <img src={ownerAvatarSrc(device)} alt="" />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
           </div>
 
           <div className="topbar__settings-anchor">

@@ -1,0 +1,263 @@
+/* Blueprint view: wiring canvas + controls / charts docks for the selected unit. */
+
+.cp-line__canvas {
+  position: relative;
+  transition: box-shadow 0.25s var(--bv-ease, ease);
+}
+
+.bp-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bv-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--bv-accent) 28%, transparent);
+  cursor: pointer;
+  transition: background 0.15s var(--bv-ease, ease);
+}
+
+.bp-add:hover {
+  background: var(--bv-accent-hover);
+}
+
+/* Edit mode: same yellow outline language as the editable plant title. */
+.cp-line__canvas.is-editing {
+  box-shadow: inset 0 0 0 1.5px var(--cp-edit);
+}
+
+/* Wiring handles only exist while editing; edges still anchor to them. */
+.cp-line__canvas .cp-flow-handle {
+  transition: opacity 0.2s var(--bv-ease, ease);
+}
+
+.cp-line__canvas:not(.is-editing) .cp-flow-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cp-line__canvas .react-flow__controls {
+  transition: transform var(--cp-view-ms, 600ms) var(--cp-view-ease, ease);
+}
+
+/* Keep zoom controls beside the charts dock instead of under it. */
+.cp-line__canvas.has-charts .react-flow__controls {
+  transform: translateX(-312px);
+}
+
+.bp-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Reactor node: the live vessel drawing, scaled down. */
+.bp-reactor {
+  position: relative;
+  padding: 10px 10px 8px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bv-card) 72%, transparent);
+  box-shadow:
+    0 0 0 1px var(--bv-line),
+    0 10px 26px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+  transition: box-shadow 0.2s var(--bv-ease, ease);
+}
+
+.cp-line__canvas.is-editing .bp-reactor {
+  cursor: grab;
+}
+
+.cp-line__canvas.is-editing .bp-reactor:active {
+  cursor: grabbing;
+}
+
+.bp-reactor.is-selected {
+  box-shadow:
+    0 0 0 2px var(--bv-accent),
+    0 12px 30px color-mix(in srgb, var(--bv-accent) 22%, transparent);
+}
+
+.bp-reactor__stage {
+  position: relative;
+  pointer-events: none;
+}
+
+.bp-reactor__loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--bv-text-tertiary);
+  font-size: 12px;
+}
+
+.bp-reactor__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px 0;
+}
+
+.bp-reactor__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bv-text);
+}
+
+.bp-reactor__level {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bv-accent-hover);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-flow-node.is-selected .cp-flow-node__btn {
+  box-shadow:
+    0 0 0 2px var(--bv-accent),
+    0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+/* Docks float over the canvas edges; empty space still pans the canvas. */
+.bp-dock {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(312px, calc(100% - 24px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    transform var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
+    opacity var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
+    visibility 0s linear var(--cp-view-ms, 600ms);
+  scrollbar-width: none;
+}
+
+.bp-dock::-webkit-scrollbar {
+  display: none;
+}
+
+.bp-dock > * {
+  pointer-events: auto;
+}
+
+.bp-dock--controls {
+  left: 12px;
+  transform: translateX(calc(-100% - 16px));
+}
+
+.bp-dock--charts {
+  right: 12px;
+  width: min(300px, calc(100% - 24px));
+  transform: translateX(calc(100% + 16px));
+}
+
+.bp-dock.is-open {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    transform var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
+    opacity var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
+    visibility 0s;
+}
+
+.bp-dock__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-radius: var(--bv-radius-lg);
+  background: var(--bv-glass);
+  border: 1px solid var(--bv-glass-border);
+  box-shadow: var(--bv-shadow-float);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.bp-dock__glyph {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--bv-accent-soft);
+  color: var(--bv-accent-hover);
+}
+
+.bp-dock__titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bp-dock__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bv-text);
+}
+
+.bp-dock__type {
+  font-size: 11px;
+  color: var(--bv-text-secondary);
+}
+
+.bp-dock__icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--bv-fill);
+  color: var(--bv-text);
+  cursor: pointer;
+}
+
+.bp-dock__icon-btn:hover {
+  background: var(--bv-accent-soft);
+}
+
+.bp-dock__body:empty {
+  display: none;
+}
+
+.bp-dock__body .chartBox {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .bp-dock--charts {
+    display: none;
+  }
+}

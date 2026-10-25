@@ -8,6 +8,67 @@
   color: var(--bv-text);
 }
 
+/* Signed-in app chrome: page gradient shows around floating header + panels. */
+.appContainer--chrome {
+  background:
+    radial-gradient(
+      120% 80% at 10% -10%,
+      color-mix(in srgb, var(--bv-accent) 12%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 60% at 100% 0%,
+      color-mix(in srgb, var(--bv-accent) 8%, transparent),
+      transparent 50%
+    ),
+    var(--bv-surface);
+}
+
+/* Blueprint view slides the top bar away; must match --cp-view-* timing. */
+.appContainer {
+  --bv-chrome-ms: 600ms;
+  --bv-chrome-ease: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.topbar-slot {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--bv-chrome-ms) var(--bv-chrome-ease);
+}
+
+.topbar-slot > .topbar {
+  position: relative;
+  min-height: 0;
+  transition:
+    transform var(--bv-chrome-ms) var(--bv-chrome-ease),
+    opacity var(--bv-chrome-ms) var(--bv-chrome-ease),
+    visibility 0s;
+}
+
+.appContainer--blueprint .topbar-slot {
+  grid-template-rows: 0fr;
+}
+
+.appContainer--blueprint .topbar-slot > .topbar {
+  transform: translateY(calc(-100% - 12px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform var(--bv-chrome-ms) var(--bv-chrome-ease),
+    opacity var(--bv-chrome-ms) var(--bv-chrome-ease),
+    visibility 0s linear var(--bv-chrome-ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appContainer {
+    --bv-chrome-ms: 1ms;
+  }
+}
+
 .appContainer--auth {
   overflow: auto;
 }
