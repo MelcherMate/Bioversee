@@ -124,6 +124,36 @@ export type BioreactorFluid = {
   surface_tension_mN_m: number;
 };
 
+/** Which way a nozzle pipe runs: elbow to either side, or straight off the vessel. */
+export type PipeDirection = "left" | "straight" | "right";
+
+export const PIPE_DIRECTION_OPTIONS: PipeDirection[] = ["left", "straight", "right"];
+
+export type BioreactorPiping = {
+  /** Lid fill inlet. */
+  inlet: PipeDirection;
+  /** Bottom drain outlet. */
+  outlet: PipeDirection;
+};
+
+export function isPipeDirection(value: unknown): value is PipeDirection {
+  return value === "left" || value === "straight" || value === "right";
+}
+
+export function defaultPiping(): BioreactorPiping {
+  return { inlet: "right", outlet: "right" };
+}
+
+export function parseBioreactorPiping(raw: unknown): BioreactorPiping {
+  const base = defaultPiping();
+  if (!raw || typeof raw !== "object") return base;
+  const o = raw as Record<string, unknown>;
+  return {
+    inlet: isPipeDirection(o.inlet) ? o.inlet : base.inlet,
+    outlet: isPipeDirection(o.outlet) ? o.outlet : base.outlet,
+  };
+}
+
 export type BioreactorConfig = {
   /** Working volume in m³; null = unset (UI shows placeholder). */
   volume_m3: number | null;
@@ -132,6 +162,7 @@ export type BioreactorConfig = {
   vessel_shape: VesselShapeId;
   equipment: BioreactorEquipment;
   fluid: BioreactorFluid;
+  piping: BioreactorPiping;
 };
 
 export const FLUID_PRESET_OPTIONS: {
@@ -387,6 +418,7 @@ export function defaultBioreactorConfig(): BioreactorConfig {
     vessel_shape: "capsule",
     equipment: defaultEquipment(),
     fluid: defaultFluid(),
+    piping: defaultPiping(),
   };
 }
 
@@ -434,7 +466,9 @@ export function parseBioreactorConfig(raw: unknown): BioreactorConfig {
     ? nested.vessel_shape
     : base.vessel_shape;
 
-  return { volume_m3, volume_unit, vessel_shape, equipment, fluid };
+  const piping = parseBioreactorPiping(nested.piping);
+
+  return { volume_m3, volume_unit, vessel_shape, equipment, fluid, piping };
 }
 
 /** @deprecated Use parseBioreactorConfig — drawing always uses default capsule. */

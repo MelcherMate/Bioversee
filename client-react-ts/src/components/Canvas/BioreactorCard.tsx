@@ -9,10 +9,15 @@ import { VesselWaterBody } from "../pressure-vessel/VesselWaterBody";
 import type {
   BioreactorEquipment,
   BioreactorGeometry,
+  BioreactorPiping,
   FluidMotionFactors,
   VesselShapeId,
 } from "../../lib/bioreactorGeometry";
-import { defaultBioreactorGeometry, defaultEquipment } from "../../lib/bioreactorGeometry";
+import {
+  defaultBioreactorGeometry,
+  defaultEquipment,
+  defaultPiping,
+} from "../../lib/bioreactorGeometry";
 import {
   layoutFromGeometry,
   layoutCssVars,
@@ -43,6 +48,8 @@ type BioreactorCardProps = {
   geometry?: BioreactorGeometry;
   /** Vessel silhouette preset from device config. */
   vesselShape?: VesselShapeId;
+  /** Inlet / outlet pipe directions from device config. */
+  piping?: BioreactorPiping;
   /** Probe lamps flash red while uncovered. */
   sensorAlarms?: {
     temperature?: boolean;
@@ -337,15 +344,21 @@ function PipeFlowmeter({
   y,
   pipeOd,
   lit = true,
+  rotate = 0,
 }: {
   x: number;
   y: number;
   pipeOd: number;
   lit?: boolean;
+  /** Degrees; 90 mounts the meter on a vertical run with the head to the right. */
+  rotate?: number;
 }) {
   const headY = -pipeOd / 2 - 34;
   return (
-    <g className="br-flowmeter" transform={`translate(${x}, ${y})`}>
+    <g
+      className="br-flowmeter"
+      transform={`translate(${x}, ${y})${rotate ? ` rotate(${rotate})` : ""}`}
+    >
       <rect
         x={-7}
         y={-pipeOd / 2 - 2}
@@ -1153,7 +1166,8 @@ function pipeFlowAtSensor(tail: number, head: number, sensorDist: number) {
 
 /**
  * Lid fill nozzle on the flat apex (inner + outer still horizontal),
- * just clear of the agitator shaft — vertical drop + short horizontal run.
+ * just clear of the agitator shaft — vertical drop, plus a short supply run
+ * to the left or right unless the inlet comes straight down.
  */
 function FillInletPipe({
   layout,
@@ -1174,28 +1188,15 @@ function FillInletPipe({
     svgWidth,
     svgHeight,
     viewBox,
-    lidY,
-    elbowY,
-    centerX,
-    runEndX,
+    joint,
+    meter,
   } = layout.fillInlet;
-  const pad = 20;
-  const localX = pad;
-  const localLidY = lidY - elbowY + pad;
-  const localElbowY = pad;
-  const localRunEndX = runEndX - centerX + pad;
-  const horizLen = Math.max(1, runEndX - centerX);
-  // Flowmeter on the horizontal supply run (open end → elbow).
-  const sensorFrac = 0.55;
-  const sensorDist = horizLen * sensorFrac;
-  const txX = localRunEndX + (localX - localRunEndX) * sensorFrac;
-  const txY = localElbowY;
   const pipeTail = Math.max(0, waterTail);
   const pipeHead = Math.max(pipeTail, waterHead);
   const segStart = Math.max(0, pipeTail);
   const segEnd = Math.max(segStart, Math.min(pipeHead, pipePathLength));
   const segLen = Math.max(0, segEnd - segStart);
-  const flowLit = pipeFlowAtSensor(pipeTail, pipeHead, sensorDist);
+  const flowLit = pipeFlowAtSensor(pipeTail, pipeHead, meter.distance);
 
   return (
     <div className="br-fill-inlet" aria-hidden>
@@ -1239,7 +1240,7 @@ function FillInletPipe({
             strokeLinecap="butt"
             strokeLinejoin="round"
           />
-          <PipeShellJoint cx={localX} cy={localLidY} pipeOd={pipeOd} />
+          <PipeShellJoint cx={joint.x} cy={joint.y} pipeOd={pipeOd} />
         </g>
         {segLen > 0 ? (
           <path
@@ -1254,13 +1255,19 @@ function FillInletPipe({
             strokeDashoffset={-segStart}
           />
         ) : null}
-        <PipeFlowmeter x={txX} y={txY} pipeOd={pipeOd} lit={flowLit} />
+        <PipeFlowmeter
+          x={meter.x}
+          y={meter.y}
+          rotate={meter.rotate}
+          pipeOd={pipeOd}
+          lit={flowLit}
+        />
       </svg>
     </div>
   );
 }
 
-/** Bottom drain elbow — metal pipe with flowmeter on the horizontal run. */
+/** Bottom drain — metal pipe straight down or elbowed to either side, with a flowmeter. */
 function BottomOutflow({
   layout,
   waterTail = 0,
@@ -1273,36 +1280,30 @@ function BottomOutflow({
   riseLength?: number;
 }) {
   const prefix = useId().replace(/:/g, "");
-  const { centerX, vesselBottom, drop, run, pipeOd, pipePathLength } =
-    layout.outflow;
-  const pad = 28;
-  const svgLeft = centerX - pad;
-  const svgTop = vesselBottom - 4;
-  const svgW = pad + run + 36;
-  const svgH = drop + 48;
-  const x0 = pad;
-  const y0 = 4;
-  const y1 = y0 + drop;
-  const x1 = x0 + run;
-  const path = `M ${x0} ${y0} L ${x0} ${y1} L ${x1} ${y1}`;
-  const sensorFrac = 0.62;
-  const txX = x0 + run * sensorFrac;
-  const txY = y1;
-  /** Distance along pipe centerline from vessel nozzle to the TX. */
-  const sensorDist = drop + run * sensorFrac;
+  const {
+    pipeOd,
+    pipePathLength,
+    svgLeft,
+    svgTop,
+    svgWidth,
+    svgHeight,
+    centerline: path,
+    joint,
+    meter,
+  } = layout.outflow;
   const pipeTail = Math.max(riseLength, waterTail) - riseLength;
   const pipeHead = waterHead - riseLength;
   const segStart = Math.max(0, pipeTail);
   const segEnd = Math.max(segStart, pipeHead);
   const segLen = Math.max(0, Math.min(segEnd, pipePathLength) - segStart);
-  const flowLit = pipeFlowAtSensor(pipeTail, pipeHead, sensorDist);
+  const flowLit = pipeFlowAtSensor(pipeTail, pipeHead, meter.distance);
 
   return (
     <div className="br-outflow" aria-hidden>
       <svg
         className="br-outflow__svg"
-        viewBox={`0 0 ${svgW} ${svgH}`}
-        style={{ left: svgLeft, top: svgTop, width: svgW, height: svgH }}
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        style={{ left: svgLeft, top: svgTop, width: svgWidth, height: svgHeight }}
         overflow="visible"
       >
         <defs>
@@ -1339,7 +1340,7 @@ function BottomOutflow({
             strokeLinecap="butt"
             strokeLinejoin="round"
           />
-          <PipeShellJoint cx={x0} cy={y0} pipeOd={pipeOd} />
+          <PipeShellJoint cx={joint.x} cy={joint.y} pipeOd={pipeOd} />
         </g>
         {segLen > 0 ? (
           <path
@@ -1354,7 +1355,13 @@ function BottomOutflow({
             strokeDashoffset={-segStart}
           />
         ) : null}
-        <PipeFlowmeter x={txX} y={txY} pipeOd={pipeOd} lit={flowLit} />
+        <PipeFlowmeter
+          x={meter.x}
+          y={meter.y}
+          rotate={meter.rotate}
+          pipeOd={pipeOd}
+          lit={flowLit}
+        />
       </svg>
     </div>
   );
@@ -1575,9 +1582,15 @@ function BioreactorCard(props: BioreactorCardProps) {
   const equipment = { ...defaultEquipment(), ...props.equipment };
   const geometry = props.geometry ?? defaultBioreactorGeometry();
   const vesselShape = props.vesselShape ?? "capsule";
+  const inletPipe = props.piping?.inlet ?? defaultPiping().inlet;
+  const outletPipe = props.piping?.outlet ?? defaultPiping().outlet;
   const layout = useMemo(
-    () => layoutFromGeometry(geometry, vesselShape),
-    [geometry.height_m, geometry.diameter_m, vesselShape],
+    () =>
+      layoutFromGeometry(geometry, vesselShape, {
+        inlet: inletPipe,
+        outlet: outletPipe,
+      }),
+    [geometry.height_m, geometry.diameter_m, vesselShape, inletPipe, outletPipe],
   );
   const airActive = Boolean(equipment.aerator && aeratorVal > 0);
   const [airAtSparger, setAirAtSparger] = useState(airActive);

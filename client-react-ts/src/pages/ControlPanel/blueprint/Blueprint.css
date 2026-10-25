@@ -1,54 +1,13 @@
-/* Blueprint view: wiring canvas + controls / charts docks for the selected unit. */
+/* Blueprint view: unit canvas + controls / charts docks for the selected unit. */
 
 .cp-line__canvas {
   position: relative;
   transition: box-shadow 0.25s var(--bv-ease, ease);
 }
 
-.bp-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 14px 0 10px;
-  border: none;
-  border-radius: 999px;
-  background: var(--bv-accent);
-  color: #fff;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--bv-accent) 28%, transparent);
-  cursor: pointer;
-  transition: background 0.15s var(--bv-ease, ease);
-}
-
-.bp-add:hover {
-  background: var(--bv-accent-hover);
-}
-
 /* Edit mode: same yellow outline language as the editable plant title. */
 .cp-line__canvas.is-editing {
   box-shadow: inset 0 0 0 1.5px var(--cp-edit);
-}
-
-/* Wiring handles only exist while editing; edges still anchor to them. */
-.cp-line__canvas .cp-flow-handle {
-  transition: opacity 0.2s var(--bv-ease, ease);
-}
-
-.cp-line__canvas:not(.is-editing) .cp-flow-handle {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.cp-line__canvas .react-flow__controls {
-  transition: transform var(--cp-view-ms, 600ms) var(--cp-view-ease, ease);
-}
-
-/* Keep zoom controls beside the charts dock instead of under it. */
-.cp-line__canvas.has-charts .react-flow__controls {
-  transform: translateX(-312px);
 }
 
 .bp-empty {
@@ -63,17 +22,13 @@
   pointer-events: none;
 }
 
-/* Reactor node: the live vessel drawing, scaled down. */
+/* Reactor node: just the live vessel drawing, scaled down, captioned by name. */
 .bp-reactor {
   position: relative;
-  padding: 10px 10px 8px;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--bv-card) 72%, transparent);
-  box-shadow:
-    0 0 0 1px var(--bv-line),
-    0 10px 26px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
-  transition: box-shadow 0.2s var(--bv-ease, ease);
 }
 
 .cp-line__canvas.is-editing .bp-reactor {
@@ -84,14 +39,58 @@
   cursor: grabbing;
 }
 
-.bp-reactor.is-selected {
-  box-shadow:
-    0 0 0 2px var(--bv-accent),
-    0 12px 30px color-mix(in srgb, var(--bv-accent) 22%, transparent);
+/*
+ * Selected unit: dashed frame around the click box, behind the drawing.
+ * Same frame in both modes; edit mode only recolours it and marches the dashes.
+ */
+.bp-reactor__ring {
+  position: absolute;
+  /* The stroke is centred on this box, so its outer edge lands on the frame. */
+  inset:
+    calc(var(--bp-ring-w) / 2 - 8px)
+    calc(var(--bp-ring-w) / 2 + 10px)
+    calc(var(--bp-ring-w) / 2 - 4px);
+  z-index: 0;
+  color: var(--bv-accent);
+  pointer-events: none;
+  transition: color 0.25s var(--bv-ease, ease);
+}
+
+.cp-line__canvas.is-editing .bp-reactor__ring {
+  color: var(--cp-edit);
+}
+
+.bp-reactor__ring svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.bp-reactor__ring rect {
+  fill: none;
+  stroke: currentColor;
+}
+
+.cp-line__canvas.is-editing .bp-reactor__ring rect {
+  animation: bp-ring-march 0.5s linear infinite;
+}
+
+@keyframes bp-ring-march {
+  to {
+    stroke-dashoffset: calc(var(--bp-ring-period) * -1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-line__canvas.is-editing .bp-reactor__ring rect {
+    animation: none;
+  }
 }
 
 .bp-reactor__stage {
   position: relative;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -103,29 +102,235 @@
   font-size: 12px;
 }
 
-.bp-reactor__label {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 4px 0;
-}
-
 .bp-reactor__name {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  /* Sit close under the vessel; leave room for the bottom outlet ring. */
+  margin-top: -24px;
+  padding: 2px 10px;
+  border-radius: 999px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
   font-weight: 700;
   color: var(--bv-text);
+  transition:
+    background 0.2s var(--bv-ease, ease),
+    color 0.2s var(--bv-ease, ease);
 }
 
-.bp-reactor__level {
-  flex-shrink: 0;
+.bp-reactor:hover .bp-reactor__name {
+  background: var(--bv-fill);
+}
+
+.bp-reactor.is-selected .bp-reactor__name {
+  background: var(--bv-accent);
+  color: #fff;
+}
+
+/* Edit mode: names turn edit yellow and, for owners / admins, are rename fields. */
+.cp-line__canvas.is-editing .bp-reactor:hover .bp-reactor__name {
+  background: var(--cp-edit-soft);
+}
+
+.cp-line__canvas.is-editing .bp-reactor.is-selected .bp-reactor__name {
+  background: var(--cp-edit);
+  color: #1d1d1f;
+}
+
+.bp-reactor__name.is-editable {
+  display: inline-grid;
+  padding-inline: 9px;
+  cursor: text;
+}
+
+.bp-reactor__name.is-editable:focus-within {
+  box-shadow: 0 0 0 3px var(--cp-edit-soft);
+}
+
+/* A hidden copy of the draft sizes the field, so the pill hugs the text like the label does. */
+.bp-reactor__name.is-editable::after,
+.bp-reactor__name-input {
+  grid-area: 1 / 1;
+  min-width: 0;
+  padding: 0 1px;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.bp-reactor__name.is-editable::after {
+  content: attr(data-value);
+  visibility: hidden;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.bp-reactor__name-input {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  outline: none;
+}
+
+/* Edit mode: inflow picker above the selected reactor, outflow picker below. */
+.bp-piping {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--bv-glass);
+  border: 1px solid var(--bv-glass-border);
+  box-shadow: var(--bv-shadow-float);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  cursor: default;
+}
+
+.bp-piping__label {
+  padding: 0 6px 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bv-text-secondary);
+  white-space: nowrap;
+}
+
+.bp-piping__option {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bv-text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.15s var(--bv-ease, ease),
+    color 0.15s var(--bv-ease, ease),
+    box-shadow 0.15s var(--bv-ease, ease);
+}
+
+.bp-piping__option:hover {
+  background: var(--bv-fill);
+  color: var(--bv-text);
+}
+
+.bp-piping__option.is-active {
+  background: var(--cp-edit-soft);
+  color: var(--cp-edit-text);
+  box-shadow: inset 0 0 0 1.5px var(--cp-edit);
+}
+
+.bp-piping__option:focus-visible {
+  outline: 2px solid var(--bv-accent);
+  outline-offset: 1px;
+}
+
+.bp-piping__pipe {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bp-piping__wall {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+
+/* Pipe ends: zero-size handles on the open end; the ring is the grab area. */
+.cp-line__canvas .react-flow__handle.bp-port {
+  width: 0;
+  height: 0;
+  min-width: 0;
+  min-height: 0;
+  right: auto;
+  bottom: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  transform: none;
+}
+
+.cp-line__canvas .bp-port::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--bv-text) 22%, transparent);
+  background: color-mix(in srgb, var(--bv-surface) 80%, transparent);
+  opacity: 0;
+  transition:
+    opacity 0.2s var(--bv-ease, ease),
+    background 0.15s var(--bv-ease, ease);
+}
+
+.cp-line__canvas.is-editing .bp-port::before {
+  opacity: 1;
+}
+
+.cp-line__canvas.is-editing .bp-port:hover::before,
+.cp-line__canvas.is-editing .bp-port.connecting::before {
+  border-color: var(--cp-edit);
+  background: var(--cp-edit-soft);
+}
+
+.bp-pipe__halo {
+  fill: none;
+  stroke: var(--cp-edit);
+  stroke-opacity: 0.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.bp-pipe__hit {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: 0;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.bp-pipe-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--bv-glass-border);
+  border-radius: 999px;
+  background: var(--bv-glass);
+  box-shadow: var(--bv-shadow-float);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  color: var(--bv-danger);
   font-size: 12px;
   font-weight: 700;
-  color: var(--bv-accent-hover);
-  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.bp-pipe-remove:hover {
+  background: var(--bv-fill);
+}
+
+.bp-pipe-remove:focus-visible {
+  outline: 2px solid var(--bv-accent);
+  outline-offset: 2px;
 }
 
 .cp-flow-node.is-selected .cp-flow-node__btn {
@@ -150,18 +355,9 @@
   visibility: hidden;
   opacity: 0;
   transition:
-    transform var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
-    opacity var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
-    visibility 0s linear var(--cp-view-ms, 600ms);
-  scrollbar-width: none;
-}
-
-.bp-dock::-webkit-scrollbar {
-  display: none;
-}
-
-.bp-dock > * {
-  pointer-events: auto;
+    transform var(--cp-view-ms, 220ms) var(--cp-view-ease, ease),
+    opacity var(--cp-view-ms, 220ms) var(--cp-view-ease, ease),
+    visibility 0s linear var(--cp-view-ms, 220ms);
 }
 
 .bp-dock--controls {
@@ -171,93 +367,36 @@
 
 .bp-dock--charts {
   right: 12px;
-  width: min(300px, calc(100% - 24px));
   transform: translateX(calc(100% + 16px));
 }
 
 .bp-dock.is-open {
+  pointer-events: auto;
   visibility: visible;
   opacity: 1;
-  transform: none;
+  transform: translateX(0);
   transition:
-    transform var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
-    opacity var(--cp-view-ms, 600ms) var(--cp-view-ease, ease),
-    visibility 0s;
+    transform var(--cp-view-ms, 220ms) var(--cp-view-ease, ease),
+    opacity var(--cp-view-ms, 220ms) var(--cp-view-ease, ease),
+    visibility 0s linear 0s;
 }
 
-.bp-dock__head {
+.bp-dock__body {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px 10px 12px;
-  border-radius: var(--bv-radius-lg);
-  background: var(--bv-glass);
-  border: 1px solid var(--bv-glass-border);
-  box-shadow: var(--bv-shadow-float);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-}
-
-.bp-dock__glyph {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  background: var(--bv-accent-soft);
-  color: var(--bv-accent-hover);
-}
-
-.bp-dock__titles {
-  display: flex;
-  flex: 1;
   flex-direction: column;
-  min-width: 0;
+  gap: 10px;
+  min-height: 0;
 }
 
-.bp-dock__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--bv-text);
+.bp-dock__portal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
 }
 
-.bp-dock__type {
-  font-size: 11px;
-  color: var(--bv-text-secondary);
-}
-
-.bp-dock__icon-btn {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: var(--bv-fill);
-  color: var(--bv-text);
-  cursor: pointer;
-}
-
-.bp-dock__icon-btn:hover {
-  background: var(--bv-accent-soft);
-}
-
-.bp-dock__body:empty {
-  display: none;
-}
-
-.bp-dock__body .chartBox {
-  min-width: 0;
-}
-
-@media (max-width: 720px) {
-  .bp-dock--charts {
-    display: none;
-  }
+/* Dock panels reuse control/chart chrome; strip their float shadow so only the dock moves. */
+.bp-dock .controlPanel,
+.bp-dock .chartBox {
+  box-shadow: none;
 }

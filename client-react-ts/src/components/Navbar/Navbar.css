@@ -43,30 +43,6 @@
   letter-spacing: -0.03em;
 }
 
-.topbar__mark {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  transition:
-    background 0.25s var(--bv-ease),
-    box-shadow 0.25s var(--bv-ease);
-}
-
-.topbar__mark--online {
-  background: var(--bv-accent);
-  box-shadow: 0 0 0 4px var(--bv-accent-muted);
-}
-
-.topbar__mark--offline {
-  background: #dc2626;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
-}
-
-.topbar__mark--degraded {
-  background: #ea580c;
-  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.2);
-}
-
 .topbar__sr-only {
   position: absolute;
   width: 1px;
@@ -257,6 +233,12 @@
 .topbar__notif-wrap,
 .topbar__account {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
 }
 
 .topbar__notif-wrap {
@@ -265,17 +247,40 @@
 
 .topbar__icon-btn {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: var(--bv-fill);
+  color: var(--bv-text);
+  line-height: 0;
   text-decoration: none;
   cursor: pointer;
   overflow: visible;
   transition: background 0.2s var(--bv-ease), box-shadow 0.2s var(--bv-ease);
+}
+
+/* react-ionicons wraps the SVG in a span that otherwise sits on the text baseline. */
+.topbar__icon-btn > span {
+  display: block;
+  width: 20px;
+  height: 20px;
+  line-height: 0;
+}
+
+.topbar__icon-btn svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+/* Bell glyph sits optically low in its viewBox; nudge it to match the gear. */
+.topbar__notif-wrap .topbar__icon-btn svg {
+  transform: translateY(-1px);
 }
 
 .topbar__badge-dot {
@@ -304,14 +309,21 @@
 }
 
 .topbar__avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: none;
   padding: 0;
   background: transparent;
   cursor: pointer;
   border-radius: 50%;
+  line-height: 0;
 }
 
 .topbar__avatar {
+  display: block;
   width: 36px;
   height: 36px;
   border-radius: 50%;

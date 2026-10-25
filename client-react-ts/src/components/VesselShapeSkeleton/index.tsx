@@ -23,7 +23,11 @@ export function VesselShapeSkeleton({
   const scale = (height - pad * 2) / preset.outerH;
   const w = preset.outerW * scale;
   const h = preset.outerH * scale;
-  const r = Math.max(2, preset.chamberRadius * scale);
+  const r = Math.min(
+    Math.max(2, preset.chamberRadius * scale),
+    w / 2,
+    h / 2,
+  );
   const stroke = Math.max(2.5, preset.border * scale * 0.55);
   const vbW = w + pad * 2;
   const vbH = height;

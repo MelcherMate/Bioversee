@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AddOutline } from "react-ionicons";
 import {
   fetchDeviceCardSnapshots,
   listAccessibleDevicesInPlant,
   type AccessibleDevice,
   type DeviceCardSnapshot,
 } from "../../lib/devices";
-import {
-  DEVICES_CHANGED_EVENT,
-  requestOpenAddDevice,
-} from "../../lib/onboarding";
+import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
 import type { Plant } from "../../lib/plants";
 import { listDeviceRoster } from "../../lib/sharing";
 import DeviceCard from "./DeviceCard";
@@ -200,32 +196,12 @@ export default function Overview({
             <p className="cp-empty__eyebrow">{t("controlPanel.emptyEyebrow")}</p>
             <h2 className="cp-empty__title">{t("controlPanel.emptyTitle")}</h2>
             <p className="cp-empty__body">{t("controlPanel.emptyBody")}</p>
-            <button
-              type="button"
-              className="cp-btn cp-btn--primary"
-              onClick={() => requestOpenAddDevice("bioreactor")}
-            >
-              <AddOutline color="currentColor" height="18px" width="18px" />
-              {t("controlPanel.addDevice")}
-            </button>
           </div>
         ) : (
           <div className="cp-overview__grid">
             {snapshots.map((snap) => (
               <DeviceCard key={snap.id} snapshot={snap} />
             ))}
-            <button
-              type="button"
-              className="cp-card cp-card--add"
-              onClick={() => requestOpenAddDevice("bioreactor")}
-            >
-              <AddOutline
-                color="var(--bv-accent-hover)"
-                height="28px"
-                width="28px"
-              />
-              <span>{t("controlPanel.addDevice")}</span>
-            </button>
           </div>
         )}
       </section>

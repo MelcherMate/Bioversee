@@ -1,10 +1,13 @@
 import type { CSSProperties } from "react";
 import type {
   BioreactorGeometry,
+  BioreactorPiping,
+  PipeDirection,
   VesselShapeId,
 } from "../../lib/bioreactorGeometry";
 import {
   defaultBioreactorGeometry,
+  defaultPiping,
   vesselShapePreset,
 } from "../../lib/bioreactorGeometry";
 
@@ -16,6 +19,31 @@ const MIN_AGITATOR_WIDTH = 90;
 const MAX_SENSOR_WIDTH = 18;
 const MIN_SENSOR_WIDTH = 12;
 const MAX_BLADE_SPAN = 190;
+
+/** Pipe bores (px); pipes joined to these ends size their fittings from them. */
+export const FILL_PIPE_OD = 16;
+export const OUTFLOW_PIPE_OD = 30;
+
+/** Point in a pipe SVG's local coordinates. */
+type LocalPoint = { x: number; y: number };
+
+export type PipePortSide = "left" | "right" | "top" | "bottom";
+
+/** Open pipe end another unit's pipe can join, in wrapper coords. */
+export type PipePort = {
+  x: number;
+  y: number;
+  /** Way the open end faces. */
+  side: PipePortSide;
+  pipeOd: number;
+};
+
+/** Inline flowmeter placement; `rotate: 90` turns the head to the right of a vertical run. */
+export type PipeMeterPlacement = LocalPoint & {
+  rotate: number;
+  /** Distance along the centerline from where water enters the pipe. */
+  distance: number;
+};
 
 export type BioreactorLayout = {
   /** Card host size */
@@ -98,15 +126,25 @@ export type BioreactorLayout = {
     minFillPercent: number;
   };
   outflow: {
+    direction: PipeDirection;
     centerX: number;
     vesselBottom: number;
     drop: number;
+    /** Horizontal run after the elbow; 0 when the pipe goes straight down. */
     run: number;
     pipeOd: number;
     /** Metal pipe centerline length (nozzle → open end). */
     pipePathLength: number;
     /** Rising-column height scale (water clip height). */
     columnHeight: number;
+    svgLeft: number;
+    svgTop: number;
+    svgWidth: number;
+    svgHeight: number;
+    /** Nozzle → (elbow →) open end, in SVG-local coords. */
+    centerline: string;
+    joint: LocalPoint;
+    meter: PipeMeterPlacement;
   };
   aerator: {
     spargerWidth: number;
@@ -139,15 +177,16 @@ export type BioreactorLayout = {
    * walls still horizontal), just clear of the agitator shaft.
    */
   fillInlet: {
+    direction: PipeDirection;
     /** Pipe centerline X in wrapper coords. */
     centerX: number;
     /** Y where the vertical run meets the outer lid. */
     lidY: number;
     /** Y of the open tip inside the headspace. */
     tipY: number;
-    /** Y of the top elbow / horizontal run. */
+    /** Y of the top elbow / horizontal run (open end when straight). */
     elbowY: number;
-    /** Open square end of the horizontal supply run. */
+    /** Open square end of the supply run (= centerX when straight). */
     runEndX: number;
     pipeOd: number;
     /** Metal pipe centerline length (open end → tip). */
@@ -160,6 +199,13 @@ export type BioreactorLayout = {
     svgHeight: number;
     viewBox: string;
     centerline: string;
+    joint: LocalPoint;
+    meter: PipeMeterPlacement;
+  };
+  /** Open ends of the fill inlet and the drain. */
+  ports: {
+    inlet: PipePort;
+    outlet: PipePort;
   };
   /** CSS custom properties for Bioreactor.css */
   cssVars: Record<string, string>;
@@ -169,13 +215,25 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
+/** Elbow runs keep the original right-hand size; "left" mirrors it about the nozzle. */
+function runSign(direction: PipeDirection): number {
+  if (direction === "straight") return 0;
+  return direction === "left" ? -1 : 1;
+}
+
+function portSide(sign: number, straight: PipePortSide): PipePortSide {
+  if (sign === 0) return straight;
+  return sign < 0 ? "left" : "right";
+}
+
 /**
  * Vessel layout for a silhouette preset. Volume is data-only and does not
- * affect drawing — pass `vessel_shape` from device config.
+ * affect drawing — pass `vessel_shape` and `piping` from device config.
  */
 export function layoutFromGeometry(
   _geometry: Pick<BioreactorGeometry, "height_m" | "diameter_m"> = defaultBioreactorGeometry(),
   shape: VesselShapeId = "capsule",
+  piping: BioreactorPiping = defaultPiping(),
 ): BioreactorLayout {
   const preset = vesselShapePreset(shape);
   const innerW = preset.innerW;
@@ -257,9 +315,38 @@ export function layoutFromGeometry(
   const sensorTipFrac = Math.max(0, (waterBottomAbs - sensorTipY) / waterH);
   const sensorsMinFillPercent = Math.ceil(sensorTipFrac * 100);
 
+  // Bottom drain: fixed drop, then the run leaves the elbow per `piping.outlet`.
   const outflowDrop = 100;
-  const outflowRun = 110;
-  const outflowPipeOd = 30;
+  const outflowSign = runSign(piping.outlet);
+  const outflowRun = 110 * Math.abs(outflowSign);
+  const outflowPipeOd = OUTFLOW_PIPE_OD;
+  const outflowEndX = vesselCenterX + outflowSign * outflowRun;
+  const outflowSvgLeft = Math.min(vesselCenterX, outflowEndX) - 28;
+  const outflowSvgTop = vessel.bottom - 4;
+  const outflowX0 = vesselCenterX - outflowSvgLeft;
+  const outflowX1 = outflowEndX - outflowSvgLeft;
+  const outflowY0 = 4;
+  const outflowY1 = outflowY0 + outflowDrop;
+  const outflowCenterline = [
+    `M ${outflowX0} ${outflowY0}`,
+    `L ${outflowX0} ${outflowY1}`,
+    ...(outflowRun > 0 ? [`L ${outflowX1} ${outflowY1}`] : []),
+  ].join(" ");
+  // Flowmeter rides the run; on a straight drain it sits on the drop, head to the right.
+  const outflowMeter: PipeMeterPlacement =
+    outflowRun > 0
+      ? {
+          x: outflowX0 + (outflowX1 - outflowX0) * 0.62,
+          y: outflowY1,
+          rotate: 0,
+          distance: outflowDrop + outflowRun * 0.62,
+        }
+      : {
+          x: outflowX0,
+          y: outflowY0 + outflowDrop * 0.62,
+          rotate: 90,
+          distance: outflowDrop * 0.62,
+        };
 
   const spargerWidth = clamp(innerW * 0.55, 80, 220);
   // Compact dish: lift the sparger under the impeller so the elbow clears the curve.
@@ -288,7 +375,7 @@ export function layoutFromGeometry(
 
   // Flat lid apex (outer + inner): x ∈ [chamberLeft+radius, chamberRight−radius]
   // = [189, 253]. Shaft is 6px wide at vesselCenterX — place fill OD clear of it.
-  const fillPipeOd = 16;
+  const fillPipeOd = FILL_PIPE_OD;
   const shaftHalf = 3;
   const fillGapFromShaft = 8;
   const fillCenterX =
@@ -296,26 +383,46 @@ export function layoutFromGeometry(
   const fillLidY = chamberTop;
   // Stop the nozzle at the inner lid face — do not poke a metal tip into the water body.
   const fillTipY = waterTop + 2;
-  const fillElbowY = chamberTop - (shape === "compact" ? 88 : 58);
-  const fillRunEndX = fillCenterX + 72;
+  // Above the dosing run by half a drain-bore pipe plus a gap, so a pipe joined
+  // from the side clears the dose tube.
+  const fillElbowY = doseSvgTop + doseHorizY - (OUTFLOW_PIPE_OD / 2 + 11);
+  // Straight inlets keep only the vertical leg, ending at the elbow height.
+  const fillSign = runSign(piping.inlet);
+  const fillHoriz = 72 * Math.abs(fillSign);
+  const fillRunEndX = fillCenterX + fillSign * fillHoriz;
   const fillPad = 20;
-  const fillSvgLeft = fillCenterX - fillPad;
+  const fillSvgLeft = Math.min(fillCenterX, fillRunEndX) - fillPad;
   const fillSvgTop = fillElbowY - fillPad;
-  const fillSvgW = fillRunEndX - fillCenterX + fillPad * 2 + fillPipeOd;
+  const fillSvgW = fillHoriz + fillPad * 2 + fillPipeOd;
   const fillSvgH = fillTipY - fillElbowY + fillPad * 2;
-  const fillLocalX = fillPad;
+  const fillLocalX = fillCenterX - fillSvgLeft;
   const fillLocalElbowY = fillPad;
-  const fillLocalTipY = fillTipY - fillElbowY + fillPad;
-  const fillLocalRunEndX = fillRunEndX - fillCenterX + fillPad;
-  const fillHoriz = fillRunEndX - fillCenterX;
+  const fillLocalLidY = fillLidY - fillSvgTop;
+  const fillLocalTipY = fillTipY - fillSvgTop;
+  const fillLocalRunEndX = fillRunEndX - fillSvgLeft;
   const fillVert = fillTipY - fillElbowY;
   const fillPipePathLength = fillHoriz + fillVert;
   // Open end → elbow → tip (matches inlet fill advance direction).
   const fillCenterline = [
     `M ${fillLocalRunEndX} ${fillLocalElbowY}`,
-    `L ${fillLocalX} ${fillLocalElbowY}`,
+    ...(fillHoriz > 0 ? [`L ${fillLocalX} ${fillLocalElbowY}`] : []),
     `L ${fillLocalX} ${fillLocalTipY}`,
   ].join(" ");
+  // Flowmeter rides the supply run; on a straight inlet it sits mid-way up the exposed leg.
+  const fillMeter: PipeMeterPlacement =
+    fillHoriz > 0
+      ? {
+          x: fillLocalRunEndX + (fillLocalX - fillLocalRunEndX) * 0.55,
+          y: fillLocalElbowY,
+          rotate: 0,
+          distance: fillHoriz * 0.55,
+        }
+      : {
+          x: fillLocalX,
+          y: (fillLocalElbowY + fillLocalLidY) / 2,
+          rotate: 90,
+          distance: (fillLidY - fillElbowY) / 2,
+        };
 
   const wrapperMarginTop = 200;
   const wrapperMarginLeft = 175;
@@ -445,6 +552,7 @@ export function layoutFromGeometry(
       minFillPercent: sensorsMinFillPercent,
     },
     outflow: {
+      direction: piping.outlet,
       centerX: vesselCenterX,
       vesselBottom: vessel.bottom,
       drop: outflowDrop,
@@ -452,6 +560,13 @@ export function layoutFromGeometry(
       pipeOd: outflowPipeOd,
       pipePathLength: outflowDrop + outflowRun,
       columnHeight: waterH,
+      svgLeft: outflowSvgLeft,
+      svgTop: outflowSvgTop,
+      svgWidth: outflowRun + 28 + 36,
+      svgHeight: outflowDrop + 48,
+      centerline: outflowCenterline,
+      joint: { x: outflowX0, y: outflowY0 },
+      meter: outflowMeter,
     },
     aerator: {
       spargerWidth,
@@ -478,6 +593,7 @@ export function layoutFromGeometry(
       dripTravel,
     },
     fillInlet: {
+      direction: piping.inlet,
       centerX: fillCenterX,
       lidY: fillLidY,
       tipY: fillTipY,
@@ -492,6 +608,22 @@ export function layoutFromGeometry(
       svgHeight: fillSvgH,
       viewBox: `0 0 ${fillSvgW} ${fillSvgH}`,
       centerline: fillCenterline,
+      joint: { x: fillLocalX, y: fillLocalLidY },
+      meter: fillMeter,
+    },
+    ports: {
+      inlet: {
+        x: fillRunEndX,
+        y: fillElbowY,
+        side: portSide(fillSign, "top"),
+        pipeOd: fillPipeOd,
+      },
+      outlet: {
+        x: outflowEndX,
+        y: outflowSvgTop + outflowY1,
+        side: portSide(outflowSign, "bottom"),
+        pipeOd: outflowPipeOd,
+      },
     },
     cssVars,
   };

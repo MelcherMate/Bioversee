@@ -3,6 +3,9 @@
   --cp-edit: #f2b705;
   --cp-edit-text: #a67c00;
   --cp-edit-soft: rgba(242, 183, 5, 0.12);
+  /* Match App.css --bv-chrome-* so the top bar, plant list and main resize move together. */
+  --cp-view-ms: var(--bv-chrome-ms, 600ms);
+  --cp-view-ease: var(--bv-chrome-ease, cubic-bezier(0.65, 0, 0.35, 1));
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -23,6 +26,8 @@
   gap: 12px;
   flex: 1;
   min-height: 0;
+  /* Clip the sliding plant list so it cannot paint over the main panel. */
+  overflow: hidden;
   transition:
     grid-template-columns var(--bv-chrome-ms, 600ms) var(--bv-chrome-ease, ease),
     column-gap var(--bv-chrome-ms, 600ms) var(--bv-chrome-ease, ease);
@@ -53,7 +58,7 @@
     visibility 0s linear var(--bv-chrome-ms, 600ms);
 }
 
-.cp--blueprint .cp-main__body {
+.cp--blueprint .cp-main__body.is-active {
   padding: 10px 12px 12px;
 }
 
@@ -349,34 +354,33 @@
   min-height: 0;
   overflow: auto;
   padding: 14px 16px 18px;
-  --cp-view-ease: cubic-bezier(0.65, 0, 0.35, 1);
-  --cp-view-ms: 600ms;
   visibility: hidden;
   opacity: 0;
-  transform: translateY(8px) scale(0.995);
   pointer-events: none;
+  /* Blueprint is later in the DOM; without this it stays painted on top while
+     Overview tries to fade in underneath, which reads as lag + a muddy blend. */
+  z-index: 0;
   transition:
     opacity var(--cp-view-ms) var(--cp-view-ease),
-    transform var(--cp-view-ms) var(--cp-view-ease),
     visibility 0s linear var(--cp-view-ms);
 }
 
 .cp-main__body.is-active {
   visibility: visible;
   opacity: 1;
-  transform: none;
   pointer-events: auto;
+  z-index: 1;
   transition:
     opacity var(--cp-view-ms) var(--cp-view-ease),
-    transform var(--cp-view-ms) var(--cp-view-ease),
     visibility 0s;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .cp,
   .cp-main__body,
   .cp-main__body.is-active {
     --cp-view-ms: 1ms;
-    transform: none;
+    --bv-chrome-ms: 1ms;
   }
 }
 
@@ -686,16 +690,6 @@
     0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
-.cp-card--add {
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--bv-accent-hover);
-  background: color-mix(in srgb, var(--bv-accent) 8%, transparent);
-  box-shadow: inset 0 0 0 1.5px dashed var(--bv-accent-border);
-  font-weight: 650;
-}
-
 .cp-card__head {
   display: flex;
   align-items: flex-start;
@@ -895,18 +889,6 @@
   white-space: nowrap;
   font-size: 12px;
   font-weight: 650;
-}
-
-.cp-flow-handle {
-  width: 8px !important;
-  height: 8px !important;
-  background: var(--bv-accent) !important;
-  border: 2px solid #fff !important;
-}
-
-.cp-line__canvas .react-flow__edge-path {
-  stroke: var(--bv-accent-hover);
-  stroke-width: 2;
 }
 
 .cp-line__canvas .react-flow__controls {

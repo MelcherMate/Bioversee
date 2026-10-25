@@ -486,10 +486,6 @@ const Navbar = ({ user }: NavbarProps) => {
       <div className="topbar__inner">
         <div className="topbar__left">
           <Link to={APP_HOME_PATH} className="topbar__brand" title={statusTitle}>
-            <span
-              className={`topbar__mark topbar__mark--${connectivity}`}
-              aria-hidden
-            />
             <Wordmark height={18} className="topbar__brand-text" title={t("common.brand")} />
             <LogoMark size={26} className="topbar__brand-mark" title={t("common.brand")} />
             <span className="topbar__sr-only">{statusTitle}</span>

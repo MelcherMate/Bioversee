@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import type {
   BioreactorEquipment,
   BioreactorGeometry,
+  BioreactorPiping,
   FluidMotionFactors,
   VesselShapeId,
 } from "../../lib/bioreactorGeometry";
@@ -32,6 +33,7 @@ type CanvasProps = {
   fluidMotion?: FluidMotionFactors;
   geometry?: BioreactorGeometry;
   vesselShape?: VesselShapeId;
+  piping?: BioreactorPiping;
   /** Probe lamps flash red while uncovered. */
   sensorAlarms?: {
     temperature?: boolean;
@@ -110,6 +112,7 @@ function Canvas(props: CanvasProps) {
             fluidMotion={props.fluidMotion}
             geometry={props.geometry}
             vesselShape={props.vesselShape}
+            piping={props.piping}
             sensorAlarms={props.sensorAlarms}
             translateX={card.coordinates.x}
             translateY={card.coordinates.y}

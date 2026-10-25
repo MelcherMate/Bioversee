@@ -1,45 +1,64 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Background,
-  Controls,
-  Handle,
-  Panel,
-  Position,
   ReactFlow,
   ReactFlowProvider,
-  addEdge,
   useEdgesState,
   useNodesState,
   useReactFlow,
-  type Connection,
-  type Edge,
+  type IsValidConnection,
   type Node,
   type NodeProps,
   type OnConnect,
-  type OnEdgesDelete,
   type OnNodeDrag,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AddOutline, CloseOutline, OpenOutline } from "react-ionicons";
+import AddDevicePanel from "../../../components/AddDevicePanel";
+import DeviceContextMenu from "../../../components/DeviceContextMenu";
+import DeviceSettingsPanel from "../../../components/DeviceSettingsPanel";
+import SharePanel from "../../../components/SharePanel";
 import { ToastStack, useToasts } from "../../../components/Toast";
+import { hasBioreactorCharts } from "../../../components/bioreactor/BioreactorCharts";
 import {
+  deleteMyDevice,
+  leaveDevice,
   listAccessibleDevicesInPlant,
+  renameMyDevice,
+  updateMyDeviceConfig,
   type AccessibleDevice,
+  type DeviceType,
 } from "../../../lib/devices";
-import { DEVICE_TYPE_META } from "../../../lib/deviceIcons";
-import { DEVICES_CHANGED_EVENT, requestOpenAddDevice } from "../../../lib/onboarding";
+import {
+  isVesselShapeId,
+  LEGACY_OUTER_HEIGHT_PX,
+  LEGACY_OUTER_WIDTH_PX,
+  parseBioreactorConfig,
+  toBioreactorConfigPatch,
+  type BioreactorPiping,
+  type VesselShapeId,
+} from "../../../lib/bioreactorGeometry";
+import { notifyDeviceUpdated } from "../../../lib/deviceEvents";
+import {
+  DEVICES_CHANGED_EVENT,
+  notifyDevicesChanged,
+} from "../../../lib/onboarding";
 import {
   createPlantConnection,
   deletePlantConnection,
   listPlantConnections,
   listPlantLayouts,
   upsertPlantLayout,
-  type PlantConnection,
 } from "../../../lib/plantGraph";
-import { pathForDeviceType } from "../../../lib/sharing";
 import type { AppUser } from "../../../lib/user";
 import DeviceTypeGlyph from "../DeviceTypeGlyph";
 import {
@@ -47,96 +66,79 @@ import {
   useBlueprint,
   type BlueprintContextValue,
 } from "./BlueprintContext";
-import ReactorNode, { type ReactorNodeData } from "./ReactorNode";
+import DeviceLibrary, {
+  DEVICE_LIBRARY_MIME,
+  type DeviceLibraryPayload,
+} from "./DeviceLibrary";
+import PipeEdge, { PipeConnectionLine, type PipeEdgeType } from "./PipeEdge";
+import ReactorNode, { REACTOR_SCALE, type ReactorNodeData } from "./ReactorNode";
 import "./Blueprint.css";
+
+/** Approximate reactor node size so a drop centers the vessel on the cursor. */
+const DROP_NODE_W = LEGACY_OUTER_WIDTH_PX * REACTOR_SCALE;
+const DROP_NODE_H = LEGACY_OUTER_HEIGHT_PX * REACTOR_SCALE + 28;
+
+type PendingDrop = {
+  vesselShape: VesselShapeId;
+  x: number;
+  y: number;
+};
+
+function parseLibraryPayload(raw: string): DeviceLibraryPayload | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<DeviceLibraryPayload>;
+    if (parsed.type !== "bioreactor" || !isVesselShapeId(parsed.vesselShape)) {
+      return null;
+    }
+    return { type: "bioreactor", vesselShape: parsed.vesselShape };
+  } catch {
+    return null;
+  }
+}
+
+/** Charts dock follows device config so switching units does not flash closed. */
+function deviceHasCharts(device: AccessibleDevice): boolean {
+  if (device.type !== "bioreactor") return false;
+  return hasBioreactorCharts(parseBioreactorConfig(device.config).equipment);
+}
 
 type DeviceNodeData = { device: AccessibleDevice };
 
 function DeviceFlowNode({ id, data }: NodeProps<Node<DeviceNodeData>>) {
-  const { t } = useTranslation();
   const selected = useBlueprint().selectedId === id;
   return (
     <div className={`cp-flow-node ${selected ? "is-selected" : ""}`}>
-      <Handle
-        type="target"
-        id="inlet"
-        position={Position.Left}
-        className="cp-flow-handle"
-        title={t("controlPanel.inlet")}
-      />
       <div className="cp-flow-node__btn" title={data.device.name}>
         <span className="cp-flow-node__glyph">
           <DeviceTypeGlyph type={data.device.type} size={22} />
         </span>
         <span className="cp-flow-node__label">{data.device.name}</span>
       </div>
-      <Handle
-        type="source"
-        id="outlet"
-        position={Position.Right}
-        className="cp-flow-handle"
-        title={t("controlPanel.outlet")}
-      />
     </div>
   );
 }
 
 const nodeTypes = { device: DeviceFlowNode, reactor: ReactorNode };
+const edgeTypes = { pipe: PipeEdge };
 
-/** Grid spacing sized for reactor nodes (≈240 × 230 px). */
-const COLUMN_STEP = 340;
-const ROW_STEP = 300;
+/** Id prefix for a pipe whose row is still being inserted. */
+const PENDING_PIPE = "pending:";
 
-function autoLayoutPositions(
-  devices: AccessibleDevice[],
-  connections: PlantConnection[]
-): Map<string, { x: number; y: number }> {
-  const indeg = new Map(devices.map((d) => [d.id, 0]));
-  const outs = new Map<string, string[]>(devices.map((d) => [d.id, []]));
-  for (const c of connections) {
-    if (!indeg.has(c.source_device_id) || !indeg.has(c.target_device_id)) continue;
-    indeg.set(c.target_device_id, (indeg.get(c.target_device_id) ?? 0) + 1);
-    outs.get(c.source_device_id)?.push(c.target_device_id);
-  }
-
-  const layers = new Map<string, number>();
-  const queue = devices
-    .filter((d) => (indeg.get(d.id) ?? 0) === 0)
-    .map((d) => d.id);
-  for (const id of queue) layers.set(id, 0);
-
-  let i = 0;
-  while (i < queue.length) {
-    const id = queue[i++]!;
-    const layer = layers.get(id) ?? 0;
-    for (const next of outs.get(id) ?? []) {
-      const prev = layers.get(next);
-      if (prev === undefined || layer + 1 > prev) {
-        layers.set(next, layer + 1);
-      }
-      if (!queue.includes(next)) queue.push(next);
-    }
-  }
-
-  for (const d of devices) {
-    if (!layers.has(d.id)) layers.set(d.id, 0);
-  }
-
-  const byLayer = new Map<number, string[]>();
-  for (const [id, layer] of layers) {
-    const list = byLayer.get(layer) ?? [];
-    list.push(id);
-    byLayer.set(layer, list);
-  }
-
-  const pos = new Map<string, { x: number; y: number }>();
-  for (const [layer, ids] of byLayer) {
-    ids.forEach((id, index) => {
-      pos.set(id, { x: 80 + layer * COLUMN_STEP, y: 60 + index * ROW_STEP });
-    });
-  }
-  return pos;
+function toPipeEdge(id: string, source: string, target: string): PipeEdgeType {
+  return {
+    id,
+    type: "pipe",
+    source,
+    target,
+    sourceHandle: "outlet",
+    targetHandle: "inlet",
+    deletable: false,
+    focusable: false,
+  };
 }
+
+/** Horizontal spacing sized for reactor nodes (≈240 px wide). */
+const COLUMN_STEP = 340;
 
 function toNode(
   device: AccessibleDevice,
@@ -151,7 +153,7 @@ function toNode(
   };
 }
 
-/** Docks keep their content while sliding out; matches --cp-view-ms. */
+/** Docks keep their content while sliding out; matches --bv-chrome-ms / --cp-view-ms. */
 const DOCK_CLOSE_MS = 600;
 
 type BlueprintInnerProps = {
@@ -162,40 +164,59 @@ type BlueprintInnerProps = {
 
 function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
   const fitViewRef = useRef(fitView);
   fitViewRef.current = fitView;
   const { toasts, push, dismiss } = useToasts();
   const [nodes, setNodes, onNodesChange] = useNodesState<
     Node<ReactorNodeData | DeviceNodeData>
   >([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<PipeEdgeType>([]);
+  const edgesRef = useRef(edges);
+  edgesRef.current = edges;
+  /** Pending pipes removed before their insert finished. */
+  const cancelledPipes = useRef(new Set<string>());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedPipeId, setSelectedPipeId] = useState<string | null>(null);
   const [dockedId, setDockedId] = useState<string | null>(null);
   const [controlsDock, setControlsDock] = useState<HTMLElement | null>(null);
   const [chartsDock, setChartsDock] = useState<HTMLElement | null>(null);
-  const [chartsFor, setChartsFor] = useState<Record<string, boolean>>({});
+  const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
+  const pendingDropRef = useRef<PendingDrop | null>(null);
+  pendingDropRef.current = pendingDrop;
+  const [contextMenu, setContextMenu] = useState<{
+    device: AccessibleDevice;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [settingsDevice, setSettingsDevice] = useState<AccessibleDevice | null>(
+    null,
+  );
+  const [shareDevice, setShareDevice] = useState<AccessibleDevice | null>(null);
+  const [nameFocus, setNameFocus] = useState<{ id: string; key: number } | null>(
+    null,
+  );
   const knownIds = useRef<Set<string> | null>(null);
 
+  // Keep dock content mounted while the panels slide closed (deselect or edit mode).
   useEffect(() => {
-    if (selectedId) {
+    if (!editing && selectedId) {
       setDockedId(selectedId);
       return;
     }
     const timer = window.setTimeout(() => setDockedId(null), DOCK_CLOSE_MS);
     return () => window.clearTimeout(timer);
-  }, [selectedId]);
+  }, [editing, selectedId]);
 
   const rebuild = useCallback(async () => {
     setLoading(true);
     try {
-      const [devices, connections, layouts] = await Promise.all([
+      const [devices, layouts, connections] = await Promise.all([
         listAccessibleDevicesInPlant(plantId),
-        listPlantConnections(plantId),
         listPlantLayouts(plantId),
+        listPlantConnections(plantId),
       ]);
 
       const layoutByDevice = new Map(
@@ -203,38 +224,34 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
       );
       const missing = devices.filter((d) => !layoutByDevice.has(d.id));
       if (missing.length > 0) {
-        if (layoutByDevice.size === 0) {
-          const auto = autoLayoutPositions(devices, connections);
-          for (const d of missing) {
-            layoutByDevice.set(d.id, auto.get(d.id) ?? { x: 80, y: 80 });
-          }
-        } else {
-          // New units go to the right of the existing line, not on top of it.
-          const placed = [...layoutByDevice.values()];
-          const right = Math.max(...placed.map((p) => p.x)) + COLUMN_STEP;
-          const top = Math.min(...placed.map((p) => p.y));
-          missing.forEach((d, index) => {
-            const p = { x: right, y: top + index * ROW_STEP };
-            layoutByDevice.set(d.id, p);
-            void upsertPlantLayout({ plantId, deviceId: d.id, ...p }).catch(
-              () => {}
-            );
-          });
-        }
+        // Unplaced units line up to the right of what is already on the canvas.
+        const placed = [...layoutByDevice.values()];
+        const startX =
+          placed.length > 0 ? Math.max(...placed.map((p) => p.x)) + COLUMN_STEP : 80;
+        const y = placed.length > 0 ? Math.min(...placed.map((p) => p.y)) : 60;
+        missing.forEach((d, index) => {
+          const p = { x: startX + index * COLUMN_STEP, y };
+          layoutByDevice.set(d.id, p);
+          void upsertPlantLayout({ plantId, deviceId: d.id, ...p }).catch(() => {});
+        });
       }
 
       setNodes(
-        devices.map((d) => toNode(d, layoutByDevice.get(d.id) ?? { x: 80, y: 80 }))
+        devices.map((d) => toNode(d, layoutByDevice.get(d.id) ?? { x: 80, y: 60 }))
       );
-      setEdges(
-        connections.map((c) => ({
-          id: c.id,
-          source: c.source_device_id,
-          target: c.target_device_id,
-          sourceHandle: "outlet",
-          targetHandle: "inlet",
-          animated: true,
-        }))
+
+      // Pipes run from a reactor's drain to another reactor's fill inlet.
+      const hasDrain = new Map(
+        devices
+          .filter((d) => d.type === "bioreactor")
+          .map((d) => [d.id, parseBioreactorConfig(d.config).equipment.outflow])
+      );
+      const pipes = connections.filter(
+        (c) => hasDrain.get(c.source_device_id) === true && hasDrain.has(c.target_device_id)
+      );
+      setEdges(pipes.map((c) => toPipeEdge(c.id, c.source_device_id, c.target_device_id)));
+      setSelectedPipeId((current) =>
+        current && !pipes.some((c) => c.id === current) ? null : current
       );
 
       const ids = new Set(devices.map((d) => d.id));
@@ -259,7 +276,70 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   useEffect(() => {
     knownIds.current = null;
     setSelectedId(null);
+    setSelectedPipeId(null);
   }, [plantId]);
+
+  useEffect(() => {
+    if (!editing) {
+      setSelectedPipeId(null);
+      setPendingDrop(null);
+      setContextMenu(null);
+      setSettingsDevice(null);
+      setShareDevice(null);
+      setNameFocus(null);
+    }
+  }, [editing]);
+
+  const onLibraryDragOver = useCallback((event: ReactDragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const onLibraryDrop = useCallback(
+    (event: ReactDragEvent) => {
+      if (!editing) return;
+      const raw = event.dataTransfer.getData(DEVICE_LIBRARY_MIME);
+      const plain = event.dataTransfer.getData("text/plain");
+      const payload =
+        parseLibraryPayload(raw) ??
+        (isVesselShapeId(plain)
+          ? { type: "bioreactor" as const, vesselShape: plain }
+          : null);
+      if (!payload) return;
+      event.preventDefault();
+      const flow = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      setPendingDrop({
+        vesselShape: payload.vesselShape,
+        x: flow.x - DROP_NODE_W / 2,
+        y: flow.y - DROP_NODE_H / 2,
+      });
+    },
+    [editing, screenToFlowPosition]
+  );
+
+  const onAddDeviceCreated = useCallback(
+    async (deviceId: string, _type: DeviceType) => {
+      const drop = pendingDropRef.current;
+      if (drop) {
+        try {
+          await upsertPlantLayout({
+            plantId,
+            deviceId,
+            x: drop.x,
+            y: drop.y,
+          });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      }
+      setPendingDrop(null);
+      notifyDevicesChanged();
+    },
+    [plantId]
+  );
 
   useEffect(() => {
     void rebuild();
@@ -271,55 +351,6 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
       window.removeEventListener(DEVICES_CHANGED_EVENT, onDevicesChanged);
     };
   }, [rebuild]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable]")) return;
-      setSelectedId(null);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [selectedId]);
-
-  const edgeKeys = useMemo(
-    () => new Set(edges.map((e) => `${e.source}->${e.target}`)),
-    [edges]
-  );
-
-  const onConnect: OnConnect = useCallback(
-    async (connection: Connection) => {
-      if (!editing) return;
-      if (!connection.source || !connection.target) return;
-      if (connection.source === connection.target) return;
-      if (edgeKeys.has(`${connection.source}->${connection.target}`)) return;
-      try {
-        const created = await createPlantConnection({
-          plantId,
-          sourceDeviceId: connection.source,
-          targetDeviceId: connection.target,
-        });
-        setEdges((eds) =>
-          addEdge({ ...connection, id: created.id, animated: true }, eds)
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-      }
-    },
-    [editing, plantId, edgeKeys, setEdges]
-  );
-
-  const onEdgesDelete: OnEdgesDelete = useCallback(async (deleted) => {
-    for (const edge of deleted) {
-      try {
-        await deletePlantConnection(edge.id);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-      }
-    }
-  }, []);
 
   const onNodeDragStop: OnNodeDrag = useCallback(
     async (_event, node) => {
@@ -337,38 +368,281 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
     [plantId]
   );
 
-  const setHasCharts = useCallback((deviceId: string, hasCharts: boolean) => {
-    setChartsFor((prev) =>
-      prev[deviceId] === hasCharts ? prev : { ...prev, [deviceId]: hasCharts }
-    );
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  const pipingSaves = useRef(new Map<string, number>());
+  const nameSaves = useRef(new Map<string, number>());
+
+  const setPiping = useCallback(
+    (deviceId: string, piping: BioreactorPiping) => {
+      const device = nodesRef.current.find((n) => n.id === deviceId)?.data.device;
+      if (!device) return;
+      const patch = toBioreactorConfigPatch({
+        ...parseBioreactorConfig(device.config),
+        piping,
+      });
+      const replaceConfig = (config: Record<string, unknown>) =>
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === deviceId
+              ? { ...n, data: { ...n.data, device: { ...n.data.device, config } } }
+              : n
+          )
+        );
+      const save = (pipingSaves.current.get(deviceId) ?? 0) + 1;
+      pipingSaves.current.set(deviceId, save);
+      replaceConfig({ ...device.config, ...patch });
+      updateMyDeviceConfig(deviceId, patch)
+        .then(() => notifyDeviceUpdated(deviceId))
+        .catch((err: unknown) => {
+          if (pipingSaves.current.get(deviceId) !== save) return;
+          replaceConfig(device.config);
+          push(
+            "error",
+            t("controlPanel.pipingSaveFailed"),
+            err instanceof Error ? err.message : String(err)
+          );
+        });
+    },
+    [push, setNodes, t]
+  );
+
+  const patchDeviceName = useCallback(
+    (deviceId: string, name: string) => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === deviceId
+            ? { ...n, data: { ...n.data, device: { ...n.data.device, name } } }
+            : n
+        )
+      );
+      setSettingsDevice((current) =>
+        current?.id === deviceId ? { ...current, name } : current
+      );
+      setContextMenu((current) =>
+        current?.device.id === deviceId
+          ? { ...current, device: { ...current.device, name } }
+          : current
+      );
+    },
+    [setNodes]
+  );
+
+  const onNodeContextMenu = useCallback(
+    (event: ReactMouseEvent, node: Node<ReactorNodeData | DeviceNodeData>) => {
+      if (!editing) return;
+      event.preventDefault();
+      setSelectedId(node.id);
+      setSelectedPipeId(null);
+      setContextMenu({
+        device: node.data.device,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    [editing]
+  );
+
+  const renameDevice = useCallback(
+    (deviceId: string, name: string) => {
+      const device = nodesRef.current.find((n) => n.id === deviceId)?.data.device;
+      if (!device || device.name === name) return;
+      const save = (nameSaves.current.get(deviceId) ?? 0) + 1;
+      nameSaves.current.set(deviceId, save);
+      patchDeviceName(deviceId, name);
+      renameMyDevice(deviceId, name)
+        .then(() => notifyDevicesChanged())
+        .catch((err: unknown) => {
+          if (nameSaves.current.get(deviceId) !== save) return;
+          patchDeviceName(deviceId, device.name);
+          push(
+            "error",
+            t("deviceSettings.couldNotSave"),
+            err instanceof Error ? err.message : String(err)
+          );
+        });
+    },
+    [patchDeviceName, push, t]
+  );
+
+  const onRenameDevice = useCallback((device: AccessibleDevice) => {
+    setNameFocus((current) => ({ id: device.id, key: (current?.key ?? 0) + 1 }));
   }, []);
+
+  const onDeleteDevice = useCallback(
+    async (device: AccessibleDevice) => {
+      const ok = window.confirm(t("nav.deleteConfirm", { name: device.name }));
+      if (!ok) return;
+      try {
+        await deleteMyDevice(device.id);
+        setSettingsDevice(null);
+        setShareDevice(null);
+        setSelectedId((current) => (current === device.id ? null : current));
+        notifyDevicesChanged();
+      } catch (err) {
+        push(
+          "error",
+          t("nav.couldNotDelete"),
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    },
+    [push, t]
+  );
+
+  const onLeaveDevice = useCallback(
+    async (device: AccessibleDevice) => {
+      const ok = window.confirm(t("nav.leaveConfirm", { name: device.name }));
+      if (!ok) return;
+      try {
+        await leaveDevice(device.id);
+        setSettingsDevice(null);
+        setShareDevice(null);
+        setSelectedId((current) => (current === device.id ? null : current));
+        notifyDevicesChanged();
+      } catch (err) {
+        push(
+          "error",
+          t("nav.couldNotLeave"),
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    },
+    [push, t]
+  );
+
+  // Each open pipe end takes one pipe; a drain never feeds its own reactor.
+  const isValidConnection: IsValidConnection<PipeEdgeType> = useCallback(
+    (connection) =>
+      connection.source !== connection.target &&
+      connection.sourceHandle === "outlet" &&
+      connection.targetHandle === "inlet" &&
+      !edgesRef.current.some(
+        (e) => e.source === connection.source || e.target === connection.target
+      ),
+    []
+  );
+
+  const onConnect: OnConnect = useCallback(
+    ({ source, target }) => {
+      const pendingId = `${PENDING_PIPE}${source}:${target}`;
+      setEdges((eds) => [...eds, toPipeEdge(pendingId, source, target)]);
+      createPlantConnection({ plantId, sourceDeviceId: source, targetDeviceId: target })
+        .then((created) => {
+          if (cancelledPipes.current.delete(pendingId)) {
+            void deletePlantConnection(created.id).catch(() => {});
+            return;
+          }
+          // A reload during the insert may already list the new row.
+          setEdges((eds) => [
+            ...eds.filter((e) => e.id !== pendingId && e.id !== created.id),
+            toPipeEdge(created.id, source, target),
+          ]);
+          setSelectedPipeId((current) => (current === pendingId ? created.id : current));
+        })
+        .catch((err: unknown) => {
+          cancelledPipes.current.delete(pendingId);
+          setEdges((eds) => eds.filter((e) => e.id !== pendingId));
+          push(
+            "error",
+            t("controlPanel.pipeConnectFailed"),
+            err instanceof Error ? err.message : String(err)
+          );
+        });
+    },
+    [plantId, push, setEdges, t]
+  );
+
+  const removePipe = useCallback(
+    (edgeId: string) => {
+      const edge = edgesRef.current.find((e) => e.id === edgeId);
+      if (!edge) return;
+      setSelectedPipeId((current) => (current === edgeId ? null : current));
+      setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+      if (edgeId.startsWith(PENDING_PIPE)) {
+        cancelledPipes.current.add(edgeId);
+        return;
+      }
+      deletePlantConnection(edgeId).catch((err: unknown) => {
+        // Put it back unless one of its ends has been re-piped meanwhile.
+        setEdges((eds) =>
+          eds.some((e) => e.source === edge.source || e.target === edge.target)
+            ? eds
+            : [...eds, edge]
+        );
+        push(
+          "error",
+          t("controlPanel.pipeRemoveFailed"),
+          err instanceof Error ? err.message : String(err)
+        );
+      });
+    },
+    [push, setEdges, t]
+  );
+
+  const onEdgeClick = useCallback((_event: ReactMouseEvent, edge: PipeEdgeType) => {
+    setSelectedId(null);
+    setSelectedPipeId(edge.id);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId && !selectedPipeId) return;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("input, textarea, select, [contenteditable]")) {
+        return;
+      }
+      if (event.key === "Escape") {
+        setSelectedId(null);
+        setSelectedPipeId(null);
+      } else if (selectedPipeId && (event.key === "Delete" || event.key === "Backspace")) {
+        event.preventDefault();
+        removePipe(selectedPipeId);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selectedId, selectedPipeId, removePipe]);
 
   const context = useMemo<BlueprintContextValue>(
     () => ({
       user,
+      editing,
       selectedId,
       dockedId,
       controlsDock,
       chartsDock,
-      setHasCharts,
+      setPiping,
+      renameDevice,
+      nameFocus,
+      selectedPipeId,
+      removePipe,
       push,
     }),
-    [user, selectedId, dockedId, controlsDock, chartsDock, setHasCharts, push]
+    [
+      user,
+      editing,
+      selectedId,
+      dockedId,
+      controlsDock,
+      chartsDock,
+      setPiping,
+      renameDevice,
+      nameFocus,
+      selectedPipeId,
+      removePipe,
+      push,
+    ]
   );
 
   const deviceById = (id: string | null) =>
     nodes.find((n) => n.id === id)?.data.device ?? null;
   const selectedDevice = deviceById(selectedId);
-  const dockedDevice = deviceById(dockedId);
-  const controlsOpen = Boolean(selectedDevice);
-  const chartsOpen = Boolean(
-    selectedDevice?.type === "bioreactor" && selectedId && chartsFor[selectedId]
-  );
-  const meta = dockedDevice ? DEVICE_TYPE_META[dockedDevice.type] : null;
-
-  const openDevicePage = (device: AccessibleDevice) => {
-    navigate(`${pathForDeviceType(device.type)}?device=${device.id}`);
-  };
+  // Edit mode is layout-only; keep docks closed. While open, switching units
+  // only swaps content — open state follows the selection, not a per-unit flag.
+  const controlsOpen = !editing && Boolean(selectedDevice);
+  const chartsOpen =
+    !editing && Boolean(selectedDevice && deviceHasCharts(selectedDevice));
 
   if (loading && nodes.length === 0) {
     return (
@@ -383,11 +657,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
       <div className="cp-line">
         {error && <p className="cp-line__error">{error}</p>}
         <div
-          className={[
-            "cp-line__canvas",
-            editing ? "is-editing" : "",
-            chartsOpen ? "has-charts" : "",
-          ]
+          className={["cp-line__canvas", editing ? "is-editing" : ""]
             .filter(Boolean)
             .join(" ")}
         >
@@ -396,36 +666,38 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onEdgesDelete={onEdgesDelete}
             onNodeDragStop={onNodeDragStop}
-            onNodeClick={(_event, node) => setSelectedId(node.id)}
-            onPaneClick={() => setSelectedId(null)}
+            onNodeClick={(_event, node) => {
+              setSelectedId(node.id);
+              setSelectedPipeId(null);
+              setContextMenu(null);
+            }}
+            onNodeContextMenu={editing ? onNodeContextMenu : undefined}
+            onEdgeClick={editing ? onEdgeClick : undefined}
+            onPaneClick={() => {
+              setSelectedId(null);
+              setSelectedPipeId(null);
+              setContextMenu(null);
+            }}
+            onConnect={onConnect}
+            isValidConnection={isValidConnection}
+            onDragOver={editing ? onLibraryDragOver : undefined}
+            onDrop={editing ? onLibraryDrop : undefined}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionLineComponent={PipeConnectionLine}
+            connectionRadius={28}
             nodesDraggable={editing}
             nodesConnectable={editing}
-            elementsSelectable={editing}
-            edgesFocusable={editing}
-            deleteKeyCode={editing ? ["Backspace", "Delete"] : null}
+            edgesFocusable={false}
+            elementsSelectable={false}
+            deleteKeyCode={null}
             fitView
             fitViewOptions={{ padding: 0.25, maxZoom: 0.9 }}
             minZoom={0.2}
             proOptions={{ hideAttribution: true }}
           >
             <Background gap={18} size={1} color="var(--bv-border)" />
-            <Controls showInteractive={false} position="bottom-right" />
-            {editing ? (
-              <Panel position="top-right">
-                <button
-                  type="button"
-                  className="bp-add"
-                  onClick={() => requestOpenAddDevice("bioreactor")}
-                >
-                  <AddOutline color="currentColor" height="16px" width="16px" />
-                  {t("controlPanel.addReactor")}
-                </button>
-              </Panel>
-            ) : null}
           </ReactFlow>
 
           {nodes.length === 0 ? (
@@ -436,42 +708,50 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
             </div>
           ) : null}
 
+          <DeviceLibrary open={editing} />
+
+          <AddDevicePanel
+            open={Boolean(pendingDrop)}
+            plantId={plantId}
+            initialVesselShape={pendingDrop?.vesselShape}
+            onClose={() => setPendingDrop(null)}
+            onCreated={onAddDeviceCreated}
+          />
+
+          <DeviceSettingsPanel
+            device={settingsDevice}
+            open={Boolean(settingsDevice)}
+            onClose={() => setSettingsDevice(null)}
+            onRenamed={async () => {
+              if (!settingsDevice) return;
+              const devices = await listAccessibleDevicesInPlant(plantId);
+              const updated = devices.find((d) => d.id === settingsDevice.id);
+              if (updated) {
+                patchDeviceName(updated.id, updated.name);
+                setSettingsDevice(updated);
+              }
+              notifyDevicesChanged();
+            }}
+            onRequestDelete={(device) => {
+              void onDeleteDevice(device);
+            }}
+          />
+
+          <SharePanel
+            user={user}
+            open={Boolean(shareDevice)}
+            initialDeviceId={shareDevice?.id ?? null}
+            onClose={() => setShareDevice(null)}
+            onDevicesChanged={() => {
+              notifyDevicesChanged();
+            }}
+          />
+
           <div
             className={`bp-dock bp-dock--controls ${controlsOpen ? "is-open" : ""}`}
             aria-label={t("controlPanel.unitControls")}
             aria-hidden={!controlsOpen}
           >
-            {dockedDevice ? (
-              <div className="bp-dock__head">
-                <span className="bp-dock__glyph">
-                  <DeviceTypeGlyph type={dockedDevice.type} size={18} />
-                </span>
-                <span className="bp-dock__titles">
-                  <span className="bp-dock__name">{dockedDevice.name}</span>
-                  <span className="bp-dock__type">
-                    {meta ? t(meta.labelKey) : dockedDevice.type}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className="bp-dock__icon-btn"
-                  title={t("controlPanel.openDevicePage")}
-                  aria-label={t("controlPanel.openDevicePage")}
-                  onClick={() => openDevicePage(dockedDevice)}
-                >
-                  <OpenOutline color="currentColor" height="16px" width="16px" />
-                </button>
-                <button
-                  type="button"
-                  className="bp-dock__icon-btn"
-                  title={t("controlPanel.closeControls")}
-                  aria-label={t("controlPanel.closeControls")}
-                  onClick={() => setSelectedId(null)}
-                >
-                  <CloseOutline color="currentColor" height="16px" width="16px" />
-                </button>
-              </div>
-            ) : null}
             <div className="bp-dock__body" ref={setControlsDock} />
           </div>
 
@@ -484,6 +764,22 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
           </div>
         </div>
       </div>
+      {contextMenu
+        ? createPortal(
+            <DeviceContextMenu
+              device={contextMenu.device}
+              x={contextMenu.x}
+              y={contextMenu.y}
+              onClose={() => setContextMenu(null)}
+              onSettings={(device) => setSettingsDevice(device)}
+              onRename={onRenameDevice}
+              onShare={(device) => setShareDevice(device)}
+              onDelete={onDeleteDevice}
+              onLeave={onLeaveDevice}
+            />,
+            document.body
+          )
+        : null}
       {createPortal(<ToastStack toasts={toasts} onDismiss={dismiss} />, document.body)}
     </BlueprintContext.Provider>
   );

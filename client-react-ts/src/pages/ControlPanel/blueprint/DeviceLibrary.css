@@ -1,0 +1,221 @@
+/* Edit-mode device library — compact glass palette dock. */
+
+.bp-library {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 100%;
+  pointer-events: none;
+  transform: translateY(calc(100% + 16px));
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform var(--bv-chrome-ms, 600ms) var(--bv-chrome-ease, ease),
+    opacity var(--bv-chrome-ms, 600ms) var(--bv-chrome-ease, ease),
+    visibility 0s linear var(--bv-chrome-ms, 600ms);
+}
+
+.bp-library.is-open {
+  pointer-events: auto;
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform var(--bv-chrome-ms, 600ms) var(--bv-chrome-ease, ease),
+    opacity var(--bv-chrome-ms, 600ms) var(--bv-chrome-ease, ease),
+    visibility 0s linear 0s;
+}
+
+.bp-library__inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  margin: 0 12px 12px;
+  border-radius: 18px;
+  background: var(--bv-glass);
+  border: 1px solid var(--bv-glass-border);
+  box-shadow: var(--bv-shadow-float);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  overflow: hidden;
+}
+
+.bp-library__rail {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 132px;
+  padding: 12px 12px 12px 14px;
+  border-right: 1px solid var(--bv-line);
+}
+
+.bp-library__eyebrow {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bv-text-tertiary);
+}
+
+.bp-library__types {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bp-library__type {
+  display: block;
+  width: 100%;
+  padding: 8px 11px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--bv-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+  cursor: default;
+  transition:
+    background 0.15s var(--bv-ease, ease),
+    color 0.15s var(--bv-ease, ease),
+    box-shadow 0.15s var(--bv-ease, ease);
+}
+
+.bp-library__type.is-active {
+  background: var(--cp-edit-soft);
+  color: var(--cp-edit-text);
+  box-shadow: inset 0 0 0 1px var(--cp-edit);
+}
+
+.bp-library__stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-width: 0;
+  padding: 12px 14px 12px;
+}
+
+.bp-library__tiles {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.bp-library__tile {
+  --bp-tile-i: 0;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 128px;
+  margin: 0;
+  padding: 10px 8px 10px;
+  border: 1px solid var(--bv-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bv-fill) 70%, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: grab;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    border-color 0.18s var(--bv-ease, ease),
+    background 0.18s var(--bv-ease, ease),
+    box-shadow 0.18s var(--bv-ease, ease),
+    opacity 0.35s var(--bv-ease, ease),
+    transform 0.35s var(--bv-ease, ease);
+}
+
+.bp-library.is-open .bp-library__tile {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: calc(var(--bp-tile-i) * 40ms + 70ms);
+}
+
+.bp-library__tile:hover {
+  background: var(--cp-edit-soft);
+  border-color: color-mix(in srgb, var(--cp-edit) 65%, var(--bv-line));
+}
+
+.bp-library__tile:focus-visible {
+  outline: 2px solid var(--cp-edit);
+  outline-offset: 2px;
+}
+
+.bp-library__tile:active,
+.bp-library__tile.is-dragging {
+  cursor: grabbing;
+  background: var(--cp-edit-soft);
+  border-color: var(--cp-edit);
+  opacity: 0.75;
+}
+
+.bp-library__tile-figure {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 64px;
+  pointer-events: none;
+}
+
+.bp-library__tile-figure .vessel-shape-skel {
+  width: auto;
+  max-width: 52px;
+  height: 64px;
+}
+
+.bp-library__tile:hover .vessel-shape-skel__outline,
+.bp-library__tile:focus-visible .vessel-shape-skel__outline,
+.bp-library__tile.is-dragging .vessel-shape-skel__outline {
+  stroke: var(--cp-edit-text);
+  fill: color-mix(in srgb, var(--cp-edit) 14%, transparent);
+}
+
+.bp-library__tile-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--bv-text);
+}
+
+.bp-library__tile-hint {
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--bv-text-tertiary);
+}
+
+@media (max-width: 720px) {
+  .bp-library__inner {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .bp-library__rail {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .bp-library__tiles {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 2px;
+  }
+
+  .bp-library__tile {
+    width: 112px;
+  }
+
+  .bp-library__tile-hint {
+    display: none;
+  }
+}

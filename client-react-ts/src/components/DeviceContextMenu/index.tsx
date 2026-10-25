@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  CreateOutline,
   ExitOutline,
   SettingsOutline,
   ShareSocialOutline,
@@ -21,6 +22,8 @@ type DeviceContextMenuProps = {
   onShare: (device: AccessibleDevice) => void;
   onDelete: (device: AccessibleDevice) => void;
   onLeave: (device: AccessibleDevice) => void;
+  /** Optional quick rename (e.g. Blueprint edit mode). */
+  onRename?: (device: AccessibleDevice) => void;
 };
 
 function readCssVar(name: string, fallback: string): string {
@@ -40,6 +43,7 @@ function DeviceContextMenu({
   onShare,
   onDelete,
   onLeave,
+  onRename,
 }: DeviceContextMenuProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
@@ -70,7 +74,7 @@ function DeviceContextMenu({
 
   const menuWidth = 200;
   const left = Math.min(x, window.innerWidth - menuWidth - 12);
-  const top = Math.min(y, window.innerHeight - 220);
+  const top = Math.min(y, window.innerHeight - 260);
 
   return (
     <div
@@ -98,6 +102,25 @@ function DeviceContextMenu({
         />
         {t("deviceMenu.settings")}
       </button>
+      {canAdmin && onRename ? (
+        <button
+          type="button"
+          className="device-ctx__item"
+          role="menuitem"
+          onClick={() => {
+            onRename(device);
+            onClose();
+          }}
+        >
+          <CreateOutline
+            color={iconColor}
+            height="16px"
+            width="16px"
+            title=""
+          />
+          {t("deviceMenu.rename")}
+        </button>
+      ) : null}
       {canAdmin ? (
         <button
           type="button"

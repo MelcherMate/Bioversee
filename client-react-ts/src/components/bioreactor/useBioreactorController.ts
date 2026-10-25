@@ -33,6 +33,7 @@ import {
   parseBioreactorConfig,
   type BioreactorEquipment,
   type BioreactorGeometry,
+  type BioreactorPiping,
   type FluidMotionFactors,
   type VesselShapeId,
 } from "../../lib/bioreactorGeometry";
@@ -102,6 +103,7 @@ export type BioreactorVesselState = {
   fluidMotion: FluidMotionFactors;
   geometry: BioreactorGeometry;
   vesselShape: VesselShapeId;
+  piping: BioreactorPiping;
   sensorAlarms: { temperature: boolean; ph: boolean };
 };
 
@@ -210,16 +212,20 @@ export function useBioreactorController(
   const rotorWasLowRef = useRef<boolean | null>(null);
   const sensorWasLowRef = useRef<boolean | null>(null);
 
-  const vesselShape = useMemo(
-    () =>
-      device
-        ? parseBioreactorConfig(device.config).vessel_shape
-        : ("capsule" as const),
-    [device],
-  );
+  const { vesselShape, inletPipe, outletPipe } = useMemo(() => {
+    const config = parseBioreactorConfig(device?.config);
+    return {
+      vesselShape: config.vessel_shape,
+      inletPipe: config.piping.inlet,
+      outletPipe: config.piping.outlet,
+    };
+  }, [device]);
 
   const flowGeom = useMemo(() => {
-    const layout = layoutFromGeometry(defaultBioreactorGeometry(), vesselShape);
+    const layout = layoutFromGeometry(defaultBioreactorGeometry(), vesselShape, {
+      inlet: inletPipe,
+      outlet: outletPipe,
+    });
     return {
       inlet: {
         pipePathLength: layout.fillInlet.pipePathLength,
@@ -233,7 +239,7 @@ export function useBioreactorController(
       rotorMinFillPercent: layout.impeller.minFillPercent,
       sensorMinFillPercent: layout.sensors.minFillPercent,
     };
-  }, [vesselShape]);
+  }, [vesselShape, inletPipe, outletPipe]);
 
   const notifyTransferCompleteFromSnap = useCallback(
     (snap: LevelTransferSnapshot) => {
@@ -1123,6 +1129,7 @@ export function useBioreactorController(
       fluidMotion: fluidMotionFactors(config.fluid),
       geometry: defaultBioreactorGeometry(),
       vesselShape: config.vessel_shape,
+      piping: config.piping,
       sensorAlarms: {
         temperature: Boolean(eq.sensor_temperature && sensorLevelAlarm),
         ph: Boolean(eq.sensor_ph && sensorLevelAlarm),

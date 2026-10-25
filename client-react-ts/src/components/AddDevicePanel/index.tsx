@@ -39,6 +39,8 @@ type AddDevicePanelProps = {
   defaultType?: DeviceType;
   /** Plant to attach the new device to (active plant). */
   plantId?: string | null;
+  /** Prefill vessel shape (e.g. from the Blueprint device library). */
+  initialVesselShape?: VesselShapeId;
 };
 
 type MemberDraft = {
@@ -69,6 +71,7 @@ function AddDevicePanel({
   onClose,
   onCreated,
   plantId,
+  initialVesselShape,
 }: AddDevicePanelProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -85,12 +88,16 @@ function AddDevicePanel({
   useEffect(() => {
     if (!open) return;
     setName(t(DEVICE_TYPE_META[CREATE_DEVICE_TYPE].labelKey));
-    setConfig(defaultBioreactorConfig());
+    const next = defaultBioreactorConfig();
+    if (initialVesselShape) {
+      next.vessel_shape = initialVesselShape;
+    }
+    setConfig(next);
     setVolumeText("");
     setMemberEmail("");
     setMembers([]);
     setError(null);
-  }, [open, t]);
+  }, [open, t, initialVesselShape]);
 
   useEffect(() => {
     if (!open) return;
