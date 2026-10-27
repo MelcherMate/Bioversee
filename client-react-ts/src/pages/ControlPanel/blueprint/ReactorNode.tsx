@@ -1,10 +1,8 @@
 import {
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
   type SyntheticEvent,
 } from "react";
@@ -43,6 +41,20 @@ import PipeDirectionPicker from "./PipeDirectionPicker";
 
 /** Reactor drawing is authored at 800 px wide; this fits it into a canvas node. */
 export const REACTOR_SCALE = 0.3;
+
+/**
+ * React Flow dragHandle: chamber + sensors + painted SVG shapes only.
+ * Never the SVG root — its viewBox padding is much larger than the pipes.
+ */
+export const REACTOR_DRAG_HANDLE = [
+  ".reaction_chamber",
+  ".sensor",
+  ".thermal-jacket__svg :is(path, circle, rect, ellipse)",
+  ".br-fill-inlet__svg :is(path, circle, rect, ellipse)",
+  ".br-outflow__svg :is(path, circle, rect, ellipse)",
+  ".aerator-supply__pipe :is(path, circle, rect, ellipse)",
+  ".base-acid-pipe-run :is(path, circle, rect, ellipse)",
+].join(", ");
 
 export type ReactorNodeData = { device: AccessibleDevice };
 
@@ -122,66 +134,6 @@ function DockPortal({ target, children }: { target: HTMLElement; children: React
       {children}
     </div>,
     target
-  );
-}
-
-/**
- * Stroke that paints like `border: 1.5px dashed`: width snapped to whole
- * device pixels, dashes 3x and gaps 2x the width.
- */
-function ringStroke() {
-  const dpr = window.devicePixelRatio || 1;
-  const width = Math.max(1, Math.floor(1.5 * dpr)) / dpr;
-  return { width, dash: width * 3, gap: width * 2 };
-}
-
-/** Dashed frame around the selected reactor; SVG so edit mode can march it. */
-function SelectionRing() {
-  const rectRef = useRef<SVGRectElement>(null);
-  const [{ width, dash, gap }] = useState(ringStroke);
-  const period = dash + gap;
-  const [pathLength, setPathLength] = useState<number>();
-
-  // Whole dash periods per lap: no seam, and the march loops without a jump.
-  useLayoutEffect(() => {
-    const rect = rectRef.current;
-    const svg = rect?.ownerSVGElement;
-    if (!rect || !svg) return;
-    const fit = () => {
-      const length = rect.getTotalLength();
-      if (length > 0) {
-        setPathLength(Math.max(1, Math.round(length / period)) * period);
-      }
-    };
-    fit();
-    const observer = new ResizeObserver(fit);
-    observer.observe(svg);
-    return () => observer.disconnect();
-  }, [period]);
-
-  return (
-    <span
-      className="bp-reactor__ring"
-      style={
-        {
-          "--bp-ring-w": `${width}px`,
-          "--bp-ring-period": `${period}px`,
-        } as CSSProperties
-      }
-      aria-hidden
-    >
-      <svg focusable="false">
-        <rect
-          ref={rectRef}
-          width="100%"
-          height="100%"
-          rx={14 - width / 2}
-          pathLength={pathLength}
-          strokeWidth={width}
-          strokeDasharray={`${dash} ${gap}`}
-        />
-      </svg>
-    </span>
   );
 }
 
@@ -284,7 +236,6 @@ export default function ReactorNode({ id, data }: NodeProps<Node<ReactorNodeData
 
   return (
     <div className={`bp-reactor ${selected ? "is-selected" : ""}`}>
-      {selected ? <SelectionRing /> : null}
       <div className="bp-reactor__stage" style={{ width, height }} aria-hidden>
         {controller ? (
           <BioreactorCard

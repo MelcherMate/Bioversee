@@ -43,7 +43,9 @@
   }
 }
 
-/* REACTOR BODY — oval capsule; pipe-matched grey shell */
+/* REACTOR BODY — oval capsule; pipe-matched grey shell.
+ * Interior fill is a cool mid-grey so the vessel isn’t see-through, but stays
+ * quiet behind the ~90% cyan fluid and white bubbles. */
 .reaction_chamber {
   display: block;
   position: absolute;
@@ -54,11 +56,14 @@
   box-sizing: border-box;
   border: var(--br-chamber-border, 20px) solid #a1a1aa;
   border-radius: var(--br-chamber-radius, 169px);
-  background: transparent;
+  background: #c8ccd2;
   box-shadow:
     inset 0 0 0 1px #71717a,
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     0 0 0 1px #52525b;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   z-index: 1;
 }
 

@@ -90,7 +90,11 @@ import PipeFittingNode, {
   type PipeFittingNodeData,
 } from "./PipeFittingNode";
 import PipeSprinkle from "./PipeSprinkle";
-import ReactorNode, { REACTOR_SCALE, type ReactorNodeData } from "./ReactorNode";
+import ReactorNode, {
+  REACTOR_DRAG_HANDLE,
+  REACTOR_SCALE,
+  type ReactorNodeData,
+} from "./ReactorNode";
 import { usePlantFlowVisual } from "./usePlantFlowVisual";
 import "./Blueprint.css";
 
@@ -235,6 +239,8 @@ function toNode(
     type,
     position,
     deletable: false,
+    // Reactors: painted parts only (chamber / jacket / sensors / pipes).
+    ...(type === "reactor" ? { dragHandle: REACTOR_DRAG_HANDLE } : {}),
     data: { device },
   };
 }
@@ -374,6 +380,21 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
     setSelectedId(null);
     setSelectedPipeId(null);
   }, [plantId]);
+
+  // Keep reactor dragHandle in sync (HMR / older in-memory nodes).
+  const reactorsNeedDragHandle = nodes.some(
+    (n) => n.type === "reactor" && n.dragHandle !== REACTOR_DRAG_HANDLE
+  );
+  useEffect(() => {
+    if (!reactorsNeedDragHandle) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.type === "reactor" && n.dragHandle !== REACTOR_DRAG_HANDLE
+          ? { ...n, dragHandle: REACTOR_DRAG_HANDLE }
+          : n
+      )
+    );
+  }, [reactorsNeedDragHandle, setNodes]);
 
   useEffect(() => {
     if (!editing) {

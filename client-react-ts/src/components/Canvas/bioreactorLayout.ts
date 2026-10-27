@@ -642,3 +642,4 @@ export function layoutFromGeometry(
 export function layoutCssVars(layout: BioreactorLayout): CSSProperties {
   return layout.cssVars as CSSProperties;
 }
+

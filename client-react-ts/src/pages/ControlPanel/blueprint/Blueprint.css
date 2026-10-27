@@ -22,76 +22,98 @@
   pointer-events: none;
 }
 
-/* Reactor node: just the live vessel drawing, scaled down, captioned by name. */
+/* Reactor node: just the live vessel drawing, scaled down, captioned by name.
+ * Empty card padding is not interactive — only painted parts / ports / name. */
 .bp-reactor {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
-}
-
-.cp-line__canvas.is-editing .bp-reactor {
-  cursor: grab;
-}
-
-.cp-line__canvas.is-editing .bp-reactor:active {
-  cursor: grabbing;
-}
-
-/*
- * Selected unit: dashed frame around the click box, behind the drawing.
- * Same frame in both modes; edit mode only recolours it and marches the dashes.
- */
-.bp-reactor__ring {
-  position: absolute;
-  /* The stroke is centred on this box, so its outer edge lands on the frame. */
-  inset:
-    calc(var(--bp-ring-w) / 2 - 8px)
-    calc(var(--bp-ring-w) / 2 + 10px)
-    calc(var(--bp-ring-w) / 2 - 4px);
-  z-index: 0;
-  color: var(--bv-accent);
   pointer-events: none;
-  transition: color 0.25s var(--bv-ease, ease);
 }
 
-.cp-line__canvas.is-editing .bp-reactor__ring {
-  color: var(--cp-edit);
+/* Selected unit: paint the chamber wall (no separate outline). */
+.bp-reactor.is-selected .reaction_chamber {
+  border-color: var(--bv-accent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--bv-accent) 65%, #3f3f46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 1px color-mix(in srgb, var(--bv-accent) 50%, #3f3f46);
+  transition:
+    border-color 0.2s var(--bv-ease, ease),
+    box-shadow 0.2s var(--bv-ease, ease);
 }
 
-.bp-reactor__ring svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.bp-reactor__ring rect {
-  fill: none;
-  stroke: currentColor;
-}
-
-.cp-line__canvas.is-editing .bp-reactor__ring rect {
-  animation: bp-ring-march 0.5s linear infinite;
-}
-
-@keyframes bp-ring-march {
-  to {
-    stroke-dashoffset: calc(var(--bp-ring-period) * -1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cp-line__canvas.is-editing .bp-reactor__ring rect {
-    animation: none;
-  }
+.cp-line__canvas.is-editing .bp-reactor.is-selected .reaction_chamber {
+  border-color: var(--cp-edit);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--cp-edit) 70%, #3f3f46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 0 1px color-mix(in srgb, var(--cp-edit) 55%, #3f3f46);
 }
 
 .bp-reactor__stage {
   position: relative;
   z-index: 1;
   pointer-events: none;
+}
+
+/*
+ * Drag / select on painted machine parts only. SVG roots stay none so their
+ * oversized viewBoxes are not hit targets — only stroked/filled shapes are.
+ * Matches REACTOR_DRAG_HANDLE in ReactorNode.tsx.
+ */
+.bp-reactor__stage .reaction_chamber,
+.bp-reactor__stage .sensor {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.bp-reactor__stage .thermal-jacket__svg,
+.bp-reactor__stage .br-fill-inlet__svg,
+.bp-reactor__stage .br-outflow__svg,
+.bp-reactor__stage .aerator-supply__pipe,
+.bp-reactor__stage .base-acid-pipe-run {
+  pointer-events: none;
+}
+
+.bp-reactor__stage .thermal-jacket__svg :is(path, circle, rect, ellipse),
+.bp-reactor__stage .br-fill-inlet__svg :is(path, circle, rect, ellipse),
+.bp-reactor__stage .br-outflow__svg :is(path, circle, rect, ellipse),
+.bp-reactor__stage .aerator-supply__pipe :is(path, circle, rect, ellipse),
+.bp-reactor__stage .base-acid-pipe-run :is(path, circle, rect, ellipse) {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+}
+
+.cp-line__canvas.is-editing .bp-reactor__stage .reaction_chamber,
+.cp-line__canvas.is-editing .bp-reactor__stage .sensor,
+.cp-line__canvas.is-editing
+  .bp-reactor__stage
+  .thermal-jacket__svg
+  :is(path, circle, rect, ellipse),
+.cp-line__canvas.is-editing
+  .bp-reactor__stage
+  .br-fill-inlet__svg
+  :is(path, circle, rect, ellipse),
+.cp-line__canvas.is-editing
+  .bp-reactor__stage
+  .br-outflow__svg
+  :is(path, circle, rect, ellipse),
+.cp-line__canvas.is-editing
+  .bp-reactor__stage
+  .aerator-supply__pipe
+  :is(path, circle, rect, ellipse),
+.cp-line__canvas.is-editing
+  .bp-reactor__stage
+  .base-acid-pipe-run
+  :is(path, circle, rect, ellipse) {
+  cursor: grab;
+}
+
+.cp-line__canvas.is-editing .bp-reactor__stage .reaction_chamber:active,
+.cp-line__canvas.is-editing .bp-reactor__stage .sensor:active {
+  cursor: grabbing;
 }
 
 .bp-reactor__loading {
@@ -116,6 +138,8 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--bv-text);
+  pointer-events: auto;
+  cursor: pointer;
   transition:
     background 0.2s var(--bv-ease, ease),
     color 0.2s var(--bv-ease, ease);
@@ -261,6 +285,9 @@
   border-radius: 0;
   background: none;
   transform: none;
+  /* Stage is pointer-events: none; ports must still receive connect gestures. */
+  pointer-events: auto;
+  z-index: 2;
 }
 
 .cp-line__canvas .bp-port::before {
