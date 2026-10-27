@@ -10,6 +10,8 @@ import {
   type Rect,
 } from "@xyflow/react";
 import { TrashOutline } from "react-ionicons";
+import { parsePipeFittingConfig, fittingHandleOd } from "../../../lib/pipeFittings";
+import type { AccessibleDevice } from "../../../lib/devices";
 import { useBlueprint } from "./BlueprintContext";
 import PipeShape from "./PipeShape";
 import { routePipe } from "./pipeRoute";
@@ -17,7 +19,13 @@ import { PORT_PIPE_OD, REACTOR_SCALE, isPipePort } from "./ReactorNode";
 
 export type PipeEdgeType = Edge<Record<string, unknown>, "pipe">;
 
-function portOd(handleId: string | null | undefined): number {
+function portOd(
+  handleId: string | null | undefined,
+  device?: AccessibleDevice | null
+): number {
+  if (device?.type === "pipe_fitting") {
+    return fittingHandleOd(parsePipeFittingConfig(device.config), handleId);
+  }
   return isPipePort(handleId) ? PORT_PIPE_OD[handleId] : PORT_PIPE_OD.outlet;
 }
 
@@ -46,14 +54,20 @@ export default function PipeEdge({
 }: EdgeProps<PipeEdgeType>) {
   const { t } = useTranslation();
   const { editing, selectedPipeId, removePipe } = useBlueprint();
-  const sourceBox = nodeBox(useInternalNode(source));
-  const targetBox = nodeBox(useInternalNode(target));
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
+  const sourceBox = nodeBox(sourceNode);
+  const targetBox = nodeBox(targetNode);
   const route = routePipe(
     { x: sourceX, y: sourceY, position: sourcePosition, box: sourceBox },
     { x: targetX, y: targetY, position: targetPosition, box: targetBox }
   );
-  const sourceOd = portOd(sourceHandleId);
-  const targetOd = portOd(targetHandleId);
+  const sourceDevice = (sourceNode?.data as { device?: AccessibleDevice } | undefined)
+    ?.device;
+  const targetDevice = (targetNode?.data as { device?: AccessibleDevice } | undefined)
+    ?.device;
+  const sourceOd = portOd(sourceHandleId, sourceDevice);
+  const targetOd = portOd(targetHandleId, targetDevice);
   const selected = editing && selectedPipeId === id;
 
   const onRemove = (event: MouseEvent) => {
@@ -110,8 +124,12 @@ export function PipeConnectionLine({
 }: ConnectionLineComponentProps) {
   const fromOutlet = fromHandle.type === "source";
   const snapped = connectionStatus === "valid" && toHandle !== null;
-  const fromOd = portOd(fromHandle.id);
-  const toOd = snapped && toHandle ? portOd(toHandle.id) : fromOd;
+  const fromDevice = (fromNode?.data as { device?: AccessibleDevice } | undefined)
+    ?.device;
+  const toDevice = (toNode?.data as { device?: AccessibleDevice } | undefined)
+    ?.device;
+  const fromOd = portOd(fromHandle.id, fromDevice);
+  const toOd = snapped && toHandle ? portOd(toHandle.id, toDevice) : fromOd;
   const from = { x: fromX, y: fromY, position: fromPosition, box: nodeBox(fromNode) };
   const to = { x: toX, y: toY, position: toPosition, box: snapped ? nodeBox(toNode) : null };
   // Route outlet → inlet like the saved pipe, whichever end the drag started at.

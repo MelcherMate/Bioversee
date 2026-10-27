@@ -5,6 +5,8 @@ export type PlantConnection = {
   plant_id: string;
   source_device_id: string;
   target_device_id: string;
+  source_handle: string;
+  target_handle: string;
   created_at: string;
 };
 
@@ -16,28 +18,40 @@ export type PlantNodeLayout = {
   updated_at: string;
 };
 
+function mapConnection(row: Record<string, unknown>): PlantConnection {
+  return {
+    id: String(row.id),
+    plant_id: String(row.plant_id),
+    source_device_id: String(row.source_device_id),
+    target_device_id: String(row.target_device_id),
+    source_handle: String(row.source_handle ?? "outlet"),
+    target_handle: String(row.target_handle ?? "inlet"),
+    created_at: String(row.created_at),
+  };
+}
+
 export async function listPlantConnections(
   plantId: string
 ): Promise<PlantConnection[]> {
   const { data, error } = await supabase
     .from("plant_connections")
-    .select("id, plant_id, source_device_id, target_device_id, created_at")
+    .select(
+      "id, plant_id, source_device_id, target_device_id, source_handle, target_handle, created_at"
+    )
     .eq("plant_id", plantId);
 
   if (error) throw error;
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    plant_id: String(row.plant_id),
-    source_device_id: String(row.source_device_id),
-    target_device_id: String(row.target_device_id),
-    created_at: String(row.created_at),
-  }));
+  return (data ?? []).map((row) =>
+    mapConnection(row as Record<string, unknown>)
+  );
 }
 
 export async function createPlantConnection(input: {
   plantId: string;
   sourceDeviceId: string;
   targetDeviceId: string;
+  sourceHandle?: string;
+  targetHandle?: string;
 }): Promise<PlantConnection> {
   const { data, error } = await supabase
     .from("plant_connections")
@@ -45,18 +59,16 @@ export async function createPlantConnection(input: {
       plant_id: input.plantId,
       source_device_id: input.sourceDeviceId,
       target_device_id: input.targetDeviceId,
+      source_handle: input.sourceHandle ?? "outlet",
+      target_handle: input.targetHandle ?? "inlet",
     })
-    .select("id, plant_id, source_device_id, target_device_id, created_at")
+    .select(
+      "id, plant_id, source_device_id, target_device_id, source_handle, target_handle, created_at"
+    )
     .single();
 
   if (error) throw error;
-  return {
-    id: String(data.id),
-    plant_id: String(data.plant_id),
-    source_device_id: String(data.source_device_id),
-    target_device_id: String(data.target_device_id),
-    created_at: String(data.created_at),
-  };
+  return mapConnection(data as Record<string, unknown>);
 }
 
 export async function deletePlantConnection(connectionId: string): Promise<void> {

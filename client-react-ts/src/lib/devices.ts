@@ -6,7 +6,8 @@ export type DeviceType =
   | "bioreactor"
   | "pressure_vessel"
   | "membrane_bioreactor"
-  | "water_purifier";
+  | "water_purifier"
+  | "pipe_fitting";
 
 export type Device = {
   id: string;
@@ -46,6 +47,7 @@ const DEVICE_TYPES: DeviceType[] = [
   "pressure_vessel",
   "membrane_bioreactor",
   "water_purifier",
+  "pipe_fitting",
 ];
 
 const DEVICE_SELECT =

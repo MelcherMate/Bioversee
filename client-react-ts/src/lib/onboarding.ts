@@ -63,6 +63,7 @@ const SENSOR_SERIES: Record<DeviceType, SensorSeries[]> = {
     { name: "mbrTankLevel", base: 92, jitter: 4, decimals: 0 },
   ],
   water_purifier: [{ name: "pufferwtlvl", base: 58, jitter: 10, decimals: 0 }],
+  pipe_fitting: [],
 };
 
 function roundValue(value: number, decimals = 1): number {

@@ -6,6 +6,7 @@ import {
   type AccessibleDevice,
   type DeviceCardSnapshot,
 } from "../../lib/devices";
+import { isPipeFittingDeviceType } from "../../lib/pipeFittings";
 import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
 import type { Plant } from "../../lib/plants";
 import { listPlantRoster } from "../../lib/sharing";
@@ -49,8 +50,11 @@ export default function Overview({
     }
     try {
       const nextDevices = await listAccessibleDevicesInPlant(plantId);
+      const liveDevices = nextDevices.filter(
+        (d) => !isPipeFittingDeviceType(d.type)
+      );
       const nextSnaps = await fetchDeviceCardSnapshots(
-        nextDevices.map((d) => d.id)
+        liveDevices.map((d) => d.id)
       );
       const roster = await listPlantRoster(plantId).catch(() => []);
       const nextPeople: PlantPeople[] =

@@ -36,7 +36,8 @@ create type public.device_type as enum (
   'bioreactor',
   'pressure_vessel',
   'membrane_bioreactor',
-  'water_purifier'
+  'water_purifier',
+  'pipe_fitting'
 );
 
 create type public.device_member_role as enum (

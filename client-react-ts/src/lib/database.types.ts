@@ -10,7 +10,8 @@ export type DeviceType =
   | "bioreactor"
   | "pressure_vessel"
   | "membrane_bioreactor"
-  | "water_purifier";
+  | "water_purifier"
+  | "pipe_fitting";
 
 export type DeviceMemberRole = "owner" | "admin" | "operator" | "viewer";
 
@@ -92,6 +93,8 @@ export type Database = {
           plant_id: string;
           source_device_id: string;
           target_device_id: string;
+          source_handle: string;
+          target_handle: string;
           created_at: string;
         };
         Insert: {
@@ -99,6 +102,8 @@ export type Database = {
           plant_id: string;
           source_device_id: string;
           target_device_id: string;
+          source_handle?: string;
+          target_handle?: string;
           created_at?: string;
         };
         Update: {
@@ -106,6 +111,8 @@ export type Database = {
           plant_id?: string;
           source_device_id?: string;
           target_device_id?: string;
+          source_handle?: string;
+          target_handle?: string;
           created_at?: string;
         };
         Relationships: [];

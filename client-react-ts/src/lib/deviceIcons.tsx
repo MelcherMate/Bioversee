@@ -23,8 +23,13 @@ export const DEVICE_TYPE_META: Record<
     labelKey: "devices.water_purifier",
     descriptionKey: "devices.water_purifierDesc",
   },
+  pipe_fitting: {
+    labelKey: "devices.pipe_fitting",
+    descriptionKey: "devices.pipe_fittingDesc",
+  },
 };
 
+/** Process units shown in add-device UIs (fittings come from the piping library). */
 export const DEVICE_TYPE_ORDER: DeviceType[] = [
   "bioreactor",
   "pressure_vessel",

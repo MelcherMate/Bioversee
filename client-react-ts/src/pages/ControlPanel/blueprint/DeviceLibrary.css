@@ -1,12 +1,25 @@
 /* Edit-mode device library — compact glass palette dock. */
 
 .bp-library {
+  /* Match graph dock insets (.bp-dock left/right/bottom: 12px). */
+  --bp-library-inset: 12px;
+  /* Collapsed peek = notch only (notch is in the layout box). */
+  --bp-library-peek: var(--bp-library-notch-h);
+  --bp-library-notch-w: 88px;
+  --bp-library-notch-h: 22px;
+  /* Same fill as the panel so the tab reads as one continuous shape. */
+  --bp-library-notch-bg: var(--bv-glass);
+  /* Squarer inverse-notch: near-flat crown, short ears, rectangular body. */
+  --bp-library-notch-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 36' preserveAspectRatio='none'%3E%3Cpath fill='%23000' d='M0 36C8 36 10 36 12 33C14 22 18 5 40 5H120C142 5 146 22 148 33C150 36 152 36 160 36Z'/%3E%3C/svg%3E");
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 5;
   width: 100%;
+  /* Global `aside { padding: 12px }` would inset the dock; clear it. */
+  padding: 0;
+  margin: 0;
   pointer-events: none;
   transform: translateY(calc(100% + 16px));
   opacity: 0;
@@ -28,19 +41,123 @@
     visibility 0s linear 0s;
 }
 
+/* Slide fully down — only the notch / arrow remains on screen. */
+.bp-library.is-open.is-collapsed {
+  transform: translateY(calc(100% - var(--bp-library-peek)));
+}
+
+.bp-library__sheet {
+  position: relative;
+  /* Reserve layout space for the notch so collapsed peek can be notch-only. */
+  padding-top: var(--bp-library-notch-h);
+  margin: 0 var(--bp-library-inset) var(--bp-library-inset);
+  pointer-events: auto;
+}
+
+/*
+ * Inverse iPhone-14 notch tab — one continuous fill with the panel.
+ * No shadow, no border, no seam line at the join.
+ */
+.bp-library__toggle {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: var(--bp-library-notch-w);
+  height: calc(var(--bp-library-notch-h) + 2px);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--bv-text-secondary);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: color 0.15s var(--bv-ease, ease);
+}
+
+.bp-library__toggle:hover {
+  color: var(--bv-text);
+}
+
+.bp-library__toggle:focus {
+  outline: none;
+}
+
+.bp-library__toggle:focus-visible .bp-library__toggle-icon {
+  color: var(--bv-text);
+}
+
+.bp-library__notch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--bp-library-notch-bg);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-mask-image: var(--bp-library-notch-mask);
+  mask-image: var(--bp-library-notch-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.bp-library__toggle-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-top: -2px;
+  line-height: 0;
+}
+
+/* react-ionicons wraps the SVG in a span. */
+.bp-library__toggle-icon > span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
+}
+
+.bp-library__toggle-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
 .bp-library__inner {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
   gap: 0;
-  margin: 0 12px 12px;
   border-radius: 18px;
   background: var(--bv-glass);
   border: 1px solid var(--bv-glass-border);
-  box-shadow: var(--bv-shadow-float);
+  box-shadow: none;
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   overflow: hidden;
+}
+
+/* Hide the panel top border under the notch so tab + panel are seamless. */
+.bp-library__inner::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  z-index: 1;
+  width: var(--bp-library-notch-w);
+  height: 3px;
+  background: var(--bv-glass);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .bp-library__rail {
@@ -81,7 +198,7 @@
   font-size: 13px;
   font-weight: 650;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
   transition:
     background 0.15s var(--bv-ease, ease),
     color 0.15s var(--bv-ease, ease),
@@ -92,6 +209,42 @@
   background: var(--cp-edit-soft);
   color: var(--cp-edit-text);
   box-shadow: inset 0 0 0 1px var(--cp-edit);
+}
+
+.bp-library__dots {
+  margin: 2px 0 0;
+  padding: 0 0 0 2em;
+  list-style: disc;
+  color: var(--bv-text-secondary);
+}
+
+.bp-library__dots > li {
+  margin: 0;
+  padding: 0;
+}
+
+.bp-library__dot {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 3px 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bp-library__dot.is-active {
+  color: var(--cp-edit-text);
+  font-weight: 700;
+}
+
+.bp-library__dot:hover {
+  color: var(--bv-text);
 }
 
 .bp-library__stage {
@@ -137,7 +290,7 @@
     transform 0.35s var(--bv-ease, ease);
 }
 
-.bp-library.is-open .bp-library__tile {
+.bp-library.is-open:not(.is-collapsed) .bp-library__tile {
   opacity: 1;
   transform: translateY(0);
   transition-delay: calc(var(--bp-tile-i) * 40ms + 70ms);
@@ -192,6 +345,56 @@
 .bp-library__tile-hint {
   font-size: 10px;
   line-height: 1.25;
+  color: var(--bv-text-tertiary);
+}
+
+.bp-library__fit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-library__fit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+}
+
+.bp-library__fit:hover,
+.bp-library__fit:focus-visible {
+  background: var(--cp-edit-soft);
+}
+
+.bp-library__fit:active,
+.bp-library__fit.is-dragging {
+  cursor: grabbing;
+  background: var(--cp-edit-soft);
+  opacity: 0.75;
+}
+
+.bp-library__fit-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--bv-text);
+}
+
+.bp-library__fit-hint {
+  font-size: 11px;
+  line-height: 1.3;
   color: var(--bv-text-tertiary);
 }
 

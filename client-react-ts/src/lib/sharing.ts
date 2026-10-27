@@ -45,6 +45,7 @@ const PATH_BY_TYPE: Record<DeviceType, string> = {
   pressure_vessel: "/dashboard/pressure-vessel",
   membrane_bioreactor: "/dashboard/membrane-bioreactor",
   water_purifier: "/dashboard/water-purifier",
+  pipe_fitting: "/dashboard",
 };
 
 /** Default authenticated home (plant dashboard). */

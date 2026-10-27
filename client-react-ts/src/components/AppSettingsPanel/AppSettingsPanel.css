@@ -7,7 +7,7 @@
   border-radius: var(--bv-radius-md);
   background: var(--bv-card);
   box-shadow: var(--bv-shadow-card);
-  z-index: 55;
+  z-index: 1;
   animation: app-settings-in 0.2s var(--bv-ease);
 }
 

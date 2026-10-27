@@ -76,6 +76,24 @@ export default function DeviceTypeGlyph({
           />
         </svg>
       );
+    case "pipe_fitting":
+      return (
+        <svg {...common}>
+          <path
+            d="M6 16h20M16 6v20"
+            stroke={stroke}
+            strokeWidth="3.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M6 16h20M16 6v20"
+            stroke={stroke}
+            strokeWidth="2"
+            strokeLinecap="round"
+            opacity="0.35"
+          />
+        </svg>
+      );
     case "water_purifier":
     default:
       return (

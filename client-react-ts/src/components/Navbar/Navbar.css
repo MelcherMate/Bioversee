@@ -245,6 +245,13 @@
   overflow: visible;
 }
 
+/* Open popovers must stack above sibling header icons (bell, avatar). */
+.topbar__settings-wrap:has(.app-settings),
+.topbar__notif-wrap:has(.notif-panel),
+.topbar__account:has(.topbar__menu) {
+  z-index: 70;
+}
+
 .topbar__icon-btn {
   position: relative;
   display: inline-flex;
@@ -264,8 +271,9 @@
   transition: background 0.2s var(--bv-ease), box-shadow 0.2s var(--bv-ease);
 }
 
-/* react-ionicons wraps the SVG in a span that otherwise sits on the text baseline. */
-.topbar__icon-btn > span {
+/* react-ionicons wraps the SVG in a span that otherwise sits on the text baseline.
+   Exclude the unread badge — that rule was clipping the count to a white sliver. */
+.topbar__icon-btn > span:not(.topbar__badge-dot) {
   display: block;
   width: 20px;
   height: 20px;
@@ -288,6 +296,10 @@
   top: -4px;
   right: -4px;
   z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
@@ -296,7 +308,7 @@
   color: #fff;
   font-size: 10px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 1;
   text-align: center;
   box-shadow: 0 0 0 2px var(--bv-card);
   pointer-events: none;

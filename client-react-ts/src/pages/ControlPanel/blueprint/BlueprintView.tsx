@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Background,
+  ConnectionMode,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
@@ -30,6 +31,7 @@ import SharePanel from "../../../components/SharePanel";
 import { ToastStack, useToasts } from "../../../components/Toast";
 import { hasBioreactorCharts } from "../../../components/bioreactor/BioreactorCharts";
 import {
+  createMyDevice,
   deleteMyDevice,
   listAccessibleDevicesInPlant,
   renameMyDevice,
@@ -60,6 +62,15 @@ import {
   listPlantLayouts,
   upsertPlantLayout,
 } from "../../../lib/plantGraph";
+import {
+  defaultPipeFittingConfig,
+  fittingDisplayNameKey,
+  isPipeFittingDeviceType,
+  parsePipeFittingConfig,
+  type PipeBore,
+  type PipeFittingRotation,
+  type PipeFittingTileKind,
+} from "../../../lib/pipeFittings";
 import type { AppUser } from "../../../lib/user";
 import DeviceTypeGlyph from "../DeviceTypeGlyph";
 import {
@@ -72,12 +83,16 @@ import DeviceLibrary, {
   type DeviceLibraryPayload,
 } from "./DeviceLibrary";
 import PipeEdge, { PipeConnectionLine, type PipeEdgeType } from "./PipeEdge";
+import PipeFittingNode, {
+  type PipeFittingNodeData,
+} from "./PipeFittingNode";
 import ReactorNode, { REACTOR_SCALE, type ReactorNodeData } from "./ReactorNode";
 import "./Blueprint.css";
 
 /** Approximate reactor node size so a drop centers the vessel on the cursor. */
 const DROP_NODE_W = LEGACY_OUTER_WIDTH_PX * REACTOR_SCALE;
 const DROP_NODE_H = LEGACY_OUTER_HEIGHT_PX * REACTOR_SCALE + 28;
+const DROP_FITTING = 160 * REACTOR_SCALE;
 
 type PendingDrop = {
   vesselShape: VesselShapeId;
@@ -87,14 +102,53 @@ type PendingDrop = {
 
 function parseLibraryPayload(raw: string): DeviceLibraryPayload | null {
   try {
-    const parsed = JSON.parse(raw) as Partial<DeviceLibraryPayload>;
-    if (parsed.type !== "bioreactor" || !isVesselShapeId(parsed.vesselShape)) {
-      return null;
+    const parsed = JSON.parse(raw) as Partial<DeviceLibraryPayload> & {
+      kind?: PipeFittingTileKind;
+      bore?: PipeBore;
+    };
+    if (parsed.type === "bioreactor" && isVesselShapeId(parsed.vesselShape)) {
+      return { type: "bioreactor", vesselShape: parsed.vesselShape };
     }
-    return { type: "bioreactor", vesselShape: parsed.vesselShape };
+    if (
+      parsed.type === "pipe_fitting" &&
+      (parsed.kind === "cross" ||
+        parsed.kind === "wye_split" ||
+        parsed.kind === "wye_merge" ||
+        parsed.kind === "reducer") &&
+      (parsed.bore === "wide" || parsed.bore === "thin")
+    ) {
+      return { type: "pipe_fitting", kind: parsed.kind, bore: parsed.bore };
+    }
+    return null;
   } catch {
     return null;
   }
+}
+
+function canBePipeSource(device: AccessibleDevice): boolean {
+  if (isPipeFittingDeviceType(device.type)) return true;
+  if (device.type === "bioreactor") {
+    return parseBioreactorConfig(device.config).equipment.outflow;
+  }
+  return false;
+}
+
+function canBePipeTarget(device: AccessibleDevice): boolean {
+  if (isPipeFittingDeviceType(device.type)) return true;
+  return device.type === "bioreactor";
+}
+
+function handleBusy(
+  edges: PipeEdgeType[],
+  nodeId: string,
+  handleId: string | null | undefined
+): boolean {
+  if (!handleId) return true;
+  return edges.some(
+    (e) =>
+      (e.source === nodeId && e.sourceHandle === handleId) ||
+      (e.target === nodeId && e.targetHandle === handleId)
+  );
 }
 
 /** Charts dock follows device config so switching units does not flash closed. */
@@ -119,20 +173,30 @@ function DeviceFlowNode({ id, data }: NodeProps<Node<DeviceNodeData>>) {
   );
 }
 
-const nodeTypes = { device: DeviceFlowNode, reactor: ReactorNode };
+const nodeTypes = {
+  device: DeviceFlowNode,
+  reactor: ReactorNode,
+  fitting: PipeFittingNode,
+};
 const edgeTypes = { pipe: PipeEdge };
 
 /** Id prefix for a pipe whose row is still being inserted. */
 const PENDING_PIPE = "pending:";
 
-function toPipeEdge(id: string, source: string, target: string): PipeEdgeType {
+function toPipeEdge(
+  id: string,
+  source: string,
+  target: string,
+  sourceHandle = "outlet",
+  targetHandle = "inlet"
+): PipeEdgeType {
   return {
     id,
     type: "pipe",
     source,
     target,
-    sourceHandle: "outlet",
-    targetHandle: "inlet",
+    sourceHandle,
+    targetHandle,
     deletable: false,
     focusable: false,
   };
@@ -141,13 +205,20 @@ function toPipeEdge(id: string, source: string, target: string): PipeEdgeType {
 /** Horizontal spacing sized for reactor nodes (≈240 px wide). */
 const COLUMN_STEP = 340;
 
+type BlueprintNodeData = ReactorNodeData | DeviceNodeData | PipeFittingNodeData;
+
 function toNode(
   device: AccessibleDevice,
   position: { x: number; y: number }
-): Node<ReactorNodeData | DeviceNodeData> {
+): Node<BlueprintNodeData> {
+  const type = isPipeFittingDeviceType(device.type)
+    ? "fitting"
+    : device.type === "bioreactor"
+      ? "reactor"
+      : "device";
   return {
     id: device.id,
-    type: device.type === "bioreactor" ? "reactor" : "device",
+    type,
     position,
     deletable: false,
     data: { device },
@@ -171,7 +242,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   fitViewRef.current = fitView;
   const { toasts, push, dismiss } = useToasts();
   const [nodes, setNodes, onNodesChange] = useNodesState<
-    Node<ReactorNodeData | DeviceNodeData>
+    Node<BlueprintNodeData>
   >([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<PipeEdgeType>([]);
   const edgesRef = useRef(edges);
@@ -188,6 +259,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
   const pendingDropRef = useRef<PendingDrop | null>(null);
   pendingDropRef.current = pendingDrop;
+  const droppingFitting = useRef(false);
   const [contextMenu, setContextMenu] = useState<{
     device: AccessibleDevice;
     x: number;
@@ -242,16 +314,24 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
         devices.map((d) => toNode(d, layoutByDevice.get(d.id) ?? { x: 80, y: 60 }))
       );
 
-      // Pipes run from a reactor's drain to another reactor's fill inlet.
-      const hasDrain = new Map(
-        devices
-          .filter((d) => d.type === "bioreactor")
-          .map((d) => [d.id, parseBioreactorConfig(d.config).equipment.outflow])
+      const byId = new Map(devices.map((d) => [d.id, d]));
+      const pipes = connections.filter((c) => {
+        const source = byId.get(c.source_device_id);
+        const target = byId.get(c.target_device_id);
+        if (!source || !target) return false;
+        return canBePipeSource(source) && canBePipeTarget(target);
+      });
+      setEdges(
+        pipes.map((c) =>
+          toPipeEdge(
+            c.id,
+            c.source_device_id,
+            c.target_device_id,
+            c.source_handle,
+            c.target_handle
+          )
+        )
       );
-      const pipes = connections.filter(
-        (c) => hasDrain.get(c.source_device_id) === true && hasDrain.has(c.target_device_id)
-      );
-      setEdges(pipes.map((c) => toPipeEdge(c.id, c.source_device_id, c.target_device_id)));
       setSelectedPipeId((current) =>
         current && !pipes.some((c) => c.id === current) ? null : current
       );
@@ -313,13 +393,48 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
         x: event.clientX,
         y: event.clientY,
       });
+
+      if (payload.type === "pipe_fitting") {
+        if (droppingFitting.current) return;
+        droppingFitting.current = true;
+        const x = flow.x - DROP_FITTING / 2;
+        const y = flow.y - DROP_FITTING / 2;
+        const config = defaultPipeFittingConfig(payload.kind, payload.bore);
+        const name = t(fittingDisplayNameKey(config));
+        void (async () => {
+          try {
+            const deviceId = await createMyDevice({
+              type: "pipe_fitting",
+              name,
+              plantId,
+            });
+            await updateMyDeviceConfig(deviceId, {
+              kind: config.kind,
+              ...(config.bore ? { bore: config.bore } : {}),
+              rotation: config.rotation,
+            });
+            await upsertPlantLayout({ plantId, deviceId, x, y });
+            notifyDevicesChanged();
+          } catch (err) {
+            push(
+              "error",
+              t("piping.placeFailed"),
+              err instanceof Error ? err.message : String(err)
+            );
+          } finally {
+            droppingFitting.current = false;
+          }
+        })();
+        return;
+      }
+
       setPendingDrop({
         vesselShape: payload.vesselShape,
         x: flow.x - DROP_NODE_W / 2,
         y: flow.y - DROP_NODE_H / 2,
       });
     },
-    [editing, screenToFlowPosition]
+    [editing, plantId, push, screenToFlowPosition, t]
   );
 
   const onAddDeviceCreated = useCallback(
@@ -431,7 +546,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   );
 
   const onNodeContextMenu = useCallback(
-    (event: ReactMouseEvent, node: Node<ReactorNodeData | DeviceNodeData>) => {
+    (event: ReactMouseEvent, node: Node<BlueprintNodeData>) => {
       if (!editing) return;
       event.preventDefault();
       setSelectedId(node.id);
@@ -519,21 +634,53 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
 
   // Each open pipe end takes one pipe; a drain never feeds its own reactor.
   const isValidConnection: IsValidConnection<PipeEdgeType> = useCallback(
-    (connection) =>
-      connection.source !== connection.target &&
-      connection.sourceHandle === "outlet" &&
-      connection.targetHandle === "inlet" &&
-      !edgesRef.current.some(
-        (e) => e.source === connection.source || e.target === connection.target
-      ),
+    (connection) => {
+      const { source, target, sourceHandle, targetHandle } = connection;
+      if (!source || !target || source === target) return false;
+      if (!sourceHandle || !targetHandle) return false;
+      const sourceDevice = nodesRef.current.find((n) => n.id === source)?.data
+        .device;
+      const targetDevice = nodesRef.current.find((n) => n.id === target)?.data
+        .device;
+      if (!sourceDevice || !targetDevice) return false;
+      if (!canBePipeSource(sourceDevice) || !canBePipeTarget(targetDevice)) {
+        return false;
+      }
+      if (
+        sourceDevice.type === "bioreactor" &&
+        sourceHandle !== "outlet"
+      ) {
+        return false;
+      }
+      if (
+        targetDevice.type === "bioreactor" &&
+        targetHandle !== "inlet"
+      ) {
+        return false;
+      }
+      return (
+        !handleBusy(edgesRef.current, source, sourceHandle) &&
+        !handleBusy(edgesRef.current, target, targetHandle)
+      );
+    },
     []
   );
 
   const onConnect: OnConnect = useCallback(
-    ({ source, target }) => {
-      const pendingId = `${PENDING_PIPE}${source}:${target}`;
-      setEdges((eds) => [...eds, toPipeEdge(pendingId, source, target)]);
-      createPlantConnection({ plantId, sourceDeviceId: source, targetDeviceId: target })
+    ({ source, target, sourceHandle, targetHandle }) => {
+      if (!source || !target || !sourceHandle || !targetHandle) return;
+      const pendingId = `${PENDING_PIPE}${source}:${sourceHandle}:${target}:${targetHandle}`;
+      setEdges((eds) => [
+        ...eds,
+        toPipeEdge(pendingId, source, target, sourceHandle, targetHandle),
+      ]);
+      createPlantConnection({
+        plantId,
+        sourceDeviceId: source,
+        targetDeviceId: target,
+        sourceHandle,
+        targetHandle,
+      })
         .then((created) => {
           if (cancelledPipes.current.delete(pendingId)) {
             void deletePlantConnection(created.id).catch(() => {});
@@ -542,9 +689,17 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
           // A reload during the insert may already list the new row.
           setEdges((eds) => [
             ...eds.filter((e) => e.id !== pendingId && e.id !== created.id),
-            toPipeEdge(created.id, source, target),
+            toPipeEdge(
+              created.id,
+              source,
+              target,
+              created.source_handle,
+              created.target_handle
+            ),
           ]);
-          setSelectedPipeId((current) => (current === pendingId ? created.id : current));
+          setSelectedPipeId((current) =>
+            current === pendingId ? created.id : current
+          );
         })
         .catch((err: unknown) => {
           cancelledPipes.current.delete(pendingId);
@@ -572,7 +727,8 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
       deletePlantConnection(edgeId).catch((err: unknown) => {
         // Put it back unless one of its ends has been re-piped meanwhile.
         setEdges((eds) =>
-          eds.some((e) => e.source === edge.source || e.target === edge.target)
+          handleBusy(eds, edge.source, edge.sourceHandle) ||
+          handleBusy(eds, edge.target, edge.targetHandle)
             ? eds
             : [...eds, edge]
         );
@@ -585,6 +741,57 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
     },
     [push, setEdges, t]
   );
+
+  useEffect(() => {
+    const onRotate = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        deviceId: string;
+        rotation: PipeFittingRotation;
+      }>).detail;
+      if (!detail?.deviceId) return;
+      const device = nodesRef.current.find((n) => n.id === detail.deviceId)
+        ?.data.device;
+      if (!device || !isPipeFittingDeviceType(device.type)) return;
+      const previous = parsePipeFittingConfig(device.config);
+      const nextConfig = { ...previous, rotation: detail.rotation };
+      const replaceConfig = (config: Record<string, unknown>) =>
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === detail.deviceId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    device: { ...n.data.device, config },
+                  },
+                }
+              : n
+          )
+        );
+      replaceConfig({
+        ...device.config,
+        kind: nextConfig.kind,
+        ...(nextConfig.bore ? { bore: nextConfig.bore } : {}),
+        rotation: nextConfig.rotation,
+      });
+      updateMyDeviceConfig(detail.deviceId, {
+        kind: nextConfig.kind,
+        ...(nextConfig.bore ? { bore: nextConfig.bore } : {}),
+        rotation: nextConfig.rotation,
+      })
+        .then(() => notifyDeviceUpdated(detail.deviceId))
+        .catch((err: unknown) => {
+          replaceConfig(device.config);
+          push(
+            "error",
+            t("controlPanel.pipingSaveFailed"),
+            err instanceof Error ? err.message : String(err)
+          );
+        });
+    };
+    window.addEventListener("bp-rotate-fitting", onRotate);
+    return () => window.removeEventListener("bp-rotate-fitting", onRotate);
+  }, [push, setNodes, t]);
 
   const onEdgeClick = useCallback((_event: ReactMouseEvent, edge: PipeEdgeType) => {
     setSelectedId(null);
@@ -646,7 +853,9 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   const selectedDevice = deviceById(selectedId);
   // Edit mode is layout-only; keep docks closed. While open, switching units
   // only swaps content — open state follows the selection, not a per-unit flag.
-  const controlsOpen = !editing && Boolean(selectedDevice);
+  const controlsOpen =
+    !editing &&
+    Boolean(selectedDevice && selectedDevice.type === "bioreactor");
   const chartsOpen =
     !editing && Boolean(selectedDevice && deviceHasCharts(selectedDevice));
 
@@ -687,6 +896,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
             }}
             onConnect={onConnect}
             isValidConnection={isValidConnection}
+            connectionMode={ConnectionMode.Loose}
             onDragOver={editing ? onLibraryDragOver : undefined}
             onDrop={editing ? onLibraryDrop : undefined}
             nodeTypes={nodeTypes}
