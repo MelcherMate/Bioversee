@@ -23,6 +23,16 @@ const MAX_BLADE_SPAN = 190;
 /** Pipe bores (px); pipes joined to these ends size their fittings from them. */
 export const FILL_PIPE_OD = 16;
 export const OUTFLOW_PIPE_OD = 30;
+/** Water stroke inside the vessel outflow / wide plant pipes (drawing px). */
+export const OUTFLOW_WATER_WIDTH = Math.max(8, OUTFLOW_PIPE_OD - 10);
+
+/**
+ * Water stroke for a bore, matching the outflow fill ratio (20/30) so thin
+ * pipes keep the same wall clearance relative to their OD.
+ */
+export function waterWidthForOd(od: number): number {
+  return Math.max(2, od * (OUTFLOW_WATER_WIDTH / OUTFLOW_PIPE_OD));
+}
 
 /** Point in a pipe SVG's local coordinates. */
 type LocalPoint = { x: number; y: number };

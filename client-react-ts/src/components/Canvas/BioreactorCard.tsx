@@ -21,6 +21,7 @@ import {
 import {
   layoutFromGeometry,
   layoutCssVars,
+  OUTFLOW_WATER_WIDTH,
   type BioreactorLayout,
 } from "./bioreactorLayout";
 import { StirredBubbleField } from "./StirredBubbleField";
@@ -1348,7 +1349,7 @@ function BottomOutflow({
             pathLength={pipePathLength}
             fill="none"
             stroke={APPLE_DEPTH_COLORS.blue}
-            strokeWidth={Math.max(8, pipeOd - 10)}
+            strokeWidth={OUTFLOW_WATER_WIDTH}
             strokeLinecap="butt"
             strokeLinejoin="round"
             strokeDasharray={`${segLen} ${pipePathLength}`}

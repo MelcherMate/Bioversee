@@ -319,7 +319,9 @@
     "nameWyeMerge": "Y-Zusammenführung",
     "nameReducer": "Reduzierung",
     "rotate": "Fitting drehen",
-    "placeFailed": "Fitting konnte nicht platziert werden"
+    "placeFailed": "Fitting konnte nicht platziert werden",
+    "drainAtmosphereTitle": "Ablauf in die Umgebung",
+    "drainAtmosphereDetail": "Kein angeschlossener Reaktor nimmt den Strom auf — Wasser spritzt an offenen Rohrenden."
   },
   "controlPanel": {
     "plant": "Anlage",
@@ -488,7 +490,7 @@
     "fillLimitedTitle": "Zu viel Flüssigkeit angefordert",
     "fillLimitedDetail": "Nur {{actual}} Liter konnten hinzugefügt werden (angefordert: {{requested}} Liter). Der Tank ist voll.",
     "drainLimitedTitle": "Zu viel Flüssigkeit angefordert",
-    "drainLimitedDetail": "Nur {{actual}} Liter konnten abgelassen werden (angefordert: {{requested}} Liter). Der Tank ist leer.",
+    "drainLimitedDetail": "Nur {{actual}} Liter konnten abgelassen werden (angefordert: {{requested}} Liter).",
     "tankFullTitle": "Tank ist voll",
     "tankFullDetail": "Es kann keine weitere Flüssigkeit hinzugefügt werden.",
     "tankEmptyTitle": "Tank ist leer",

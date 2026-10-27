@@ -14,6 +14,7 @@ import {
   ConnectionMode,
   ReactFlow,
   ReactFlowProvider,
+  ViewportPortal,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -71,6 +72,8 @@ import {
   type PipeFittingRotation,
   type PipeFittingTileKind,
 } from "../../../lib/pipeFittings";
+import { registerPlantFlowGraph } from "../../../lib/plantTransferJobs";
+import type { FlowGraph } from "../../../lib/plantFlow";
 import type { AppUser } from "../../../lib/user";
 import DeviceTypeGlyph from "../DeviceTypeGlyph";
 import {
@@ -86,8 +89,19 @@ import PipeEdge, { PipeConnectionLine, type PipeEdgeType } from "./PipeEdge";
 import PipeFittingNode, {
   type PipeFittingNodeData,
 } from "./PipeFittingNode";
+import PipeSprinkle from "./PipeSprinkle";
 import ReactorNode, { REACTOR_SCALE, type ReactorNodeData } from "./ReactorNode";
+import { usePlantFlowVisual } from "./usePlantFlowVisual";
 import "./Blueprint.css";
+
+function PlantFlowOverlay() {
+  const snap = usePlantFlowVisual();
+  return (
+    <ViewportPortal>
+      <PipeSprinkle snap={snap} />
+    </ViewportPortal>
+  );
+}
 
 /** Approximate reactor node size so a drop centers the vessel on the cursor. */
 const DROP_NODE_W = LEGACY_OUTER_WIDTH_PX * REACTOR_SCALE;
@@ -489,6 +503,28 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   nodesRef.current = nodes;
   const pipingSaves = useRef(new Map<string, number>());
   const nameSaves = useRef(new Map<string, number>());
+
+  // Live plant graph for drain → pipe → fill / sprinkle transfers.
+  useEffect(() => {
+    const provider = (): FlowGraph => {
+      const devices = nodesRef.current.map((n) => ({
+        id: n.data.device.id,
+        type: n.data.device.type,
+        config: n.data.device.config ?? {},
+      }));
+      const edges = edgesRef.current
+        .filter((e) => e.source && e.target && !String(e.id).startsWith(PENDING_PIPE))
+        .map((e) => ({
+          id: String(e.id),
+          sourceDeviceId: e.source,
+          sourceHandle: e.sourceHandle || "outlet",
+          targetDeviceId: e.target,
+          targetHandle: e.targetHandle || "inlet",
+        }));
+      return { devices, edges };
+    };
+    return registerPlantFlowGraph(plantId, provider);
+  }, [plantId]);
 
   const setPiping = useCallback(
     (deviceId: string, piping: BioreactorPiping) => {
@@ -914,6 +950,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
             proOptions={{ hideAttribution: true }}
           >
             <Background gap={18} size={1} color="var(--bv-border)" />
+            <PlantFlowOverlay />
           </ReactFlow>
 
           {nodes.length === 0 ? (

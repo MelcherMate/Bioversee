@@ -16,6 +16,7 @@ import { useBlueprint } from "./BlueprintContext";
 import PipeShape from "./PipeShape";
 import { routePipe } from "./pipeRoute";
 import { PORT_PIPE_OD, REACTOR_SCALE, isPipePort } from "./ReactorNode";
+import { usePlantFlowVisual } from "./usePlantFlowVisual";
 
 export type PipeEdgeType = Edge<Record<string, unknown>, "pipe">;
 
@@ -69,6 +70,19 @@ export default function PipeEdge({
   const sourceOd = portOd(sourceHandleId, sourceDevice);
   const targetOd = portOd(targetHandleId, targetDevice);
   const selected = editing && selectedPipeId === id;
+  const plantFlow = usePlantFlowVisual();
+  const edgeRate = plantFlow?.flow.edgeRates[id] ?? 0;
+  const edgeProgress = plantFlow?.edgeProgress[id] ?? 0;
+  const edgeTail = plantFlow?.edgeTail[id] ?? 0;
+  const flow =
+    plantFlow && edgeRate > 0.01 && edgeProgress - edgeTail > 0.01
+      ? {
+          progress01: edgeProgress,
+          tail01: edgeTail,
+          od: plantFlow.flow.edgeOd[id] ?? Math.min(sourceOd, targetOd),
+          alongSource: plantFlow.flow.edgeAlongSource[id] !== false,
+        }
+      : null;
 
   const onRemove = (event: MouseEvent) => {
     // The edge wrapper would select the removed pipe again on the way up.
@@ -84,6 +98,7 @@ export default function PipeEdge({
         targetOd={targetOd}
         scale={REACTOR_SCALE}
         selected={selected}
+        flow={flow}
       />
       {editing ? (
         <path

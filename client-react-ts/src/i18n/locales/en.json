@@ -319,7 +319,9 @@
     "nameWyeMerge": "Y merge",
     "nameReducer": "Reducer",
     "rotate": "Rotate fitting",
-    "placeFailed": "Couldn't place the fitting"
+    "placeFailed": "Couldn't place the fitting",
+    "drainAtmosphereTitle": "Draining to atmosphere",
+    "drainAtmosphereDetail": "No connected reactor to receive the flow — water sprinkles from open pipe ends."
   },
   "controlPanel": {
     "plant": "Plant",
@@ -488,7 +490,7 @@
     "fillLimitedTitle": "Too much liquid requested",
     "fillLimitedDetail": "Only {{actual}} liter could be added (you asked for {{requested}} liter). The tank is full.",
     "drainLimitedTitle": "Too much liquid requested",
-    "drainLimitedDetail": "Only {{actual}} liter could be drained (you asked for {{requested}} liter). The tank is empty.",
+    "drainLimitedDetail": "Only {{actual}} liter could be drained (you asked for {{requested}} liter).",
     "tankFullTitle": "Tank is full",
     "tankFullDetail": "No more liquid can be added.",
     "tankEmptyTitle": "Tank is empty",

@@ -6,6 +6,7 @@ import {
   fillUnitsToPercent,
   fillUnitsToStoredPercent,
   storedPercentToFillUnits,
+  VESSEL_FILL_DRAIN_RATE,
   VESSEL_MAX_FILL_UNITS,
 } from "../pressure-vessel/constants";
 import { useDrainAnimation } from "../pressure-vessel/useDrainAnimation";
@@ -26,6 +27,15 @@ import {
   subscribeLevelTransfer,
   type LevelTransferSnapshot,
 } from "../../lib/levelTransferJobs";
+import {
+  cancelPlantDrainTransfer,
+  getPlantFlowGraph,
+  isDeviceInPlantDrain,
+  patchPlantDrainSinkLevels,
+  startPlantDrainTransfer,
+  subscribePlantSinkLevel,
+} from "../../lib/plantTransferJobs";
+import { resolveDrainFlow } from "../../lib/plantFlow";
 import {
   defaultBioreactorGeometry,
   fluidMotionFactors,
@@ -171,10 +181,14 @@ export function useBioreactorController(
   isDrainHeldRef.current = isDrainHeld;
   const [fillTargetUnits, setFillTargetUnits] = useState<number | null>(null);
   const [drainTargetUnits, setDrainTargetUnits] = useState<number | null>(null);
+  /** Non-null while a plant pipe transfer owns this vessel's drain level. */
+  const [plantDrainRate, setPlantDrainRate] = useState<number | null>(null);
   const fillTargetUnitsRef = useRef<number | null>(null);
   const drainTargetUnitsRef = useRef<number | null>(null);
   fillTargetUnitsRef.current = fillTargetUnits;
   drainTargetUnitsRef.current = drainTargetUnits;
+  const plantDrainRateRef = useRef<number | null>(null);
+  plantDrainRateRef.current = plantDrainRate;
   const [transferAmountText, setTransferAmountText] = useState("");
   const [pumpsHydrated, setPumpsHydrated] = useState(false);
   const fillUnitsRef = useRef(fillUnits);
@@ -379,18 +393,22 @@ export function useBioreactorController(
   ]);
 
   const finishDrainJob = useCallback(() => {
+    // Leave the plant transfer running so volume still in the pipes can finish
+    // traveling into connected reactors after this tank hits its drain target.
     if (remoteLevelAnimRef.current) {
       clearRemoteEndTimer();
       remoteEndTimerRef.current = setTimeout(() => {
         remoteEndTimerRef.current = null;
         setIsDrainHeld(false);
         setDrainTargetUnits(null);
+        setPlantDrainRate(null);
         remoteLevelAnimRef.current = false;
       }, 550);
       return;
     }
     setIsDrainHeld(false);
     setDrainTargetUnits(null);
+    // Keep plantDrainRate until the pipe job completes (or a new drain starts).
     notifyTransferComplete("drain");
     suppressRemoteWater(2500);
     persistWaterLevel(fillUnitsRef.current);
@@ -419,6 +437,8 @@ export function useBioreactorController(
     {
       targetFillUnits: drainTargetUnits,
       onTargetReached: finishDrainJob,
+      // Slow the column when plant pipes bottleneck the outflow.
+      drainRate: plantDrainRate ?? undefined,
     },
   );
   inletAnimatingRef.current = inletFill.isAnimating;
@@ -682,6 +702,48 @@ export function useBioreactorController(
     };
   }, [clearRemoteEndTimer, device, pumpsHydrated]);
 
+  // Plant pipe deliveries on this tab: drive the inlet fill animation locally
+  // (DB realtime alone is too late / often silent for the same client).
+  useEffect(() => {
+    if (!device || !pumpsHydrated) return;
+
+    const minDeltaUnits = 0.05;
+    return subscribePlantSinkLevel(device.id, (event) => {
+      if (!acceptsLevelTicksRef.current) return;
+      // Source tank owns the drain; don't fight it with a fill.
+      if (isDrainHeldRef.current) return;
+
+      const next = Math.min(VESSEL_MAX_FILL_UNITS, Math.max(0, event.units));
+      const current = fillUnitsRef.current;
+      if (next <= current + minDeltaUnits) return;
+
+      // Plant water (or a prior remote fill): keep the inlet stream chasing.
+      if (remoteLevelAnimRef.current) {
+        clearRemoteEndTimer();
+        setDrainTargetUnits(null);
+        setIsDrainHeld(false);
+        setFillTargetUnits(next);
+        setIsFillHeld(true);
+        return;
+      }
+      if (
+        isFillHeldRef.current ||
+        inletAnimatingRef.current ||
+        drainAnimatingRef.current
+      ) {
+        return;
+      }
+
+      remoteLevelAnimRef.current = true;
+      transferJobRef.current = null;
+      clearRemoteEndTimer();
+      setDrainTargetUnits(null);
+      setIsDrainHeld(false);
+      setFillTargetUnits(next);
+      setIsFillHeld(true);
+    });
+  }, [clearRemoteEndTimer, device, pumpsHydrated]);
+
   // Publish live water_level while this tab runs a local fill/drain so the phone
   // can animate in parallel (sensor history still written once at the end).
   useEffect(() => {
@@ -729,7 +791,7 @@ export function useBioreactorController(
 
   const startFill = () => {
     if (!device || !canOperateDevice(device.role)) return;
-    if (hasLevelTransfer(device.id)) return;
+    if (hasLevelTransfer(device.id) || isDeviceInPlantDrain(device.id)) return;
     if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
       return;
     }
@@ -774,8 +836,16 @@ export function useBioreactorController(
 
   const startDrain = () => {
     if (!device || !canOperateDevice(device.role)) return;
+    // Clear any stuck plant companion from a previous attempt.
+    cancelPlantDrainTransfer(device.id);
     if (hasLevelTransfer(device.id)) return;
-    if (isFillHeld || isDrainHeld || inletFill.isAnimating || drainAnim.isAnimating) {
+    // Unstick a frozen drain (earlier plant-flow mode could leave the button wedged).
+    if (isDrainHeld) {
+      setIsDrainHeld(false);
+      setDrainTargetUnits(null);
+      setPlantDrainRate(null);
+    }
+    if (isFillHeld || inletFill.isAnimating || drainAnim.isAnimating) {
       return;
     }
     const capacityL = tankCapacityLiters(
@@ -811,8 +881,81 @@ export function useBioreactorController(
     };
     setFillTargetUnits(null);
     setIsFillHeld(false);
+    setPlantDrainRate(null);
     setDrainTargetUnits(target);
     setIsDrainHeld(true);
+
+    // Plant pipes are a companion: local drain always owns the tank level.
+    const graph = getPlantFlowGraph(device.plant_id);
+    if (!graph || graph.edges.length === 0) return;
+
+    const preview = resolveDrainFlow(graph, device.id);
+    if (preview.totalRate > 0.01) {
+      setPlantDrainRate(preview.totalRate);
+      if (preview.sprinkleOnly) {
+        push(
+          "info",
+          t("piping.drainAtmosphereTitle"),
+          t("piping.drainAtmosphereDetail"),
+        );
+      }
+    }
+
+    // Start the pipe companion immediately — waiting on peer slider reads used
+    // to lose the whole transfer when a short drain finished first.
+    const sinkLevels: Record<string, { capacityL: number; units: number }> =
+      {};
+    for (const peer of graph.devices) {
+      if (peer.type !== "bioreactor" || peer.id === device.id) continue;
+      sinkLevels[peer.id] = {
+        capacityL: tankCapacityLiters(
+          parseBioreactorConfig(peer.config).volume_m3,
+        ),
+        units: 0,
+      };
+    }
+
+    const flow = startPlantDrainTransfer({
+      sourceDeviceId: device.id,
+      userId: user.id,
+      plantId: device.plant_id,
+      graph,
+      sinkLevels,
+      getSourceUnits: () => fillUnitsRef.current,
+      startUnits,
+      targetUnits: target,
+      requestedUnits: (liters / capacityL) * VESSEL_MAX_FILL_UNITS,
+      onComplete: () => {
+        setPlantDrainRate(null);
+      },
+    });
+    if (flow.totalRate > 0.01) {
+      setPlantDrainRate(flow.totalRate);
+    }
+
+    void (async () => {
+      const next: Record<string, { capacityL: number; units: number }> = {};
+      await Promise.all(
+        Object.keys(sinkLevels).map(async (id) => {
+          const peer = graph.devices.find((d) => d.id === id);
+          const peerCap =
+            sinkLevels[id]?.capacityL ??
+            tankCapacityLiters(
+              parseBioreactorConfig(peer?.config).volume_m3,
+            );
+          try {
+            const percent = await getLatestSliderState(id, WATER_LEVEL_KEY);
+            next[id] = {
+              capacityL: peerCap,
+              units: storedPercentToFillUnits(percent, peerCap),
+            };
+          } catch {
+            next[id] = { capacityL: peerCap, units: 0 };
+          }
+        }),
+      );
+      patchPlantDrainSinkLevels(device.id, next);
+    })();
   };
 
   // Shut off aeration only when the level drops below the sparger (edge), so

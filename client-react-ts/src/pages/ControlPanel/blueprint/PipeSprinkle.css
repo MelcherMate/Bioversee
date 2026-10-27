@@ -1,0 +1,15 @@
+.bp-sprinkle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.bp-sprinkle__drop {
+  position: absolute;
+  border-radius: 50%;
+  background: #279ed5;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}

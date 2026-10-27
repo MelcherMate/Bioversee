@@ -319,7 +319,9 @@
     "nameWyeMerge": "Y összevezetés",
     "nameReducer": "Szűkítő",
     "rotate": "Idom forgatása",
-    "placeFailed": "Nem sikerült elhelyezni az idomot"
+    "placeFailed": "Nem sikerült elhelyezni az idomot",
+    "drainAtmosphereTitle": "Ürítés a szabadba",
+    "drainAtmosphereDetail": "Nincs csatlakoztatott reaktor, ami fogadná az áramlást — a víz a nyitott csővégeken spriccel ki."
   },
   "controlPanel": {
     "plant": "Üzem",
@@ -488,7 +490,7 @@
     "fillLimitedTitle": "Túl sok folyadékot kértél",
     "fillLimitedDetail": "Csak {{actual}} liter került be (kértél: {{requested}} liter). A tartály tele van.",
     "drainLimitedTitle": "Túl sok folyadékot kértél",
-    "drainLimitedDetail": "Csak {{actual}} liter került leeresztésre (kértél: {{requested}} liter). A tartály üres.",
+    "drainLimitedDetail": "Csak {{actual}} liter került leeresztésre (kértél: {{requested}} liter).",
     "tankFullTitle": "A tartály tele van",
     "tankFullDetail": "Több folyadék már nem tölthető be.",
     "tankEmptyTitle": "A tartály üres",

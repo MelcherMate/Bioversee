@@ -1,7 +1,19 @@
 import { useId } from "react";
 import type { XYPosition } from "@xyflow/react";
+import { waterWidthForOd } from "../../../components/Canvas/bioreactorLayout";
+import { APPLE_DEPTH_COLORS } from "../../../components/pressure-vessel/apple-depth-style";
 import { PIPE_FILL, PIPE_METAL } from "../../../components/pressure-vessel/pipe-style";
 import type { PipeRoute } from "./pipeRoute";
+
+function polyLength(pts: XYPosition[]): number {
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    total += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return total;
+}
 
 /** Fitting sizes in drawing px, the units of the reactor pipes before `scale`. */
 const FLANGE_THICK = 7;
@@ -9,6 +21,17 @@ const FLANGE_OVERHANG = 5;
 const COLLAR_THICK = 4;
 const COLLAR_OVERHANG = 2;
 const REDUCER_LENGTH = 40;
+
+export type PipeFlowVisual = {
+  /** Leading edge 0..1 along the flow direction. */
+  progress01: number;
+  /** Trailing edge 0..1 — water occupies [tail01, progress01]. */
+  tail01?: number;
+  /** Stroke width in drawing px (pre-scale); defaults to sourceOd. */
+  od?: number;
+  /** When false, water enters at the target end (path is drawn reversed). */
+  alongSource?: boolean;
+};
 
 type PipeShapeProps = {
   route: PipeRoute;
@@ -22,7 +45,12 @@ type PipeShapeProps = {
   targetJoint?: boolean;
   selected?: boolean;
   className?: string;
+  /** Live water moving through this plant pipe. */
+  flow?: PipeFlowVisual | null;
 };
+
+/** Process water in plant pipes — same blue as the vessel outlet run. */
+const PIPE_WATER = APPLE_DEPTH_COLORS.blue;
 
 function towards(from: XYPosition, to: XYPosition): XYPosition {
   const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
@@ -109,9 +137,10 @@ export default function PipeShape({
   targetJoint = true,
   selected = false,
   className,
+  flow = null,
 }: PipeShapeProps) {
   const filterId = `bp-pipe-${useId().replace(/:/g, "")}`;
-  const { points } = route;
+  const { points, path, length } = route;
   const first = points[0]!;
   const last = points[points.length - 1]!;
   const beforeLast = points[points.length - 2] ?? first;
@@ -145,6 +174,50 @@ export default function PipeShape({
   const ys = points.map((p) => p.y);
   const minX = Math.min(...xs) - pad;
   const minY = Math.min(...ys) - pad;
+
+  const flowAlongSource = flow?.alongSource !== false;
+  const flowHead = Math.min(1, Math.max(0, flow?.progress01 ?? 0));
+  const flowTail = Math.min(flowHead, Math.max(0, flow?.tail01 ?? 0));
+  const flowSpan = flowHead - flowTail;
+  const showFlow = Boolean(flow && flowSpan > 0.01 && length > 0);
+
+  // Same fill ratio as the vessel outflow (water/OD = 20/30) on every bore.
+  const sourceWater = Math.max(2, waterWidthForOd(sourceOd) * scale);
+  const targetWater = Math.max(2, waterWidthForOd(targetOd) * scale);
+  const bore = flow?.od ?? Math.min(sourceOd, targetOd);
+  const uniformWater = Math.max(2, waterWidthForOd(bore) * scale);
+
+  const bodyPts = [
+    along(first, outDir, -0.5 * scale),
+    ...points.slice(1, -1),
+    reducer ? along(reducer.wide, inDir, 0.5 * scale) : last,
+  ];
+  const bodyLen = Math.max(1, polyLength(bodyPts));
+  const stubLen = reducer
+    ? Math.max(1, Math.hypot(last.x - reducer.narrow.x, last.y - reducer.narrow.y))
+    : 0;
+  const coneLen = reducerLength;
+  const totalFlowLen = bodyLen + coneLen + stubLen;
+
+  // Map edge progress onto body → cone → thin stub for reducer runs.
+  const headDist = flowHead * totalFlowLen;
+  const tailDist = flowTail * totalFlowLen;
+  const bodyHead = Math.min(1, Math.max(0, headDist / bodyLen));
+  const bodyTail = Math.min(bodyHead, Math.max(0, tailDist / bodyLen));
+  const bodySpan = bodyHead - bodyTail;
+  const coneVisible = Boolean(reducer && headDist > bodyLen && tailDist < bodyLen + coneLen);
+  const stubStart = bodyLen + coneLen;
+  const stubHead = Math.min(1, Math.max(0, (headDist - stubStart) / stubLen));
+  const stubTail = Math.min(stubHead, Math.max(0, (tailDist - stubStart) / stubLen));
+  const stubSpan = stubHead - stubTail;
+
+  const waterPath = flowAlongSource ? path : polyline([...points].reverse());
+  const bodyWaterPath = flowAlongSource ? body : polyline([...bodyPts].reverse());
+  const stubPath = reducer
+    ? flowAlongSource
+      ? polyline([reducer.narrow, last])
+      : polyline([last, reducer.narrow])
+    : "";
 
   return (
     <g className={["bp-pipe", selected ? "is-selected" : "", className].filter(Boolean).join(" ")}>
@@ -211,6 +284,60 @@ export default function PipeShape({
         {sourceJoint ? <JointFlange at={first} dir={outDir} od={sourceOd} scale={scale} /> : null}
         {targetJoint ? <JointFlange at={last} dir={backDir} od={targetOd} scale={scale} /> : null}
       </g>
+      {showFlow && !reducer ? (
+        <path
+          className="bp-pipe__water"
+          d={waterPath}
+          fill="none"
+          stroke={PIPE_WATER}
+          strokeWidth={uniformWater}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={`${flowSpan * length} ${length}`}
+          strokeDashoffset={-flowTail * length}
+          opacity={1}
+          style={{ pointerEvents: "none" }}
+        />
+      ) : null}
+      {showFlow && reducer ? (
+        <g className="bp-pipe__water" style={{ pointerEvents: "none" }}>
+          {bodySpan > 0.01 ? (
+            <path
+              d={bodyWaterPath}
+              fill="none"
+              stroke={PIPE_WATER}
+              strokeWidth={sourceWater}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${bodySpan * bodyLen} ${bodyLen}`}
+              strokeDashoffset={-bodyTail * bodyLen}
+            />
+          ) : null}
+          {coneVisible ? (
+            <polygon
+              points={cone(
+                reducer.wide,
+                reducer.narrow,
+                sourceWater / 2,
+                targetWater / 2
+              )}
+              fill={PIPE_WATER}
+            />
+          ) : null}
+          {stubSpan > 0.01 ? (
+            <path
+              d={stubPath}
+              fill="none"
+              stroke={PIPE_WATER}
+              strokeWidth={targetWater}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${stubSpan * stubLen} ${stubLen}`}
+              strokeDashoffset={-stubTail * stubLen}
+            />
+          ) : null}
+        </g>
+      ) : null}
     </g>
   );
 }

@@ -41,6 +41,13 @@ export type DrainAnimationOptions = {
   targetFillUnits?: number | null;
   /** Fired once when the target is reached (or tank is empty). */
   onTargetReached?: () => void;
+  /**
+   * When true, only animate the drain column / pipe — level changes come from
+   * an external owner (e.g. plant pipe transfer).
+   */
+  skipLevelTransfer?: boolean;
+  /** Override tank drain rate (fill-units / s). Defaults to VESSEL_FILL_DRAIN_RATE. */
+  drainRate?: number;
 };
 
 export const DEFAULT_DRAIN_FLOW_GEOMETRY: DrainFlowGeometry = {
@@ -97,6 +104,8 @@ export function useDrainAnimation(
   const targetRef = useRef(options.targetFillUnits ?? null);
   const onTargetReachedRef = useRef(options.onTargetReached);
   const targetNotifiedRef = useRef(false);
+  const skipLevelTransferRef = useRef(Boolean(options.skipLevelTransfer));
+  const drainRateRef = useRef(options.drainRate ?? VESSEL_FILL_DRAIN_RATE);
 
   isHeldRef.current = isDrainHeld;
   onChangeRef.current = onFillUnitsChange;
@@ -104,6 +113,9 @@ export function useDrainAnimation(
   targetRef.current =
     options.targetFillUnits === undefined ? null : options.targetFillUnits;
   onTargetReachedRef.current = options.onTargetReached;
+  skipLevelTransferRef.current = Boolean(options.skipLevelTransfer);
+  drainRateRef.current = options.drainRate ?? VESSEL_FILL_DRAIN_RATE;
+  const skipLevelTransfer = skipLevelTransferRef.current;
   // Remote streams lower the target mid-dose — allow another onTargetReached later.
   if (
     targetRef.current != null &&
@@ -113,8 +125,9 @@ export function useDrainAnimation(
     targetNotifiedRef.current = false;
   }
   // While animating, the rAF loop owns fillUnitsRef — don't clobber it with
-  // a possibly-stale React state value mid-transfer.
-  if (phaseRef.current === "idle") {
+  // a possibly-stale React state value mid-transfer. External plant jobs push
+  // level through React state, so keep the ref in sync when they own the dose.
+  if (phaseRef.current === "idle" || skipLevelTransfer) {
     fillUnitsRef.current = fillUnits;
   }
 
@@ -180,7 +193,15 @@ export function useDrainAnimation(
         notifyTarget();
         return;
       }
-      let next = fillUnitsRef.current - VESSEL_FILL_DRAIN_RATE * deltaSeconds;
+      if (skipLevelTransferRef.current) {
+        // Level owned externally; only detect target crossing.
+        if (target != null && fillUnitsRef.current <= target + 0.05) {
+          notifyTarget();
+        }
+        return;
+      }
+      let next =
+        fillUnitsRef.current - drainRateRef.current * deltaSeconds;
       if (target != null) next = Math.max(next, target);
       next = clampFillUnits(next);
       if (next !== fillUnitsRef.current) {
