@@ -29,6 +29,11 @@ export type PipeFlowVisual = {
   tail01?: number;
   /** Stroke width in drawing px (pre-scale); defaults to sourceOd. */
   od?: number;
+  /**
+   * How full the bore runs relative to a single-stream capacity (1 = nominal,
+   * 2 = two drains merged). Grows the water stroke toward the pipe walls.
+   */
+  rateFill01?: number;
   /** When false, water enters at the target end (path is drawn reversed). */
   alongSource?: boolean;
   /** Last edge into a reactor inlet — blend outlet blue → inlet cyan. */
@@ -152,11 +157,17 @@ export default function PipeShape({
   const backDir = { x: -inDir.x, y: -inDir.y };
 
   const lastRun = Math.hypot(last.x - beforeLast.x, last.y - beforeLast.y);
+  // Reach past the tip into the unit's painted nozzle so plant + unit meet flush.
+  const tipOverlap = Math.max(2 * scale, 0.35 * Math.min(sourceOd, targetOd) * scale);
   const flangeLength = targetJoint ? FLANGE_THICK * scale : 0;
   const reducerLength =
     sourceOd === targetOd
       ? 0
-      : Math.max(0, Math.min(REDUCER_LENGTH * scale, lastRun - flangeLength - 2 * scale));
+      : Math.max(
+          0,
+          Math.min(REDUCER_LENGTH * scale, lastRun - flangeLength - tipOverlap - 2 * scale)
+        );
+  // Cone ends at the tip; a short target-OD stub continues into the nozzle.
   const reducer =
     reducerLength > 0
       ? {
@@ -164,12 +175,17 @@ export default function PipeShape({
           narrow: along(last, backDir, flangeLength),
         }
       : null;
-
-  // Overlap the reactor pipe end and the reducer slightly so no seam shows.
+  const tipStubEnd = along(last, inDir, tipOverlap);
+  const tipStub =
+    reducer && flangeLength === 0
+      ? polyline([reducer.narrow, tipStubEnd])
+      : null;
   const body = polyline([
-    along(first, outDir, -0.5 * scale),
+    along(first, outDir, -tipOverlap),
     ...points.slice(1, -1),
-    reducer ? along(reducer.wide, inDir, 0.5 * scale) : last,
+    reducer
+      ? along(reducer.wide, inDir, 0.5 * scale)
+      : tipStubEnd,
   ]);
 
   const pad = (Math.max(sourceOd, targetOd) / 2 + FLANGE_OVERHANG + 8) * scale;
@@ -188,16 +204,26 @@ export default function PipeShape({
   const sourceWater = Math.max(2, waterWidthForOd(sourceOd) * scale);
   const targetWater = Math.max(2, waterWidthForOd(targetOd) * scale);
   const bore = flow?.od ?? Math.min(sourceOd, targetOd);
-  const uniformWater = Math.max(2, waterWidthForOd(bore) * scale);
+  const nominalWater = Math.max(2, waterWidthForOd(bore) * scale);
+  // Single stream keeps the nominal stroke; merged drains thicken toward the bore.
+  const rateFill = Math.min(2, Math.max(0, flow?.rateFill01 ?? 1));
+  const maxWater = Math.max(nominalWater, bore * scale * 0.88);
+  const uniformWater =
+    nominalWater + (maxWater - nominalWater) * Math.max(0, rateFill - 1);
 
   const bodyPts = [
-    along(first, outDir, -0.5 * scale),
+    along(first, outDir, -tipOverlap),
     ...points.slice(1, -1),
-    reducer ? along(reducer.wide, inDir, 0.5 * scale) : last,
+    reducer
+      ? along(reducer.wide, inDir, 0.5 * scale)
+      : tipStubEnd,
   ];
   const bodyLen = Math.max(1, polyLength(bodyPts));
   const stubLen = reducer
-    ? Math.max(1, Math.hypot(last.x - reducer.narrow.x, last.y - reducer.narrow.y))
+    ? Math.max(
+        1,
+        Math.hypot(tipStubEnd.x - reducer.narrow.x, tipStubEnd.y - reducer.narrow.y)
+      )
     : 0;
   const coneLen = reducerLength;
   const totalFlowLen = bodyLen + coneLen + stubLen;
@@ -218,8 +244,8 @@ export default function PipeShape({
   const bodyWaterPath = flowAlongSource ? body : polyline([...bodyPts].reverse());
   const stubPath = reducer
     ? flowAlongSource
-      ? polyline([reducer.narrow, last])
-      : polyline([last, reducer.narrow])
+      ? polyline([reducer.narrow, tipStubEnd])
+      : polyline([tipStubEnd, reducer.narrow])
     : "";
 
   const blendToInlet = Boolean(flow?.blendToInlet);
@@ -290,6 +316,15 @@ export default function PipeShape({
             fill={PIPE_METAL.stroke}
           />
         ) : null}
+        {tipStub ? (
+          <path
+            d={tipStub}
+            fill="none"
+            stroke={PIPE_METAL.stroke}
+            strokeWidth={(targetOd + 2) * scale}
+            strokeLinecap="butt"
+          />
+        ) : null}
         <path
           d={body}
           fill="none"
@@ -302,6 +337,15 @@ export default function PipeShape({
           <polygon
             points={cone(reducer.wide, reducer.narrow, (sourceOd / 2) * scale, (targetOd / 2) * scale)}
             fill={PIPE_FILL}
+          />
+        ) : null}
+        {tipStub ? (
+          <path
+            d={tipStub}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={targetOd * scale}
+            strokeLinecap="butt"
           />
         ) : null}
         {sourceJoint ? <JointFlange at={first} dir={outDir} od={sourceOd} scale={scale} /> : null}

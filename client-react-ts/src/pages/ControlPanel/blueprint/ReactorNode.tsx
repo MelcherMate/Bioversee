@@ -78,8 +78,8 @@ const SIDE_POSITION: Record<PipePortSide, Position> = {
 };
 
 /**
- * Zero-size handle on a pipe's open end, so React Flow attaches the connecting
- * pipe exactly there whatever side it faces. The ring is drawn in CSS.
+ * Join handle on a pipe's open end. Open ports get `bp-port--open` (visible
+ * ring + hit target in CSS). Occupied ports stay hidden and non-connectable.
  */
 function PipePortHandle({
   id,
@@ -94,19 +94,25 @@ function PipePortHandle({
   connectable: boolean;
   title: string;
 }) {
+  const left = (layout.wrapperMarginLeft + port.x) * REACTOR_SCALE;
+  const top = (layout.wrapperMarginTop + port.y) * REACTOR_SCALE;
   return (
     <Handle
       id={id}
-      type={id === "outlet" ? "source" : "target"}
+      // Always source: Loose mode + normalizePipeConnection set polarity.
+      // Target-typed inlet rings often cannot start a drag.
+      type="source"
       position={SIDE_POSITION[port.side]}
       isConnectable={connectable}
       isConnectableStart={connectable}
       isConnectableEnd={connectable}
-      className="bp-port"
+      className={`bp-port nodrag nopan${connectable ? " bp-port--open" : ""}`}
       style={{
-        left: (layout.wrapperMarginLeft + port.x) * REACTOR_SCALE,
-        top: (layout.wrapperMarginTop + port.y) * REACTOR_SCALE,
+        left,
+        top,
+        transform: "translate(-50%, -50%)",
       }}
+      aria-label={connectable ? title : undefined}
       title={connectable ? title : undefined}
     />
   );
@@ -222,11 +228,19 @@ export default function ReactorNode({ id, data }: NodeProps<Node<ReactorNodeData
   const canAdmin = canAdminDevice(data.device.role);
   const showPiping = editing && selected && canAdmin;
   const charts = controller ? hasBioreactorCharts(controller.equipment) : false;
-  // One pipe per open end.
-  const inletLinked =
-    useNodeConnections({ handleType: "target", handleId: "inlet" }).length > 0;
-  const outletLinked =
-    useNodeConnections({ handleType: "source", handleId: "outlet" }).length > 0;
+  // One pipe per open end on THIS node. sourceHandle/targetHandle name the
+  // remote end's seat too — only count when this node owns that seat.
+  const reactorLinks = useNodeConnections();
+  const inletLinked = reactorLinks.some(
+    (c) =>
+      (c.source === id && c.sourceHandle === "inlet") ||
+      (c.target === id && c.targetHandle === "inlet")
+  );
+  const outletLinked = reactorLinks.some(
+    (c) =>
+      (c.source === id && c.sourceHandle === "outlet") ||
+      (c.target === id && c.targetHandle === "outlet")
+  );
   const updateNodeInternals = useUpdateNodeInternals();
 
   // Handles move with the pipe directions without resizing the node.
@@ -248,22 +262,25 @@ export default function ReactorNode({ id, data }: NodeProps<Node<ReactorNodeData
         ) : (
           <span className="bp-reactor__loading">{t("common.loading")}</span>
         )}
-        <PipePortHandle
-          id="inlet"
-          port={layout.ports.inlet}
-          layout={layout}
-          connectable={editing && !inletLinked}
-          title={t("controlPanel.inletPortHint")}
-        />
-        {hasOutlet ? (
+        {/* Above the scaled vessel card so open rings stay visible and clickable. */}
+        <div className="bp-reactor__ports">
           <PipePortHandle
-            id="outlet"
-            port={layout.ports.outlet}
+            id="inlet"
+            port={layout.ports.inlet}
             layout={layout}
-            connectable={editing && !outletLinked}
-            title={t("controlPanel.outletPortHint")}
+            connectable={editing && !inletLinked}
+            title={t("controlPanel.inletPortHint")}
           />
-        ) : null}
+          {hasOutlet ? (
+            <PipePortHandle
+              id="outlet"
+              port={layout.ports.outlet}
+              layout={layout}
+              connectable={editing && !outletLinked}
+              title={t("controlPanel.outletPortHint")}
+            />
+          ) : null}
+        </div>
       </div>
       {editing && canAdmin ? (
         <NameField id={id} name={data.device.name} />

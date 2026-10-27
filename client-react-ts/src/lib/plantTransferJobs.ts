@@ -28,6 +28,11 @@ export type PlantTransferSnapshot = {
   edgeProgress: Record<string, number>;
   /** Per-edge trailing clear 0..1 — water occupies [tail, head] on each edge. */
   edgeTail: Record<string, number>;
+  /**
+   * Per source vessel: metal outlet primed (water at tip) / cleared (empty).
+   * Used to gate atmosphere spray on a direct open outlet (no plant pipe).
+   */
+  sourceOutlet: Record<string, { primed: boolean; cleared: boolean }>;
   done: boolean;
 };
 
@@ -78,15 +83,126 @@ type InternalJob = {
   raf: number;
   lastTime: number;
   lastPersistAt: Map<string, number>;
+  /** Sink ids whose server baseline has been applied onto the shared level. */
+  patchedSinkBaselines: Set<string>;
   onComplete?: (snap: PlantTransferSnapshot) => void;
 };
 
 const jobs = new Map<string, InternalJob>();
 const globalListeners = new Set<GlobalListener>();
 const sinkLevelListeners = new Map<string, Set<SinkLevelListener>>();
+/** Live sink fill shared across concurrent drain jobs (so volumes accumulate). */
+const sharedSinkLevels = new Map<string, DeviceLevel>();
+/** Total units delivered into each sink across all active jobs this session. */
+const sharedSinkDelivered = new Map<string, number>();
 
 function clampUnits(value: number) {
   return Math.min(VESSEL_MAX_FILL_UNITS, Math.max(0, value));
+}
+
+function clearSharedSinksIfIdle() {
+  if (jobs.size > 0) return;
+  sharedSinkLevels.clear();
+  sharedSinkDelivered.clear();
+}
+
+/**
+ * Merge every active drain into one pipe visual so multi-source flows join on
+ * shared edges instead of flickering between single-job snapshots.
+ */
+function mergeVisualSnapshot(): PlantTransferSnapshot | null {
+  const active: InternalJob[] = [];
+  for (const job of jobs.values()) {
+    if (!job.done) active.push(job);
+  }
+  if (active.length === 0) return null;
+  if (active.length === 1) return toSnapshot(active[0]!);
+
+  const edgeProgress: Record<string, number> = {};
+  const edgeTail: Record<string, number> = {};
+  const edgeRates: Record<string, number> = {};
+  const edgeOd: Record<string, number> = {};
+  const edgeAlongSource: Record<string, boolean> = {};
+  const sinks: FlowSink[] = [];
+  let totalRate = 0;
+  let remainingUnits = 0;
+  let requestedUnits = 0;
+  let currentSourceUnits = 0;
+  let sprinkleOnly = true;
+
+  for (const job of active) {
+    remainingUnits += Math.max(
+      0,
+      job.getSourceUnits() - job.targetSourceUnits
+    );
+    requestedUnits += job.requestedUnits;
+    currentSourceUnits += job.getSourceUnits();
+    totalRate += job.flow.totalRate;
+    if (!job.flow.sprinkleOnly) sprinkleOnly = false;
+    for (const sink of job.flow.sinks) sinks.push(sink);
+
+    for (const [id, rate] of Object.entries(job.flow.edgeRates)) {
+      edgeRates[id] = (edgeRates[id] ?? 0) + rate;
+    }
+    for (const [id, od] of Object.entries(job.flow.edgeOd)) {
+      edgeOd[id] = Math.max(edgeOd[id] ?? 0, od);
+    }
+    for (const [id, along] of Object.entries(job.flow.edgeAlongSource)) {
+      if (edgeAlongSource[id] === undefined) edgeAlongSource[id] = along;
+    }
+    for (const [id, head] of Object.entries(job.edgeProgress)) {
+      edgeProgress[id] = Math.max(edgeProgress[id] ?? 0, head);
+    }
+    for (const [id, tail] of Object.entries(job.edgeTail)) {
+      const head = job.edgeProgress[id] ?? 0;
+      if (head - tail < 0.01) continue;
+      edgeTail[id] = Math.min(edgeTail[id] ?? 1, tail);
+    }
+  }
+
+  for (const id of Object.keys(edgeProgress)) {
+    if (edgeTail[id] === undefined) edgeTail[id] = 0;
+  }
+
+  const frontLike = Math.max(
+    ...active.map((j) => j.frontEdges / Math.max(1, longestPathEdges(j.flow))),
+    0
+  );
+
+  const sourceOutlet: Record<string, { primed: boolean; cleared: boolean }> =
+    {};
+  for (const job of active) {
+    sourceOutlet[job.sourceDeviceId] = {
+      primed: job.getOutletPrimed(),
+      cleared: job.getOutletCleared(),
+    };
+  }
+
+  return {
+    sourceDeviceId: active.map((j) => j.sourceDeviceId).join("+"),
+    remainingUnits,
+    requestedUnits,
+    currentSourceUnits,
+    flow: {
+      sourceDeviceId: active[0]!.sourceDeviceId,
+      totalRate,
+      sinks,
+      edgeRates,
+      edgeOd,
+      edgeAlongSource,
+      sprinkleOnly,
+    },
+    pipeFill01: Math.min(1, frontLike),
+    edgeProgress,
+    edgeTail,
+    sourceOutlet,
+    done: false,
+  };
+}
+
+function broadcastVisual() {
+  const snap = mergeVisualSnapshot();
+  for (const listener of globalListeners) listener(snap);
 }
 
 function sinkKey(sink: FlowSink): string {
@@ -127,6 +243,12 @@ function toSnapshot(job: InternalJob): PlantTransferSnapshot {
     pipeFill01: Math.min(1, job.frontEdges / longest),
     edgeProgress: job.edgeProgress,
     edgeTail: job.edgeTail,
+    sourceOutlet: {
+      [job.sourceDeviceId]: {
+        primed: job.getOutletPrimed(),
+        cleared: job.getOutletCleared(),
+      },
+    },
     done: job.done,
   };
 }
@@ -159,18 +281,15 @@ export function subscribePlantSinkLevel(
   };
 }
 
-function broadcast(snap: PlantTransferSnapshot | null) {
-  for (const listener of globalListeners) listener(snap);
-}
-
 function notify(job: InternalJob) {
   const snap = toSnapshot(job);
   for (const listener of job.listeners) listener(snap);
-  broadcast(snap);
+  broadcastVisual();
 }
 
 function persistSink(job: InternalJob, deviceId: string, sensor: boolean) {
-  const level = job.sinkLevels.get(deviceId);
+  const level =
+    sharedSinkLevels.get(deviceId) ?? job.sinkLevels.get(deviceId);
   if (!level) return;
   const percent = fillUnitsToStoredPercent(level.units, level.capacityL);
   insertSliderState(deviceId, WATER_LEVEL_KEY, percent, job.userId).catch(
@@ -192,12 +311,20 @@ function maybeStreamPersist(job: InternalJob, deviceId: string) {
 
 function deliverToSink(job: InternalJob, sink: FlowSink, amount: number) {
   if (amount <= 0 || sink.kind !== "reactor") return;
-  const level = job.sinkLevels.get(sink.deviceId);
+  const level =
+    sharedSinkLevels.get(sink.deviceId) ?? job.sinkLevels.get(sink.deviceId);
   if (!level) return;
   const room = VESSEL_MAX_FILL_UNITS - level.units;
   const add = Math.min(room, amount);
   if (add <= 0) return;
   level.units = clampUnits(level.units + add);
+  sharedSinkDelivered.set(
+    sink.deviceId,
+    (sharedSinkDelivered.get(sink.deviceId) ?? 0) + add
+  );
+  // Keep per-job map on the same object so concurrent drains share units.
+  job.sinkLevels.set(sink.deviceId, level);
+  sharedSinkLevels.set(sink.deviceId, level);
   emitSinkLevel(sink.deviceId, level);
   maybeStreamPersist(job, sink.deviceId);
 }
@@ -220,10 +347,11 @@ function finish(job: InternalJob) {
   job.edgeTail = {};
   const snap = toSnapshot(job);
   for (const listener of job.listeners) listener(snap);
-  broadcast(null);
   job.onComplete?.(snap);
   if (job.raf) cancelAnimationFrame(job.raf);
   jobs.delete(job.sourceDeviceId);
+  clearSharedSinksIfIdle();
+  broadcastVisual();
 }
 
 function refreshFlow(job: InternalJob) {
@@ -304,10 +432,20 @@ function tick(job: InternalJob, now: number) {
   for (const sink of job.flow.sinks) {
     const key = sinkKey(sink);
     const pending = job.inTransit.get(key) ?? 0;
+    // Full receiver — drop undeliverable volume (do not rewrite as inlet spray).
+    if (sink.kind === "reactor" && sink.rate < 0.01) {
+      if (pending > 0) job.inTransit.set(key, 0);
+      continue;
+    }
     if (pending <= 0 || job.frontEdges < sink.edgeIds.length) continue;
     const give = Math.min(pending, Math.max(sink.rate, 0.01) * dt);
-    deliverToSink(job, sink, give);
-    job.inTransit.set(key, pending - give);
+    if (give <= 0) continue;
+    if (sink.kind === "reactor") {
+      deliverToSink(job, sink, give);
+    }
+    // Sprinkle = atmosphere: volume leaves the pipes, nothing to store.
+    // Must still consume inTransit or the job never finishes and spray sticks on.
+    job.inTransit.set(key, Math.max(0, pending - give));
   }
 
   notify(job);
@@ -356,12 +494,21 @@ export function startPlantDrainTransfer(
     return flow;
   }
 
+  // Share sink fill objects across concurrent drains so volumes accumulate.
   const sinkLevels = new Map<string, DeviceLevel>();
   for (const [id, level] of Object.entries(input.sinkLevels)) {
-    sinkLevels.set(id, {
-      capacityL: level.capacityL,
-      units: clampUnits(level.units),
-    });
+    let shared = sharedSinkLevels.get(id);
+    if (!shared) {
+      shared = {
+        capacityL: level.capacityL,
+        units: clampUnits(level.units),
+      };
+      sharedSinkLevels.set(id, shared);
+      if (!sharedSinkDelivered.has(id)) sharedSinkDelivered.set(id, 0);
+    } else {
+      shared.capacityL = level.capacityL || shared.capacityL;
+    }
+    sinkLevels.set(id, shared);
   }
 
   const job: InternalJob = {
@@ -388,6 +535,7 @@ export function startPlantDrainTransfer(
     raf: 0,
     lastTime: 0,
     lastPersistAt: new Map(),
+    patchedSinkBaselines: new Set(),
     onComplete: input.onComplete,
   };
   jobs.set(input.sourceDeviceId, job);
@@ -401,8 +549,9 @@ export function cancelPlantDrainTransfer(sourceDeviceId: string): void {
   if (!job) return;
   if (job.raf) cancelAnimationFrame(job.raf);
   job.done = true;
-  broadcast(null);
   jobs.delete(sourceDeviceId);
+  clearSharedSinksIfIdle();
+  broadcastVisual();
 }
 
 /** Refresh peer tank levels once slider reads arrive (job already running). */
@@ -413,16 +562,22 @@ export function patchPlantDrainSinkLevels(
   const job = jobs.get(sourceDeviceId);
   if (!job || job.done) return;
   for (const [id, level] of Object.entries(sinkLevels)) {
-    const prev = job.sinkLevels.get(id);
     const fetched = clampUnits(level.units);
-    // Job started at provisional 0; keep any volume already delivered.
-    const alreadyDelivered = prev?.units ?? 0;
+    const delivered = sharedSinkDelivered.get(id) ?? 0;
+    if (job.patchedSinkBaselines.has(id)) {
+      const shared = sharedSinkLevels.get(id);
+      if (shared) shared.capacityL = level.capacityL || shared.capacityL;
+      continue;
+    }
+    job.patchedSinkBaselines.add(id);
+    // Baseline from server + everything already poured by any active job.
     const next: DeviceLevel = {
       capacityL: level.capacityL,
-      units: clampUnits(fetched + alreadyDelivered),
+      units: clampUnits(fetched + delivered),
     };
+    sharedSinkLevels.set(id, next);
     job.sinkLevels.set(id, next);
-    if (alreadyDelivered > 0.05) emitSinkLevel(id, next);
+    if (delivered > 0.05) emitSinkLevel(id, next);
   }
 }
 
@@ -468,16 +623,14 @@ export function subscribePlantFlowVisuals(
   listener: GlobalListener
 ): () => void {
   globalListeners.add(listener);
-  const first = jobs.values().next().value as InternalJob | undefined;
-  listener(first ? toSnapshot(first) : null);
+  listener(mergeVisualSnapshot());
   return () => {
     globalListeners.delete(listener);
   };
 }
 
 export function getActivePlantFlowVisual(): PlantTransferSnapshot | null {
-  const first = jobs.values().next().value as InternalJob | undefined;
-  return first ? toSnapshot(first) : null;
+  return mergeVisualSnapshot();
 }
 
 type GraphProvider = () => FlowGraph | null;

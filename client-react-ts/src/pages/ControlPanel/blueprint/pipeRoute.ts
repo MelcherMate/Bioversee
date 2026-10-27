@@ -17,6 +17,8 @@ export type PipeRoute = {
   length: number;
   /** Middle of the longest run, for edit controls. */
   label: XYPosition;
+  /** Unit vector along the longest run, source → target (flow direction). */
+  labelDir: XYPosition;
 };
 
 const DIRECTION: Record<Position, XYPosition> = {
@@ -146,6 +148,7 @@ export function routePipe(source: PipeEnd, target: PipeEnd): PipeRoute {
   let length = 0;
   let longest = -1;
   let label: XYPosition = points[0]!;
+  let labelDir: XYPosition = { x: 1, y: 0 };
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]!;
     const b = points[i]!;
@@ -154,8 +157,10 @@ export function routePipe(source: PipeEnd, target: PipeEnd): PipeRoute {
     if (run > longest) {
       longest = run;
       label = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const inv = run > EPSILON ? 1 / run : 1;
+      labelDir = { x: (b.x - a.x) * inv, y: (b.y - a.y) * inv };
     }
   }
   const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  return { points, path, length, label };
+  return { points, path, length, label, labelDir };
 }

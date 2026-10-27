@@ -3,11 +3,16 @@
   width: calc(160px * 0.3);
   height: calc(160px * 0.3);
   line-height: 0;
+  overflow: visible;
 }
 
 .bp-fitting__svg {
   display: block;
   overflow: visible;
+}
+
+.bp-fitting__water {
+  pointer-events: none;
 }
 
 .bp-fitting__name {

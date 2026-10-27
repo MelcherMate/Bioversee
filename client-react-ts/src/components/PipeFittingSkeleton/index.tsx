@@ -74,7 +74,7 @@ export default function PipeFittingSkeleton({
       {kind === "wye_split" ? (
         <>
           <path
-            d="M36 10 V34 L18 58 M36 34 L54 58"
+            d="M36 10 V38 H30 A8 8 0 0 0 22 46 V62 M36 38 H42 A8 8 0 0 1 50 46 V62"
             fill="none"
             stroke={stroke}
             strokeWidth={(od ?? thin) + 2}
@@ -82,7 +82,7 @@ export default function PipeFittingSkeleton({
             strokeLinejoin="round"
           />
           <path
-            d="M36 10 V34 L18 58 M36 34 L54 58"
+            d="M36 10 V38 H30 A8 8 0 0 0 22 46 V62 M36 38 H42 A8 8 0 0 1 50 46 V62"
             fill="none"
             stroke={PIPE_FILL}
             strokeWidth={od ?? thin}
@@ -95,7 +95,7 @@ export default function PipeFittingSkeleton({
       {kind === "wye_merge" ? (
         <>
           <path
-            d="M18 14 L36 38 L54 14 M36 38 V62"
+            d="M22 10 V26 A8 8 0 0 0 30 34 H36 M50 10 V26 A8 8 0 0 1 42 34 H36 M36 34 V62"
             fill="none"
             stroke={stroke}
             strokeWidth={(od ?? thin) + 2}
@@ -103,7 +103,7 @@ export default function PipeFittingSkeleton({
             strokeLinejoin="round"
           />
           <path
-            d="M18 14 L36 38 L54 14 M36 38 V62"
+            d="M22 10 V26 A8 8 0 0 0 30 34 H36 M50 10 V26 A8 8 0 0 1 42 34 H36 M36 34 V62"
             fill="none"
             stroke={PIPE_FILL}
             strokeWidth={od ?? thin}

@@ -494,6 +494,12 @@ export function resolveDrainFlow(
   };
 }
 
+/**
+ * A full receiving tank cannot take more water. We used to rewrite it as a
+ * "sprinkle" on the inlet handle — that sprayed out the top of the fill pipe.
+ * Instead: keep the reactor sink but zero its rate so delivery stops. Atmosphere
+ * spray stays reserved for true open pipe ends (fittings), never tank nozzles.
+ */
 export function applySinkBlocks(
   flow: ResolvedFlow,
   blockedReactorIds: Set<string>
@@ -502,20 +508,18 @@ export function applySinkBlocks(
 
   const sinks: FlowSink[] = flow.sinks.map((s) => {
     if (s.kind === "reactor" && blockedReactorIds.has(s.deviceId)) {
-      return {
-        kind: "sprinkle" as const,
-        deviceId: s.deviceId,
-        handleId: s.handleId,
-        rate: s.rate,
-        edgeIds: s.edgeIds,
-      };
+      return { ...s, rate: 0 };
     }
     return s;
   });
 
+  const totalRate = sinks.reduce((sum, s) => sum + s.rate, 0);
   return {
     ...flow,
     sinks,
-    sprinkleOnly: sinks.length > 0 && sinks.every((s) => s.kind === "sprinkle"),
+    totalRate,
+    sprinkleOnly:
+      totalRate < 0.01 &&
+      sinks.some((s) => s.kind === "sprinkle" && s.rate >= 0.01),
   };
 }

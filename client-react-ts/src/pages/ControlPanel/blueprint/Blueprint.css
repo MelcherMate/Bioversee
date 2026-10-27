@@ -55,6 +55,16 @@
 .bp-reactor__stage {
   position: relative;
   z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Port rings sit above the transformed vessel drawing. */
+.bp-reactor__ports {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: visible;
   pointer-events: none;
 }
 
@@ -273,45 +283,64 @@
   opacity: 0.45;
 }
 
-/* Pipe ends: zero-size handles on the open end; the ring is the grab area. */
+/*
+ * Pipe-end join handles sit on the tip as a 1×1 anchor so React Flow's
+ * side-based edge point (top/left/right/bottom of the handle box) lands on
+ * the tip — a 20×20 box left a half-size gap between plant pipe and unit.
+ * The visible ring + hit target is ::after (events still hit this element).
+ * Occupied ports stay invisible (no bp-port--open).
+ */
 .cp-line__canvas .react-flow__handle.bp-port {
-  width: 0;
-  height: 0;
-  min-width: 0;
-  min-height: 0;
-  right: auto;
-  bottom: auto;
-  border: 0;
+  width: 1px;
+  height: 1px;
+  min-width: 1px;
+  min-height: 1px;
+  right: auto !important;
+  bottom: auto !important;
+  box-sizing: border-box;
+  border: none;
   border-radius: 0;
-  background: none;
-  transform: none;
-  /* Stage is pointer-events: none; ports must still receive connect gestures. */
-  pointer-events: auto;
-  z-index: 2;
+  background: transparent;
+  transform: translate(-50%, -50%) !important;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+  touch-action: none;
 }
 
-.cp-line__canvas .bp-port::before {
+.cp-line__canvas .react-flow__handle.bp-port::after {
   content: "";
   position: absolute;
-  left: -8px;
-  top: -8px;
-  width: 16px;
-  height: 16px;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  box-sizing: border-box;
+  border: 1.5px solid transparent;
   border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--bv-text) 22%, transparent);
-  background: color-mix(in srgb, var(--bv-surface) 80%, transparent);
-  opacity: 0;
-  transition:
-    opacity 0.2s var(--bv-ease, ease),
-    background 0.15s var(--bv-ease, ease);
+  background: transparent;
+  pointer-events: none;
 }
 
-.cp-line__canvas.is-editing .bp-port::before {
+.cp-line__canvas.is-editing .react-flow__handle.bp-port.bp-port--open {
   opacity: 1;
+  pointer-events: all;
+  cursor: crosshair;
 }
 
-.cp-line__canvas.is-editing .bp-port:hover::before,
-.cp-line__canvas.is-editing .bp-port.connecting::before {
+.cp-line__canvas.is-editing .react-flow__handle.bp-port.bp-port--open::after {
+  pointer-events: auto;
+  border-color: color-mix(in srgb, var(--cp-edit) 80%, #fff);
+  background: color-mix(in srgb, var(--bv-surface) 70%, var(--cp-edit-soft));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cp-edit) 40%, transparent);
+}
+
+.cp-line__canvas.is-editing .react-flow__handle.bp-port.bp-port--open:hover::after,
+.cp-line__canvas.is-editing
+  .react-flow__handle.bp-port.bp-port--open.connecting::after,
+.cp-line__canvas.is-editing
+  .react-flow__handle.bp-port.bp-port--open.connectionindicator:hover::after {
   border-color: var(--cp-edit);
   background: var(--cp-edit-soft);
 }
@@ -331,6 +360,17 @@
   stroke-opacity: 0;
   pointer-events: stroke;
   cursor: pointer;
+}
+
+/* Edit mode: flow direction on the longest run (source → target). */
+.bp-pipe__flow-arrow {
+  pointer-events: none;
+  fill: var(--cp-edit);
+  stroke: var(--cp-edit);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
 }
 
 .bp-pipe-remove {

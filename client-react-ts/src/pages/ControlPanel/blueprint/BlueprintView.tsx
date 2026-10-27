@@ -169,6 +169,48 @@ function handleBusy(
   );
 }
 
+/**
+ * Drag may start on either end (Loose mode). Stored edges always run
+ * bioreactor outlet → inlet when a vessel is involved; fittings keep the
+ * drag order unless a swap is needed for that polarity.
+ */
+function normalizePipeConnection(
+  source: string,
+  target: string,
+  sourceHandle: string,
+  targetHandle: string,
+  getDevice: (id: string) => AccessibleDevice | undefined
+): {
+  source: string;
+  target: string;
+  sourceHandle: string;
+  targetHandle: string;
+} | null {
+  const sourceDevice = getDevice(source);
+  const targetDevice = getDevice(target);
+  if (!sourceDevice || !targetDevice) return null;
+
+  let s = source;
+  let t = target;
+  let sh = sourceHandle;
+  let th = targetHandle;
+  let sDev = sourceDevice;
+  let tDev = targetDevice;
+
+  const shouldSwap =
+    (sDev.type === "bioreactor" && sh === "inlet") ||
+    (tDev.type === "bioreactor" && th === "outlet");
+  if (shouldSwap) {
+    [s, t, sh, th, sDev, tDev] = [t, s, th, sh, tDev, sDev];
+  }
+
+  if (sDev.type === "bioreactor" && sh !== "outlet") return null;
+  if (tDev.type === "bioreactor" && th !== "inlet") return null;
+  if (!canBePipeSource(sDev) || !canBePipeTarget(tDev)) return null;
+
+  return { source: s, target: t, sourceHandle: sh, targetHandle: th };
+}
+
 /** Charts dock follows device config so switching units does not flash closed. */
 function deviceHasCharts(device: AccessibleDevice): boolean {
   if (device.type !== "bioreactor") return false;
@@ -689,54 +731,67 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
     [plantCtx?.plants, push, t]
   );
 
-  // Each open pipe end takes one pipe; a drain never feeds its own reactor.
+  const deviceByNodeId = useCallback(
+    (nodeId: string) =>
+      nodesRef.current.find((n) => n.id === nodeId)?.data.device,
+    []
+  );
+
+  // Each open pipe end takes one pipe; drag either direction (then normalize).
   const isValidConnection: IsValidConnection<PipeEdgeType> = useCallback(
     (connection) => {
       const { source, target, sourceHandle, targetHandle } = connection;
       if (!source || !target || source === target) return false;
       if (!sourceHandle || !targetHandle) return false;
-      const sourceDevice = nodesRef.current.find((n) => n.id === source)?.data
-        .device;
-      const targetDevice = nodesRef.current.find((n) => n.id === target)?.data
-        .device;
-      if (!sourceDevice || !targetDevice) return false;
-      if (!canBePipeSource(sourceDevice) || !canBePipeTarget(targetDevice)) {
-        return false;
-      }
-      if (
-        sourceDevice.type === "bioreactor" &&
-        sourceHandle !== "outlet"
-      ) {
-        return false;
-      }
-      if (
-        targetDevice.type === "bioreactor" &&
-        targetHandle !== "inlet"
-      ) {
-        return false;
-      }
+      const normalized = normalizePipeConnection(
+        source,
+        target,
+        sourceHandle,
+        targetHandle,
+        deviceByNodeId
+      );
+      if (!normalized) return false;
       return (
-        !handleBusy(edgesRef.current, source, sourceHandle) &&
-        !handleBusy(edgesRef.current, target, targetHandle)
+        !handleBusy(
+          edgesRef.current,
+          normalized.source,
+          normalized.sourceHandle
+        ) &&
+        !handleBusy(
+          edgesRef.current,
+          normalized.target,
+          normalized.targetHandle
+        )
       );
     },
-    []
+    [deviceByNodeId]
   );
 
   const onConnect: OnConnect = useCallback(
     ({ source, target, sourceHandle, targetHandle }) => {
       if (!source || !target || !sourceHandle || !targetHandle) return;
-      const pendingId = `${PENDING_PIPE}${source}:${sourceHandle}:${target}:${targetHandle}`;
-      setEdges((eds) => [
-        ...eds,
-        toPipeEdge(pendingId, source, target, sourceHandle, targetHandle),
-      ]);
-      createPlantConnection({
-        plantId,
-        sourceDeviceId: source,
-        targetDeviceId: target,
+      const normalized = normalizePipeConnection(
+        source,
+        target,
         sourceHandle,
         targetHandle,
+        deviceByNodeId
+      );
+      if (!normalized) return;
+      const {
+        source: src,
+        target: tgt,
+        sourceHandle: srcH,
+        targetHandle: tgtH,
+      } = normalized;
+      const pendingId = `${PENDING_PIPE}${src}:${srcH}:${tgt}:${tgtH}`;
+      setEdges((eds) => [...eds, toPipeEdge(pendingId, src, tgt, srcH, tgtH)]);
+      createPlantConnection({
+        plantId,
+        sourceDeviceId: src,
+        targetDeviceId: tgt,
+        sourceHandle: srcH,
+        targetHandle: tgtH,
       })
         .then((created) => {
           if (cancelledPipes.current.delete(pendingId)) {
@@ -748,8 +803,8 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
             ...eds.filter((e) => e.id !== pendingId && e.id !== created.id),
             toPipeEdge(
               created.id,
-              source,
-              target,
+              src,
+              tgt,
               created.source_handle,
               created.target_handle
             ),
@@ -768,7 +823,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
           );
         });
     },
-    [plantId, push, setEdges, t]
+    [deviceByNodeId, plantId, push, setEdges, t]
   );
 
   const removePipe = useCallback(
@@ -954,12 +1009,13 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
             onConnect={onConnect}
             isValidConnection={isValidConnection}
             connectionMode={ConnectionMode.Loose}
+            connectOnClick={editing}
             onDragOver={editing ? onLibraryDragOver : undefined}
             onDrop={editing ? onLibraryDrop : undefined}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionLineComponent={PipeConnectionLine}
-            connectionRadius={28}
+            connectionRadius={36}
             nodesDraggable={editing}
             nodesConnectable={editing}
             edgesFocusable={false}

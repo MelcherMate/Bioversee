@@ -120,6 +120,87 @@ export function nextFittingRotation(
   return ((current + 90) % 360) as PipeFittingRotation;
 }
 
+/** Authoring size of a fitting drawing (matches PipeFittingNode). */
+export const FITTING_DRAW_SIZE = 160;
+const FITTING_CX = FITTING_DRAW_SIZE / 2;
+const FITTING_CY = FITTING_DRAW_SIZE / 2;
+const FITTING_ARM = FITTING_DRAW_SIZE / 2;
+
+type FittingPortPoint = { id: string; x: number; y: number };
+
+function rotateFittingPoint(
+  x: number,
+  y: number,
+  rotation: PipeFittingRotation
+): { x: number; y: number } {
+  const dx = x - FITTING_CX;
+  const dy = y - FITTING_CY;
+  switch (rotation) {
+    case 90:
+      return { x: FITTING_CX - dy, y: FITTING_CY + dx };
+    case 180:
+      return { x: FITTING_CX - dx, y: FITTING_CY - dy };
+    case 270:
+      return { x: FITTING_CX + dy, y: FITTING_CY - dx };
+    default:
+      return { x, y };
+  }
+}
+
+/** Unrotated handle seats for a fitting kind (drawing px). */
+function fittingPortSeats(config: PipeFittingConfig): FittingPortPoint[] {
+  const leg = FITTING_ARM * 0.55;
+  switch (config.kind) {
+    case "cross":
+      return [
+        { id: "n", x: FITTING_CX, y: FITTING_CY - FITTING_ARM },
+        { id: "s", x: FITTING_CX, y: FITTING_CY + FITTING_ARM },
+        { id: "e", x: FITTING_CX + FITTING_ARM, y: FITTING_CY },
+        { id: "w", x: FITTING_CX - FITTING_ARM, y: FITTING_CY },
+      ];
+    case "wye_split":
+      return [
+        { id: "stem", x: FITTING_CX, y: FITTING_CY - FITTING_ARM },
+        { id: "left", x: FITTING_CX - leg, y: FITTING_CY + FITTING_ARM },
+        { id: "right", x: FITTING_CX + leg, y: FITTING_CY + FITTING_ARM },
+      ];
+    case "wye_merge":
+      return [
+        { id: "left", x: FITTING_CX - leg, y: FITTING_CY - FITTING_ARM },
+        { id: "right", x: FITTING_CX + leg, y: FITTING_CY - FITTING_ARM },
+        { id: "stem", x: FITTING_CX, y: FITTING_CY + FITTING_ARM },
+      ];
+    case "reducer":
+      return [
+        { id: "wide", x: FITTING_CX - FITTING_ARM, y: FITTING_CY },
+        { id: "thin", x: FITTING_CX + FITTING_ARM, y: FITTING_CY },
+      ];
+  }
+}
+
+/** Handle seat in drawing px after rotation (node-local before FITTING_SCALE). */
+export function fittingHandlePoint(
+  config: PipeFittingConfig,
+  handleId: string
+): { x: number; y: number } | null {
+  const seat = fittingPortSeats(config).find((p) => p.id === handleId);
+  if (!seat) return null;
+  return rotateFittingPoint(seat.x, seat.y, config.rotation);
+}
+
+/** Unit outward leave-direction from a fitting handle (after rotation). */
+export function fittingHandleOutward(
+  config: PipeFittingConfig,
+  handleId: string
+): { dx: number; dy: number } {
+  const point = fittingHandlePoint(config, handleId);
+  if (!point) return { dx: 0, dy: 1 };
+  const dx = point.x - FITTING_CX;
+  const dy = point.y - FITTING_CY;
+  const len = Math.hypot(dx, dy) || 1;
+  return { dx: dx / len, dy: dy / len };
+}
+
 export function isPipeFittingDeviceType(
   type: string
 ): type is "pipe_fitting" {
