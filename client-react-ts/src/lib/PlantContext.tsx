@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { DEVICES_CHANGED_EVENT } from "./onboarding";
 import {
   ensureMyDefaultPlant,
   listMyPlants,
@@ -92,7 +93,16 @@ export function PlantProvider({
         if (pick) writeStoredPlantId(pick);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : String(err));
+          setError(
+            err instanceof Error
+              ? err.message
+              : typeof err === "object" &&
+                  err &&
+                  "message" in err &&
+                  typeof (err as { message: unknown }).message === "string"
+                ? (err as { message: string }).message
+                : String(err)
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -102,6 +112,22 @@ export function PlantProvider({
     return () => {
       cancelled = true;
     };
+  }, [enabled, refreshPlants]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const onChanged = () => {
+      void refreshPlants().then((list) => {
+        setActivePlantIdState((current) => {
+          if (current && list.some((p) => p.id === current)) return current;
+          const next = list[0]?.id ?? null;
+          if (next) writeStoredPlantId(next);
+          return next;
+        });
+      });
+    };
+    window.addEventListener(DEVICES_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(DEVICES_CHANGED_EVENT, onChanged);
   }, [enabled, refreshPlants]);
 
   const setActivePlantId = useCallback((id: string) => {

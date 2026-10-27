@@ -1180,10 +1180,17 @@ begin
     n.data,
     n.read_at,
     n.created_at,
-    i.status
+    coalesce(pi_by_id.status, pi_by_notif.status, di.status)
   from public.notifications n
-  left join public.device_invites i
-    on i.id = nullif(n.data->>'invite_id', '')::uuid
+  left join public.plant_invites pi_by_id
+    on n.kind = 'plant_invite'
+   and pi_by_id.id = nullif(n.data->>'invite_id', '')::uuid
+  left join public.plant_invites pi_by_notif
+    on n.kind = 'plant_invite'
+   and pi_by_notif.notification_id = n.id
+  left join public.device_invites di
+    on n.kind = 'device_invite'
+   and di.id = nullif(n.data->>'invite_id', '')::uuid
   where n.user_id = auth.uid()
   order by n.created_at desc
   limit greatest(1, least(coalesce(p_limit, 40), 100));

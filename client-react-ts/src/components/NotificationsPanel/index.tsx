@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
-  acceptDeviceInvite,
-  declineDeviceInvite,
+  acceptInvite,
+  declineInvite,
   deleteNotification,
+  isPendingInviteNotification,
   listMyNotifications,
   markNotificationRead,
   unreadCount,
@@ -14,7 +15,8 @@ import {
   emitNotificationsChanged,
   NOTIFICATIONS_CHANGED_EVENT,
 } from "../../lib/notificationsSync";
-import { openSharedDeviceUrl } from "../../lib/sharing";
+import { notifyDevicesChanged } from "../../lib/onboarding";
+import { APP_HOME_PATH, openSharedDeviceUrl } from "../../lib/sharing";
 import "./NotificationsPanel.css";
 
 type NotificationsPanelProps = {
@@ -110,17 +112,22 @@ function NotificationsPanel({
     setBusyId(notification.id);
     setError(null);
     try {
-      const result = await acceptDeviceInvite(inviteId);
+      const result = await acceptInvite(inviteId, notification.kind);
       await refresh();
       emitNotificationsChanged();
       await onDevicesChanged?.();
+      notifyDevicesChanged();
       onClose();
-      navigate(
-        openSharedDeviceUrl({
-          id: result.device_id,
-          type: result.type,
-        })
-      );
+      if (result.plant_id || !result.device_id || !result.type) {
+        navigate(APP_HOME_PATH);
+      } else {
+        navigate(
+          openSharedDeviceUrl({
+            id: result.device_id,
+            type: result.type,
+          })
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("notifications.couldNotAccept"));
     } finally {
@@ -134,7 +141,7 @@ function NotificationsPanel({
     setBusyId(notification.id);
     setError(null);
     try {
-      await declineDeviceInvite(inviteId);
+      await declineInvite(inviteId, notification.kind);
       await refresh();
       emitNotificationsChanged();
     } catch (err) {
@@ -162,10 +169,7 @@ function NotificationsPanel({
 
   const onDelete = async (notification: AppNotification) => {
     if (busyId) return;
-    if (
-      notification.kind === "device_invite" &&
-      notification.invite_status === "pending"
-    ) {
+    if (isPendingInviteNotification(notification)) {
       return;
     }
     setBusyId(notification.id);
@@ -219,9 +223,7 @@ function NotificationsPanel({
       ) : (
         <ul className="notif-panel__list">
           {items.map((notification) => {
-            const pendingInvite =
-              notification.kind === "device_invite" &&
-              notification.invite_status === "pending";
+            const pendingInvite = isPendingInviteNotification(notification);
             const resolved = notification.data.resolved;
             return (
               <li

@@ -31,7 +31,6 @@ import { ToastStack, useToasts } from "../../../components/Toast";
 import { hasBioreactorCharts } from "../../../components/bioreactor/BioreactorCharts";
 import {
   deleteMyDevice,
-  leaveDevice,
   listAccessibleDevicesInPlant,
   renameMyDevice,
   updateMyDeviceConfig,
@@ -52,6 +51,8 @@ import {
   DEVICES_CHANGED_EVENT,
   notifyDevicesChanged,
 } from "../../../lib/onboarding";
+import { useOptionalPlantContext } from "../../../lib/PlantContext";
+import { leavePlant } from "../../../lib/sharing";
 import {
   createPlantConnection,
   deletePlantConnection,
@@ -164,6 +165,7 @@ type BlueprintInnerProps = {
 
 function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   const { t } = useTranslation();
+  const plantCtx = useOptionalPlantContext();
   const { fitView, screenToFlowPosition } = useReactFlow();
   const fitViewRef = useRef(fitView);
   fitViewRef.current = fitView;
@@ -492,10 +494,14 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
 
   const onLeaveDevice = useCallback(
     async (device: AccessibleDevice) => {
-      const ok = window.confirm(t("nav.leaveConfirm", { name: device.name }));
+      const plantName =
+        plantCtx?.plants.find((p) => p.id === device.plant_id)?.name ??
+        device.name;
+      const ok = window.confirm(t("nav.leaveConfirm", { name: plantName }));
       if (!ok) return;
       try {
-        await leaveDevice(device.id);
+        if (!device.plant_id) throw new Error(t("nav.couldNotLeave"));
+        await leavePlant(device.plant_id);
         setSettingsDevice(null);
         setShareDevice(null);
         setSelectedId((current) => (current === device.id ? null : current));
@@ -508,7 +514,7 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
         );
       }
     },
-    [push, t]
+    [plantCtx?.plants, push, t]
   );
 
   // Each open pipe end takes one pipe; a drain never feeds its own reactor.
@@ -740,9 +746,9 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
           <SharePanel
             user={user}
             open={Boolean(shareDevice)}
-            initialDeviceId={shareDevice?.id ?? null}
+            plantId={shareDevice?.plant_id || plantId}
             onClose={() => setShareDevice(null)}
-            onDevicesChanged={() => {
+            onChanged={() => {
               notifyDevicesChanged();
             }}
           />

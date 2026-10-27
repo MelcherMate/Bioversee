@@ -1,11 +1,9 @@
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   type DeviceCardSnapshot,
   type DeviceType,
 } from "../../lib/devices";
 import { DEVICE_TYPE_META } from "../../lib/deviceIcons";
-import { pathForDeviceType } from "../../lib/sharing";
 import DeviceTypeGlyph from "./DeviceTypeGlyph";
 
 const ONLINE_MS = 2 * 60 * 1000;
@@ -46,20 +44,13 @@ type DeviceCardProps = {
 
 export default function DeviceCard({ snapshot }: DeviceCardProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const type = snapshot.type as DeviceType;
   const meta = DEVICE_TYPE_META[type];
   const online = isOnline(snapshot);
   const metrics = snapshot.metrics.slice(0, 3);
 
   return (
-    <button
-      type="button"
-      className="cp-card"
-      onClick={() =>
-        navigate(`${pathForDeviceType(type)}?device=${snapshot.id}`)
-      }
-    >
+    <article className="cp-card">
       <div className="cp-card__head">
         <span className="cp-card__glyph" aria-hidden>
           <DeviceTypeGlyph type={type} size={26} />
@@ -93,6 +84,6 @@ export default function DeviceCard({ snapshot }: DeviceCardProps) {
           ))
         )}
       </div>
-    </button>
+    </article>
   );
 }

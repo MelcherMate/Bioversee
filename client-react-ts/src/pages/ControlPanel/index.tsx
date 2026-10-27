@@ -1,14 +1,8 @@
-import { useCallback, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-import SharePanel from "../../components/SharePanel";
-import {
-  listAccessibleDevicesInPlant,
-  type AccessibleDevice,
-} from "../../lib/devices";
 import { usePlantContext } from "../../lib/PlantContext";
-import { renameMyPlant, type Plant } from "../../lib/plants";
+import { renameMyPlant } from "../../lib/plants";
 import type { AppUser } from "../../lib/user";
 import BlueprintView from "./blueprint/BlueprintView";
 import { BLUEPRINT_VIEW, isBlueprintSearch, VIEW_PARAM } from "./blueprintRoute";
@@ -45,25 +39,6 @@ export default function ControlPanel({ user }: ControlPanelProps) {
       return updated;
     });
   };
-  const [sharePlant, setSharePlant] = useState<Plant | null>(null);
-  const [shareDeviceId, setShareDeviceId] = useState<string | null>(null);
-
-  const closeShare = useCallback(() => {
-    setSharePlant(null);
-    setShareDeviceId(null);
-  }, []);
-
-  const onSharePlant = async (plant: Plant) => {
-    setSharePlant(plant);
-    try {
-      const devices = await listAccessibleDevicesInPlant(plant.id);
-      const preferred =
-        devices.find((d: AccessibleDevice) => d.isOwner) ?? devices[0] ?? null;
-      setShareDeviceId(preferred?.id ?? null);
-    } catch {
-      setShareDeviceId(null);
-    }
-  };
 
   const [editing, setEditing] = useState(false);
   const [titleFocusKey, setTitleFocusKey] = useState(0);
@@ -89,11 +64,7 @@ export default function ControlPanel({ user }: ControlPanelProps) {
           loading={loading}
           onSelect={setActivePlantId}
           onRefresh={refreshPlants}
-          onRename={editTitle}
           onCreated={editTitle}
-          onShare={(plant) => {
-            void onSharePlant(plant);
-          }}
         />
 
         <section
@@ -151,17 +122,6 @@ export default function ControlPanel({ user }: ControlPanelProps) {
           </div>
         </section>
       </div>
-
-      {createPortal(
-        <SharePanel
-          user={user}
-          open={Boolean(sharePlant)}
-          initialDeviceId={shareDeviceId}
-          className="share-panel--floating"
-          onClose={closeShare}
-        />,
-        document.body
-      )}
     </div>
   );
 }

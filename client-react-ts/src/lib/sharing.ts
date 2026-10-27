@@ -18,15 +18,17 @@ export type DeviceRosterMember = {
 export type RedeemResult = {
   status?: "pending" | "already_member";
   invite_id?: string;
-  device_id: string;
-  type: DeviceType;
+  plant_id?: string;
+  device_id?: string;
+  type?: DeviceType;
   name: string;
   role: ShareRole;
 };
 
 export type ShareLinkRow = {
   id: string;
-  device_id: string;
+  plant_id?: string;
+  device_id?: string;
   token: string;
   role: ShareRole;
   expires_at: string | null;
@@ -36,6 +38,8 @@ export type ShareLinkRow = {
   created_at: string;
 };
 
+export type PlantRosterMember = DeviceRosterMember;
+
 const PATH_BY_TYPE: Record<DeviceType, string> = {
   bioreactor: "/dashboard/bioreactor",
   pressure_vessel: "/dashboard/pressure-vessel",
@@ -43,7 +47,7 @@ const PATH_BY_TYPE: Record<DeviceType, string> = {
   water_purifier: "/dashboard/water-purifier",
 };
 
-/** Default authenticated home (plant control panel). */
+/** Default authenticated home (plant dashboard). */
 export const APP_HOME_PATH = "/dashboard";
 
 /** Old top-level process URLs → new /dashboard/… paths. */
@@ -149,12 +153,12 @@ export function roleLabel(role: string): string {
 }
 
 export async function createShareLink(
-  deviceId: string,
+  plantId: string,
   role: ShareRole,
   expiresHours = 168
 ): Promise<string> {
-  const { data, error } = await supabase.rpc("create_device_share_link", {
-    p_device_id: deviceId,
+  const { data, error } = await supabase.rpc("create_plant_share_link", {
+    p_plant_id: plantId,
     p_role: role,
     p_expires_hours: expiresHours,
     p_max_uses: null,
@@ -167,30 +171,41 @@ export async function createShareLink(
 }
 
 export async function redeemShareLink(token: string): Promise<RedeemResult> {
-  const { data, error } = await supabase.rpc("redeem_device_share_link", {
+  const { data, error } = await supabase.rpc("redeem_share_link", {
     p_token: token,
   });
   if (error) throw error;
   const result = data as RedeemResult | null;
-  if (!result?.device_id || !result.type) {
+  if (!result?.name || !result.role) {
     throw new Error("Invalid redeem response");
   }
   return result;
 }
 
 export async function inviteByEmail(
-  deviceId: string,
+  plantId: string,
   email: string,
   role: ShareRole
 ): Promise<void> {
-  const { error } = await supabase.rpc("invite_device_member_by_email", {
-    p_device_id: deviceId,
+  const { error } = await supabase.rpc("invite_plant_member_by_email", {
+    p_plant_id: plantId,
     p_email: email,
     p_role: role,
   });
   if (error) throw error;
 }
 
+export async function listPlantRoster(
+  plantId: string
+): Promise<PlantRosterMember[]> {
+  const { data, error } = await supabase.rpc("list_plant_roster", {
+    p_plant_id: plantId,
+  });
+  if (error) throw error;
+  return (data ?? []) as PlantRosterMember[];
+}
+
+/** @deprecated Device rosters follow the plant. Prefer listPlantRoster. */
 export async function listDeviceRoster(
   deviceId: string
 ): Promise<DeviceRosterMember[]> {
@@ -205,32 +220,36 @@ export async function updateMemberRole(
   memberId: string,
   role: ShareRole
 ): Promise<void> {
-  const { error } = await supabase
-    .from("device_members")
-    .update({ role })
-    .eq("id", memberId)
-    .neq("role", "owner");
+  const { error } = await supabase.rpc("update_plant_member_role", {
+    p_member_id: memberId,
+    p_role: role,
+  });
   if (error) throw error;
 }
 
 export async function removeMember(memberId: string): Promise<void> {
-  const { error } = await supabase
-    .from("device_members")
-    .delete()
-    .eq("id", memberId)
-    .neq("role", "owner");
+  const { error } = await supabase.rpc("remove_plant_member", {
+    p_member_id: memberId,
+  });
+  if (error) throw error;
+}
+
+export async function leavePlant(plantId: string): Promise<void> {
+  const { error } = await supabase.rpc("leave_plant", {
+    p_plant_id: plantId,
+  });
   if (error) throw error;
 }
 
 export async function listActiveShareLinks(
-  deviceId: string
+  plantId: string
 ): Promise<ShareLinkRow[]> {
   const { data, error } = await supabase
-    .from("device_share_links")
+    .from("plant_share_links")
     .select(
-      "id, device_id, token, role, expires_at, revoked_at, use_count, max_uses, created_at"
+      "id, plant_id, token, role, expires_at, revoked_at, use_count, max_uses, created_at"
     )
-    .eq("device_id", deviceId)
+    .eq("plant_id", plantId)
     .is("revoked_at", null)
     .order("created_at", { ascending: false });
 
@@ -239,7 +258,7 @@ export async function listActiveShareLinks(
 }
 
 export async function revokeShareLink(linkId: string): Promise<void> {
-  const { error } = await supabase.rpc("revoke_device_share_link", {
+  const { error } = await supabase.rpc("revoke_plant_share_link", {
     p_link_id: linkId,
   });
   if (error) throw error;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { notifyDevicesChanged } from "../../lib/onboarding";
 import {
   APP_HOME_PATH,
   openSharedDeviceUrl,
@@ -37,24 +38,18 @@ function Invite({ user }: InviteProps) {
         if (cancelled) return;
         setResult(redeemed);
         setStatus("done");
-        if (redeemed.status === "already_member") {
-          window.setTimeout(
-            () =>
-              navigate(
-                openSharedDeviceUrl({
-                  id: redeemed.device_id,
-                  type: redeemed.type,
-                }),
-                { replace: true }
-              ),
-            700
-          );
-        } else {
-          window.setTimeout(
-            () => navigate(APP_HOME_PATH, { replace: true }),
-            1200
-          );
-        }
+        notifyDevicesChanged();
+        const nextPath =
+          redeemed.plant_id || !redeemed.device_id || !redeemed.type
+            ? APP_HOME_PATH
+            : openSharedDeviceUrl({
+                id: redeemed.device_id,
+                type: redeemed.type,
+              });
+        window.setTimeout(
+          () => navigate(nextPath, { replace: true }),
+          redeemed.status === "already_member" ? 700 : 1200
+        );
       })
       .catch((err) => {
         if (cancelled) return;

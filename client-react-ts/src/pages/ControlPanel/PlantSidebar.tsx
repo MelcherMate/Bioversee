@@ -1,8 +1,7 @@
-import { useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AddOutline } from "react-ionicons";
-import { createMyPlant, deleteMyPlant, type Plant } from "../../lib/plants";
-import PlantContextMenu from "./PlantContextMenu";
+import { createMyPlant, type Plant } from "../../lib/plants";
 
 type PlantSidebarProps = {
   plants: Plant[];
@@ -10,9 +9,7 @@ type PlantSidebarProps = {
   loading: boolean;
   onSelect: (id: string) => void;
   onRefresh: () => Promise<unknown>;
-  onRename: (plant: Plant) => void;
   onCreated: (plantId: string) => void;
-  onShare: (plant: Plant) => void;
 };
 
 export default function PlantSidebar({
@@ -21,20 +18,11 @@ export default function PlantSidebar({
   loading,
   onSelect,
   onRefresh,
-  onRename,
   onCreated,
-  onShare,
 }: PlantSidebarProps) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<{
-    plant: Plant;
-    x: number;
-    y: number;
-  } | null>(null);
-
-  const canDelete = plants.length > 1;
 
   const onAdd = async () => {
     if (busy) return;
@@ -45,37 +33,11 @@ export default function PlantSidebar({
       await onRefresh();
       onSelect(id);
       onCreated(id);
-      setContextMenu(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
-  };
-
-  const confirmDelete = async (plant: Plant) => {
-    if (!canDelete || busy) return;
-    const ok = window.confirm(
-      t("controlPanel.deleteConfirm", { name: plant.name })
-    );
-    if (!ok) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await deleteMyPlant(plant.id);
-      await onRefresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onContextMenu = (event: ReactMouseEvent, plant: Plant) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onSelect(plant.id);
-    setContextMenu({ plant, x: event.clientX, y: event.clientY });
   };
 
   return (
@@ -114,7 +76,6 @@ export default function PlantSidebar({
                   aria-selected={active}
                   className={`cp-plants__item ${active ? "is-active" : ""}`}
                   onClick={() => onSelect(plant.id)}
-                  onContextMenu={(e) => onContextMenu(e, plant)}
                 >
                   <span className="cp-plants__item-name">{plant.name}</span>
                 </button>
@@ -123,21 +84,6 @@ export default function PlantSidebar({
           })
         )}
       </ul>
-
-      {contextMenu && (
-        <PlantContextMenu
-          plant={contextMenu.plant}
-          x={contextMenu.x}
-          y={contextMenu.y}
-          canDelete={canDelete}
-          onClose={() => setContextMenu(null)}
-          onRename={onRename}
-          onShare={onShare}
-          onDelete={(plant) => {
-            void confirmDelete(plant);
-          }}
-        />
-      )}
     </div>
   );
 }

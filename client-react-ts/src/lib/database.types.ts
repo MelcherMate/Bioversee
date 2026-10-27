@@ -110,6 +110,111 @@ export type Database = {
         };
         Relationships: [];
       };
+      plant_members: {
+        Row: {
+          id: string;
+          plant_id: string;
+          user_id: string;
+          role: DeviceMemberRole;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          plant_id: string;
+          user_id: string;
+          role?: DeviceMemberRole;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          plant_id?: string;
+          user_id?: string;
+          role?: DeviceMemberRole;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      plant_share_links: {
+        Row: {
+          id: string;
+          plant_id: string;
+          token: string;
+          role: Exclude<DeviceMemberRole, "owner">;
+          created_by: string;
+          expires_at: string | null;
+          revoked_at: string | null;
+          use_count: number;
+          max_uses: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          plant_id: string;
+          token: string;
+          role: Exclude<DeviceMemberRole, "owner">;
+          created_by: string;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          use_count?: number;
+          max_uses?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          plant_id?: string;
+          token?: string;
+          role?: Exclude<DeviceMemberRole, "owner">;
+          created_by?: string;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          use_count?: number;
+          max_uses?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      plant_invites: {
+        Row: {
+          id: string;
+          plant_id: string;
+          invitee_id: string;
+          invited_by: string;
+          role: Exclude<DeviceMemberRole, "owner">;
+          status: string;
+          share_link_id: string | null;
+          notification_id: string | null;
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          plant_id: string;
+          invitee_id: string;
+          invited_by: string;
+          role: Exclude<DeviceMemberRole, "owner">;
+          status?: string;
+          share_link_id?: string | null;
+          notification_id?: string | null;
+          created_at?: string;
+          responded_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          plant_id?: string;
+          invitee_id?: string;
+          invited_by?: string;
+          role?: Exclude<DeviceMemberRole, "owner">;
+          status?: string;
+          share_link_id?: string | null;
+          notification_id?: string | null;
+          created_at?: string;
+          responded_at?: string | null;
+        };
+        Relationships: [];
+      };
       plant_node_layouts: {
         Row: {
           plant_id: string;
@@ -452,6 +557,96 @@ export type Database = {
         Returns: undefined;
       };
       delete_my_plant: {
+        Args: { p_plant_id: string };
+        Returns: undefined;
+      };
+      list_my_plants: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          owner_id: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+          role: DeviceMemberRole;
+        }[];
+      };
+      user_is_plant_member: {
+        Args: { p_plant_id: string };
+        Returns: boolean;
+      };
+      user_can_admin_plant: {
+        Args: { p_plant_id: string };
+        Returns: boolean;
+      };
+      list_plant_roster: {
+        Args: { p_plant_id: string };
+        Returns: {
+          member_id: string;
+          user_id: string;
+          role: DeviceMemberRole;
+          display_name: string;
+          avatar_url: string | null;
+          email: string | null;
+          created_at: string;
+        }[];
+      };
+      invite_plant_member_by_email: {
+        Args: {
+          p_plant_id: string;
+          p_email: string;
+          p_role?: DeviceMemberRole;
+        };
+        Returns: undefined;
+      };
+      create_plant_share_link: {
+        Args: {
+          p_plant_id: string;
+          p_role?: DeviceMemberRole;
+          p_expires_hours?: number | null;
+          p_max_uses?: number | null;
+        };
+        Returns: string;
+      };
+      redeem_plant_share_link: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      redeem_share_link: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      create_pending_plant_invite_as: {
+        Args: {
+          p_plant_id: string;
+          p_invitee_id: string;
+          p_inviter_id: string;
+          p_role?: DeviceMemberRole;
+          p_share_link_id?: string | null;
+        };
+        Returns: string;
+      };
+      accept_plant_invite: {
+        Args: { p_invite_id: string };
+        Returns: Json;
+      };
+      decline_plant_invite: {
+        Args: { p_invite_id: string };
+        Returns: undefined;
+      };
+      revoke_plant_share_link: {
+        Args: { p_link_id: string };
+        Returns: undefined;
+      };
+      update_plant_member_role: {
+        Args: { p_member_id: string; p_role: DeviceMemberRole };
+        Returns: undefined;
+      };
+      remove_plant_member: {
+        Args: { p_member_id: string };
+        Returns: undefined;
+      };
+      leave_plant: {
         Args: { p_plant_id: string };
         Returns: undefined;
       };

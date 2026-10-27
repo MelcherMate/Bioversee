@@ -28,7 +28,6 @@ import {
 import { connectivityLabel, useAppStatus } from "../../lib/appStatus";
 import {
   deleteMyDevice,
-  leaveDevice,
   listAccessibleDevices,
   ownerAvatarSrc,
   type AccessibleDevice,
@@ -39,7 +38,7 @@ import { listMyNotifications, unreadCount } from "../../lib/notifications";
 import { subscribeMyNotifications } from "../../lib/notificationsSync";
 import { subscribeMyDevices } from "../../lib/devicesSync";
 import { useOptionalPlantContext } from "../../lib/PlantContext";
-import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice, APP_HOME_PATH } from "../../lib/sharing";
+import { pathForDeviceType, deviceTypeFromPath, fallbackPathAfterLostDevice, APP_HOME_PATH, leavePlant } from "../../lib/sharing";
 import {
   DEVICES_CHANGED_EVENT,
   notifyDevicesChanged,
@@ -363,13 +362,19 @@ const Navbar = ({ user }: NavbarProps) => {
   };
 
   const onLeaveDevice = async (device: AccessibleDevice) => {
-    const ok = window.confirm(t("nav.leaveConfirm", { name: device.name }));
+    const plantName =
+      plantCtx?.plants.find((plant) => plant.id === device.plant_id)?.name ??
+      device.name;
+    const ok = window.confirm(t("nav.leaveConfirm", { name: plantName }));
     if (!ok) return;
     try {
-      await leaveDevice(device.id);
+      if (!device.plant_id) throw new Error(t("nav.couldNotLeave"));
+      await leavePlant(device.plant_id);
       setSettingsDevice(null);
+      notifyDevicesChanged();
       await refreshDevices();
-      if (preferredDeviceId === device.id) {
+      await plantCtx?.refreshPlants();
+      if (preferredDeviceId === device.id || activeDevice?.plant_id === device.plant_id) {
         navigate(APP_HOME_PATH, { replace: true });
       }
     } catch (err) {
@@ -505,9 +510,12 @@ const Navbar = ({ user }: NavbarProps) => {
             <SharePanel
               user={user}
               open={Boolean(shareDevice)}
-              initialDeviceId={shareDevice?.id ?? null}
+              plantId={shareDevice?.plant_id ?? null}
               onClose={() => setShareDevice(null)}
-              onDevicesChanged={refreshDevices}
+              onChanged={async () => {
+                await refreshDevices();
+                await plantCtx?.refreshPlants();
+              }}
             />
           </div>
         </div>

@@ -1,4 +1,4 @@
-/** `/dashboard?view=blueprint` opens the full-screen Blueprint view. */
+/** `/dashboard?view=blueprint` opens the full-screen Plant view. */
 export const VIEW_PARAM = "view";
 export const BLUEPRINT_VIEW = "blueprint";
 

@@ -8,7 +8,7 @@ import {
 } from "../../lib/devices";
 import { DEVICES_CHANGED_EVENT } from "../../lib/onboarding";
 import type { Plant } from "../../lib/plants";
-import { listDeviceRoster } from "../../lib/sharing";
+import { listPlantRoster } from "../../lib/sharing";
 import DeviceCard from "./DeviceCard";
 import PlantInfo, { type PlantPeople } from "./PlantInfo";
 
@@ -22,54 +22,6 @@ type OverviewProps = {
 };
 
 const POLL_MS = 5000;
-
-async function loadPlantPeople(
-  plant: Plant,
-  devices: AccessibleDevice[],
-  managerFallbackName: string
-): Promise<PlantPeople[]> {
-  const byUser = new Map<string, PlantPeople>();
-
-  byUser.set(plant.owner_id, {
-    userId: plant.owner_id,
-    displayName: managerFallbackName,
-    avatarUrl: null,
-    roles: ["owner"],
-    isManager: true,
-  });
-
-  const owned = devices.filter((d) => d.isOwner);
-  const rosters = await Promise.all(
-    owned.map((d) => listDeviceRoster(d.id).catch(() => []))
-  );
-
-  for (const roster of rosters) {
-    for (const member of roster) {
-      const existing = byUser.get(member.user_id);
-      const roles = new Set(existing?.roles ?? []);
-      roles.add(member.role);
-      byUser.set(member.user_id, {
-        userId: member.user_id,
-        displayName:
-          member.display_name ||
-          member.email ||
-          existing?.displayName ||
-          member.user_id.slice(0, 8),
-        avatarUrl: member.avatar_url ?? existing?.avatarUrl ?? null,
-        roles: [...roles],
-        isManager:
-          Boolean(existing?.isManager) ||
-          member.user_id === plant.owner_id ||
-          member.role === "owner",
-      });
-    }
-  }
-
-  return [...byUser.values()].sort((a, b) => {
-    if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
-    return a.displayName.localeCompare(b.displayName);
-  });
-}
 
 export default function Overview({
   plant,
@@ -100,15 +52,31 @@ export default function Overview({
       const nextSnaps = await fetchDeviceCardSnapshots(
         nextDevices.map((d) => d.id)
       );
-      const managerName =
-        plant.owner_id === currentUserId
-          ? currentUserName || t("common.you")
-          : t("controlPanel.plantManager");
-      const nextPeople = await loadPlantPeople(
-        plant,
-        nextDevices,
-        managerName
-      );
+      const roster = await listPlantRoster(plantId).catch(() => []);
+      const nextPeople: PlantPeople[] =
+        roster.length > 0
+          ? roster.map((member) => ({
+              memberId: member.member_id,
+              userId: member.user_id,
+              displayName:
+                member.user_id === currentUserId
+                  ? currentUserName || member.display_name
+                  : member.display_name,
+              avatarUrl: member.avatar_url,
+              roles: [member.role],
+              isManager: member.role === "owner" || member.role === "admin",
+            }))
+          : [
+              {
+                memberId: null,
+                userId: currentUserId,
+                displayName: currentUserName || t("common.owner"),
+                avatarUrl: null,
+                roles: [plant.role],
+                isManager:
+                  plant.role === "owner" || plant.role === "admin",
+              },
+            ];
       setDevices(nextDevices);
       setSnapshots(nextSnaps);
       setPeople(nextPeople);
@@ -179,6 +147,7 @@ export default function Overview({
         editing={editing}
         titleFocusKey={titleFocusKey}
         onRename={onRename}
+        onPeopleChanged={load}
       />
 
       <section

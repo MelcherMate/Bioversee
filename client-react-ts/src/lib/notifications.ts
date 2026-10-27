@@ -9,6 +9,8 @@ export type AppNotification = {
   body: string | null;
   data: {
     invite_id?: string;
+    plant_id?: string;
+    plant_name?: string;
     device_id?: string;
     device_name?: string;
     device_type?: DeviceType;
@@ -24,8 +26,9 @@ export type AppNotification = {
 };
 
 export type AcceptInviteResult = {
-  device_id: string;
-  type: DeviceType;
+  plant_id?: string;
+  device_id?: string;
+  type?: DeviceType;
   name: string;
   role: ShareRole;
 };
@@ -43,20 +46,28 @@ export async function listMyNotifications(
   }));
 }
 
-export async function acceptDeviceInvite(
-  inviteId: string
+export async function acceptInvite(
+  inviteId: string,
+  kind: string
 ): Promise<AcceptInviteResult> {
-  const { data, error } = await supabase.rpc("accept_device_invite", {
+  const rpc =
+    kind === "plant_invite" ? "accept_plant_invite" : "accept_device_invite";
+  const { data, error } = await supabase.rpc(rpc, {
     p_invite_id: inviteId,
   });
   if (error) throw error;
   const result = data as AcceptInviteResult | null;
-  if (!result?.device_id) throw new Error("Accept failed");
+  if (!result?.name) throw new Error("Accept failed");
   return result;
 }
 
-export async function declineDeviceInvite(inviteId: string): Promise<void> {
-  const { error } = await supabase.rpc("decline_device_invite", {
+export async function declineInvite(
+  inviteId: string,
+  kind: string
+): Promise<void> {
+  const rpc =
+    kind === "plant_invite" ? "decline_plant_invite" : "decline_device_invite";
+  const { error } = await supabase.rpc(rpc, {
     p_invite_id: inviteId,
   });
   if (error) throw error;
@@ -80,9 +91,26 @@ export async function deleteNotification(
   if (error) throw error;
 }
 
+export function isPendingInviteNotification(
+  notification: AppNotification
+): boolean {
+  if (
+    (notification.kind !== "device_invite" &&
+      notification.kind !== "plant_invite") ||
+    !notification.data.invite_id
+  ) {
+    return false;
+  }
+  if (notification.data.resolved) return false;
+  return (
+    notification.invite_status === "pending" ||
+    notification.invite_status == null
+  );
+}
+
 export function unreadCount(notifications: AppNotification[]): number {
   return notifications.filter((n) => {
-    if (n.kind === "device_invite" && n.invite_status === "pending") return true;
+    if (isPendingInviteNotification(n)) return true;
     return !n.read_at;
   }).length;
 }
