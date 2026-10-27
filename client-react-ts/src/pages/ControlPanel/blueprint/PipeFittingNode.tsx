@@ -147,32 +147,40 @@ function clamp01(n: number): number {
 
 /**
  * Fitting water lives on the seam between consecutive edges.
- * Enter half fills only as the incoming slug finishes; leave half fills as
- * the outgoing slug starts. Empty while the previous pipe is still mid-fill.
+ * `enterFrac` weights the inbound arm so a long U-leg doesn't finish in the
+ * same dash time as the short stem (steady visual speed through the fitting).
  */
 function fittingCorridorSpan(
   inHead: number,
   inTail: number,
   outHead: number,
-  outTail: number
+  outTail: number,
+  enterFrac = 0.5
 ): { head01: number; tail01: number } {
-  const seam = 0.9;
+  const seam = 0.85;
   const span = 1 - seam;
-  const map = (head: number, tail: number, outH: number, outT: number) => {
-    const enter = clamp01((head - seam) / span);
-    const leave = head >= seam ? clamp01(outH) : 0;
-    const enterTail = clamp01((tail - seam) / span);
-    const leaveTail = tail >= seam ? clamp01(outT) : 0;
-    return {
-      head01: clamp01(0.5 * enter + 0.5 * leave),
-      tail01: clamp01(0.5 * enterTail + 0.5 * leaveTail),
-    };
+  const ef = clamp01(enterFrac);
+  const lf = 1 - ef;
+  const enter = clamp01((inHead - seam) / span);
+  const leave = inHead >= seam ? clamp01(outHead) : 0;
+  const enterTail = clamp01((inTail - seam) / span);
+  const leaveTail = inTail >= seam ? clamp01(outTail) : 0;
+  return {
+    head01: clamp01(ef * enter + lf * leave),
+    tail01: clamp01(ef * enterTail + lf * leaveTail),
   };
-  return map(inHead, inTail, outHead, outTail);
 }
 
 /** Half-corridor pieces that meet at the junction with butt caps (no T-blob). */
-type CorridorParts = { enter: string; leave: string };
+type CorridorParts = {
+  enter: string;
+  leave: string;
+  /** Shared leave geometry key so dual merges don't double-paint the stem. */
+  leaveKey: string;
+  enterKey: string;
+  /** Approximate enter length / (enter+leave) for steady dash speed. */
+  enterFrac: number;
+};
 
 function wyeCorridorParts(
   config: PipeFittingConfig,
@@ -185,6 +193,8 @@ function wyeCorridorParts(
 
   const { leg, barY, bend } = wyeGeom(od);
   const merge = config.kind === "wye_merge";
+  // Overlap stem into the crossbar like the metal path (avoids a dry notch).
+  const join = od * 0.4;
   const leftEnter = merge
     ? `M ${CX - leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 0 ${CX - leg + bend} ${barY} H ${CX}`
     : `M ${CX - leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 1 ${CX - leg + bend} ${barY} H ${CX}`;
@@ -200,18 +210,65 @@ function wyeCorridorParts(
   const rightLeave = merge
     ? `M ${CX} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 0 ${CX + leg} ${barY - bend} V ${CY - ARM}`
     : `M ${CX} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 1 ${CX + leg} ${barY + bend} V ${CY + ARM}`;
+  // Stem overlaps the bar the same way the metal U does.
   const stemLeave = merge
-    ? `M ${CX} ${barY} V ${CY + ARM}`
-    : `M ${CX} ${barY} V ${CY - ARM}`;
+    ? `M ${CX} ${barY - join} V ${CY + ARM}`
+    : `M ${CX} ${barY + join} V ${CY - ARM}`;
+
+  // U-leg (port→elbow→bar to junction) is ~2× the stem length.
+  const armFrac = 0.68;
+  const stemFrac = 0.45;
 
   const pair = `${from}>${to}`;
-  if (pair === "left>stem") return { enter: leftEnter, leave: stemLeave };
-  if (pair === "right>stem") return { enter: rightEnter, leave: stemLeave };
-  if (pair === "stem>left") return { enter: stemEnter, leave: leftLeave };
-  if (pair === "stem>right") return { enter: stemEnter, leave: rightLeave };
+  if (pair === "left>stem")
+    return {
+      enter: leftEnter,
+      leave: stemLeave,
+      enterKey: "in:left",
+      leaveKey: "out:stem",
+      enterFrac: armFrac,
+    };
+  if (pair === "right>stem")
+    return {
+      enter: rightEnter,
+      leave: stemLeave,
+      enterKey: "in:right",
+      leaveKey: "out:stem",
+      enterFrac: armFrac,
+    };
+  if (pair === "stem>left")
+    return {
+      enter: stemEnter,
+      leave: leftLeave,
+      enterKey: "in:stem",
+      leaveKey: "out:left",
+      enterFrac: stemFrac,
+    };
+  if (pair === "stem>right")
+    return {
+      enter: stemEnter,
+      leave: rightLeave,
+      enterKey: "in:stem",
+      leaveKey: "out:right",
+      enterFrac: stemFrac,
+    };
   // Open-arm sprinkle across the U cup (arm → other arm via the junction).
-  if (pair === "left>right") return { enter: leftEnter, leave: rightLeave };
-  if (pair === "right>left") return { enter: rightEnter, leave: leftLeave };
+  if (pair === "left>right")
+    return {
+      enter: leftEnter,
+      leave: rightLeave,
+      enterKey: "in:left",
+      leaveKey: "out:right",
+      enterFrac: 0.5,
+    };
+  if (pair === "right>left")
+    return {
+      enter: rightEnter,
+      leave: leftLeave,
+      enterKey: "in:right",
+      leaveKey: "out:left",
+      enterFrac: 0.5,
+    };
   return null;
 }
 
@@ -259,14 +316,19 @@ function corridorPath(
   return null;
 }
 
-/** Map a 0–1 corridor span onto the enter half (0–0.5) or leave half (0.5–1). */
+/**
+ * Map a 0–1 corridor span onto the enter arm [0, split) or leave stem [split, 1].
+ * `split` matches enterFrac so length-weighted corridors stay in sync.
+ */
 function halfSpan(
   head01: number,
   tail01: number,
-  which: "enter" | "leave"
+  which: "enter" | "leave",
+  split = 0.5
 ): { head01: number; tail01: number } | null {
-  const lo = which === "enter" ? 0 : 0.5;
-  const hi = which === "enter" ? 0.5 : 1;
+  const cut = Math.min(0.9, Math.max(0.1, split));
+  const lo = which === "enter" ? 0 : cut;
+  const hi = which === "enter" ? cut : 1;
   const head = clamp01((head01 - lo) / (hi - lo));
   const tail = clamp01((tail01 - lo) / (hi - lo));
   if (head - tail < 0.01) return null;
@@ -311,16 +373,18 @@ function fittingWaterSegments(
 
   const push = (from: string, to: string, head01: number, tail01: number) => {
     if (head01 - tail01 < 0.01) return;
-    // Wye: two butt-capped halves so the T never grows a middle outreach blob.
+    // Wye: butt-capped arm + stem. Shared leaveKey merges dual drains into one
+    // stem stroke instead of stacking two desynced dashes.
     const parts = wyeCorridorParts(config, from, to, od);
     if (parts) {
-      const enter = halfSpan(head01, tail01, "enter");
+      const split = parts.enterFrac;
+      const enter = halfSpan(head01, tail01, "enter", split);
       if (enter) {
-        upsert(`${from}>${to}:in`, parts.enter, enter.head01, enter.tail01);
+        upsert(parts.enterKey, parts.enter, enter.head01, enter.tail01);
       }
-      const leave = halfSpan(head01, tail01, "leave");
+      const leave = halfSpan(head01, tail01, "leave", split);
       if (leave) {
-        upsert(`${from}>${to}:out`, parts.leave, leave.head01, leave.tail01);
+        upsert(parts.leaveKey, parts.leave, leave.head01, leave.tail01);
       }
       return;
     }
@@ -350,11 +414,13 @@ function fittingWaterSegments(
       const inTail = plantFlow.edgeTail[a.edgeId] ?? 0;
       const outHead = plantFlow.edgeProgress[b.edgeId] ?? 0;
       const outTail = plantFlow.edgeTail[b.edgeId] ?? 0;
+      const parts = wyeCorridorParts(config, a.handleId, b.handleId, od);
       const { head01, tail01 } = fittingCorridorSpan(
         inHead,
         inTail,
         outHead,
-        outTail
+        outTail,
+        parts?.enterFrac ?? 0.5
       );
       push(a.handleId, b.handleId, head01, tail01);
     }
@@ -372,13 +438,20 @@ function fittingWaterSegments(
         const inTail = plantFlow.edgeTail[last.edgeId] ?? 0;
         // No outbound pipe — once the slug arrives, treat the exit half as
         // filling with the same arrival so water runs the full corridor.
-        const arrived = clamp01((inHead - 0.9) / 0.1);
-        const cleared = clamp01((inTail - 0.9) / 0.1);
+        const arrived = clamp01((inHead - 0.85) / 0.15);
+        const cleared = clamp01((inTail - 0.85) / 0.15);
+        const parts = wyeCorridorParts(
+          config,
+          last.handleId,
+          sink.handleId,
+          od
+        );
         const { head01, tail01 } = fittingCorridorSpan(
           inHead,
           inTail,
           arrived,
-          cleared
+          cleared,
+          parts?.enterFrac ?? 0.5
         );
         push(last.handleId, sink.handleId, head01, tail01);
       }

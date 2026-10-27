@@ -150,13 +150,15 @@ export default function PipeEdge({
   // Combined drains sum into edgeRates — grow the water stroke toward the bore.
   const pipeCap = odVolumetricRate(boreOd);
   const rateFill = pipeCap > 0.01 ? Math.min(2, edgeRate / pipeCap) : 1;
+  // Show the slug whenever the edge still holds water — even if the sink is
+  // full and edgeRates were zeroed (otherwise the U goes dry mid-merge).
   const flow =
-    plantFlow && edgeRate > 0.01 && edgeProgress - edgeTail > 0.01
+    plantFlow && edgeProgress - edgeTail > 0.01
       ? {
           progress01: edgeProgress,
           tail01: edgeTail,
           od: boreOd,
-          rateFill01: rateFill,
+          rateFill01: edgeRate > 0.01 ? rateFill : 1,
           alongSource: plantFlow.flow.edgeAlongSource[id] !== false,
           blendToInlet,
         }
