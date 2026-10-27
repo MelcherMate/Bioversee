@@ -443,6 +443,10 @@ export function useBioreactorController(
   );
   inletAnimatingRef.current = inletFill.isAnimating;
   drainAnimatingRef.current = drainAnim.isAnimating;
+  const drainOutletPrimedRef = useRef(false);
+  const drainOutletClearedRef = useRef(true);
+  drainOutletPrimedRef.current = drainAnim.outletPrimed;
+  drainOutletClearedRef.current = drainAnim.outletCleared;
   const levelBusy =
     isFillHeld ||
     isDrainHeld ||
@@ -922,6 +926,8 @@ export function useBioreactorController(
       graph,
       sinkLevels,
       getSourceUnits: () => fillUnitsRef.current,
+      getOutletPrimed: () => drainOutletPrimedRef.current,
+      getOutletCleared: () => drainOutletClearedRef.current,
       startUnits,
       targetUnits: target,
       requestedUnits: (liters / capacityL) * VESSEL_MAX_FILL_UNITS,

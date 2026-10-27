@@ -55,6 +55,12 @@ type InternalJob = {
   graph: FlowGraph;
   sinkLevels: Map<string, DeviceLevel>;
   getSourceUnits: () => number;
+  /** True once the vessel metal outlet is fully primed. */
+  getOutletPrimed: () => boolean;
+  /** True once the vessel metal outlet has finished emptying after valve close. */
+  getOutletCleared: () => boolean;
+  /** Latched once outletPrimed has been seen for this job. */
+  wasOutletPrimed: boolean;
   lastSourceUnits: number;
   targetSourceUnits: number;
   requestedUnits: number;
@@ -243,27 +249,39 @@ function tick(job: InternalJob, now: number) {
 
   const longest = Math.max(1, longestPathEdges(job.flow));
   const sourceUnits = clampUnits(job.getSourceUnits());
-  const dV = Math.max(0, job.lastSourceUnits - sourceUnits);
-  job.lastSourceUnits = sourceUnits;
+  const outletPrimed = job.getOutletPrimed();
+  const outletCleared = job.getOutletCleared();
 
-  // Keep the pipe front in step with how much has left the tank, then ease
-  // the remainder along so leftover pipe volume still reaches the sink.
-  const dose = Math.max(0.01, job.requestedUnits);
-  const drained = Math.min(
-    dose,
-    Math.max(0, dose - Math.max(0, sourceUnits - job.targetSourceUnits))
-  );
-  const catchUp = (drained / dose) * longest;
-  job.frontEdges = Math.min(
-    longest,
-    Math.max(job.frontEdges + PIPE_FRONT_EDGES_PER_SEC * dt, catchUp)
-  );
+  // Only count volume that leaves after the metal outlet is primed — otherwise
+  // plant pipes would fill before the vessel outflow.
+  let dV = 0;
+  if (outletPrimed) {
+    if (!job.wasOutletPrimed) {
+      // Sync baseline so priming itself doesn't invent a volume dump.
+      job.lastSourceUnits = sourceUnits;
+      job.wasOutletPrimed = true;
+    } else {
+      dV = Math.max(0, job.lastSourceUnits - sourceUnits);
+      job.lastSourceUnits = sourceUnits;
+    }
+
+    // Sequence: outflow first → then plant front.
+    const dose = Math.max(0.01, job.requestedUnits);
+    const drained = Math.min(
+      dose,
+      Math.max(0, dose - Math.max(0, sourceUnits - job.targetSourceUnits))
+    );
+    const catchUp = (drained / dose) * longest;
+    job.frontEdges = Math.min(
+      longest,
+      Math.max(job.frontEdges + PIPE_FRONT_EDGES_PER_SEC * dt, catchUp)
+    );
+  }
 
   const sourceDone =
     sourceUnits <= job.targetSourceUnits + 0.05 || sourceUnits <= 0.05;
-  // After the dose leaves the source tank, the trailing edge follows the
-  // original flow so leftover water empties out of the pipes (not vanish).
-  if (sourceDone) {
+  // Sequence on close: empty metal outlet first, then trail plant pipes.
+  if (sourceDone && outletCleared) {
     job.tailEdges = Math.min(
       job.frontEdges,
       job.tailEdges + PIPE_FRONT_EDGES_PER_SEC * dt
@@ -299,7 +317,9 @@ function tick(job: InternalJob, now: number) {
     for (const v of job.inTransit.values()) pending += v;
     const frontDone = job.frontEdges >= longest - 0.01;
     const tailDone = job.tailEdges >= job.frontEdges - 0.01;
-    if (pending > 0.05 || !frontDone || !tailDone) {
+    // Wait for the vessel outlet to finish clearing before we consider the
+    // plant trail done (and before we drop remaining in-pipe volume).
+    if (pending > 0.05 || !frontDone || !outletCleared || !tailDone) {
       job.raf = requestAnimationFrame((t) => tick(job, t));
       return;
     }
@@ -317,6 +337,9 @@ export type StartPlantDrainInput = {
   graph: FlowGraph;
   sinkLevels: Record<string, DeviceLevel>;
   getSourceUnits: () => number;
+  /** Defaults to always-true when the vessel has no outlet animation. */
+  getOutletPrimed?: () => boolean;
+  getOutletCleared?: () => boolean;
   startUnits: number;
   targetUnits: number;
   requestedUnits: number;
@@ -348,6 +371,9 @@ export function startPlantDrainTransfer(
     graph: input.graph,
     sinkLevels,
     getSourceUnits: input.getSourceUnits,
+    getOutletPrimed: input.getOutletPrimed ?? (() => true),
+    getOutletCleared: input.getOutletCleared ?? (() => true),
+    wasOutletPrimed: false,
     lastSourceUnits: clampUnits(input.startUnits),
     targetSourceUnits: input.targetUnits,
     requestedUnits: input.requestedUnits,

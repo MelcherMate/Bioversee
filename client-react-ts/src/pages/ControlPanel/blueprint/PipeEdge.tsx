@@ -74,6 +74,14 @@ export default function PipeEdge({
   const edgeRate = plantFlow?.flow.edgeRates[id] ?? 0;
   const edgeProgress = plantFlow?.edgeProgress[id] ?? 0;
   const edgeTail = plantFlow?.edgeTail[id] ?? 0;
+  const blendToInlet = Boolean(
+    plantFlow?.flow.sinks.some(
+      (sink) =>
+        sink.kind === "reactor" &&
+        sink.edgeIds.length > 0 &&
+        sink.edgeIds[sink.edgeIds.length - 1] === id
+    )
+  );
   const flow =
     plantFlow && edgeRate > 0.01 && edgeProgress - edgeTail > 0.01
       ? {
@@ -81,6 +89,7 @@ export default function PipeEdge({
           tail01: edgeTail,
           od: plantFlow.flow.edgeOd[id] ?? Math.min(sourceOd, targetOd),
           alongSource: plantFlow.flow.edgeAlongSource[id] !== false,
+          blendToInlet,
         }
       : null;
 

@@ -17,6 +17,16 @@ export type DrainVisualState = {
   head: number;
   /** Column has reached the drain nozzle — stream extends through the visible surface. */
   connectedToNozzle: boolean;
+  /**
+   * Metal outlet is fully primed — plant pipes may start filling.
+   * False until the drain head reaches the open end of the outlet run.
+   */
+  outletPrimed: boolean;
+  /**
+   * After valve close, the metal outlet has finished emptying.
+   * Plant pipe trailing edge should wait for this before clearing.
+   */
+  outletCleared: boolean;
   /** Tank level is locked while the pipe finishes draining. */
   isLevelFrozen: boolean;
   /** Fill units captured when the drain valve closes. */
@@ -84,6 +94,8 @@ export function useDrainAnimation(
     tail: 0,
     head: 0,
     connectedToNozzle: false,
+    outletPrimed: false,
+    outletCleared: true,
     isLevelFrozen: false,
     frozenFillUnits: null,
     isAnimating: false,
@@ -147,6 +159,13 @@ export function useDrainAnimation(
       const isLevelFrozen = phase === "valveClose" || phase === "retreat";
       const frozenFillUnits = frozenFillUnitsRef.current;
       const isAnimating = phase !== "idle";
+      // Primed once the metal outlet is full; stays true through valve-close /
+      // retreat so plant water already in the network keeps flowing.
+      const outletPrimed =
+        phase === "steady" ||
+        phase === "valveClose" ||
+        phase === "retreat";
+      const outletCleared = phase === "idle";
       const liveFillUnits = isLevelFrozen
         ? (frozenFillUnitsRef.current ?? fillUnitsRef.current)
         : fillUnitsRef.current;
@@ -155,6 +174,8 @@ export function useDrainAnimation(
           current.tail === tail &&
           current.head === head &&
           current.connectedToNozzle === connectedToNozzle &&
+          current.outletPrimed === outletPrimed &&
+          current.outletCleared === outletCleared &&
           current.isLevelFrozen === isLevelFrozen &&
           current.frozenFillUnits === frozenFillUnits &&
           current.isAnimating === isAnimating &&
@@ -166,6 +187,8 @@ export function useDrainAnimation(
           tail,
           head,
           connectedToNozzle,
+          outletPrimed,
+          outletCleared,
           isLevelFrozen,
           frozenFillUnits,
           isAnimating,
@@ -282,6 +305,8 @@ export function useDrainAnimation(
       switch (phase) {
         case "advance": {
           if (active) {
+            // Fill the metal outlet completely before dropping the tank level
+            // (and before plant pipes are allowed to start).
             tailRef.current = 0;
             headRef.current = Math.min(
               pathEnd,
@@ -292,8 +317,6 @@ export function useDrainAnimation(
             }
             if (headRef.current >= pathEnd - 0.5) {
               phase = "steady";
-            } else if (hasReachedNozzleRef.current) {
-              transferFromTank(deltaSeconds);
             }
           } else if (held && targetRef.current != null) {
             // Waiting for a remote stream to extend the target.

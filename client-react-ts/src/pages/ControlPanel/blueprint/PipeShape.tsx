@@ -31,6 +31,8 @@ export type PipeFlowVisual = {
   od?: number;
   /** When false, water enters at the target end (path is drawn reversed). */
   alongSource?: boolean;
+  /** Last edge into a reactor inlet — blend outlet blue → inlet cyan. */
+  blendToInlet?: boolean;
 };
 
 type PipeShapeProps = {
@@ -49,8 +51,9 @@ type PipeShapeProps = {
   flow?: PipeFlowVisual | null;
 };
 
-/** Process water in plant pipes — same blue as the vessel outlet run. */
-const PIPE_WATER = APPLE_DEPTH_COLORS.blue;
+/** Plant pipe water — outlet blue; inlet approach blends to cyan. */
+const PIPE_WATER_OUTLET = APPLE_DEPTH_COLORS.blue;
+const PIPE_WATER_INLET = APPLE_DEPTH_COLORS.cyan;
 
 function towards(from: XYPosition, to: XYPosition): XYPosition {
   const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
@@ -219,6 +222,12 @@ export default function PipeShape({
       : polyline([last, reducer.narrow])
     : "";
 
+  const blendToInlet = Boolean(flow?.blendToInlet);
+  const gradId = `${filterId}-inlet`;
+  const gradFrom = flowAlongSource ? first : last;
+  const gradTo = flowAlongSource ? last : first;
+  const waterPaint = blendToInlet ? `url(#${gradId})` : PIPE_WATER_OUTLET;
+
   return (
     <g className={["bp-pipe", selected ? "is-selected" : "", className].filter(Boolean).join(" ")}>
       <defs>
@@ -239,6 +248,20 @@ export default function PipeShape({
             floodOpacity="0.18"
           />
         </filter>
+        {blendToInlet ? (
+          <linearGradient
+            id={gradId}
+            gradientUnits="userSpaceOnUse"
+            x1={gradFrom.x}
+            y1={gradFrom.y}
+            x2={gradTo.x}
+            y2={gradTo.y}
+          >
+            <stop offset="0%" stopColor={PIPE_WATER_OUTLET} />
+            <stop offset="45%" stopColor={PIPE_WATER_OUTLET} />
+            <stop offset="100%" stopColor={PIPE_WATER_INLET} />
+          </linearGradient>
+        ) : null}
       </defs>
       {selected ? (
         <path
@@ -289,7 +312,7 @@ export default function PipeShape({
           className="bp-pipe__water"
           d={waterPath}
           fill="none"
-          stroke={PIPE_WATER}
+          stroke={waterPaint}
           strokeWidth={uniformWater}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -305,7 +328,7 @@ export default function PipeShape({
             <path
               d={bodyWaterPath}
               fill="none"
-              stroke={PIPE_WATER}
+              stroke={waterPaint}
               strokeWidth={sourceWater}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -321,14 +344,14 @@ export default function PipeShape({
                 sourceWater / 2,
                 targetWater / 2
               )}
-              fill={PIPE_WATER}
+              fill={waterPaint}
             />
           ) : null}
           {stubSpan > 0.01 ? (
             <path
               d={stubPath}
               fill="none"
-              stroke={PIPE_WATER}
+              stroke={blendToInlet ? PIPE_WATER_INLET : waterPaint}
               strokeWidth={targetWater}
               strokeLinecap="round"
               strokeLinejoin="round"
