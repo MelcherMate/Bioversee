@@ -571,6 +571,38 @@ function FittingDrawing({
     </>
   );
 
+  /** Small chevron on the pipe bore — angle 0 = pointing +X in local space. */
+  const flowChevron = (x: number, y: number, angleDeg: number, key: string) => (
+    <g
+      key={key}
+      className="bp-fitting__flow-arrow"
+      transform={`translate(${x} ${y}) rotate(${angleDeg})`}
+    >
+      <path d="M -4.5 0 H 2.5 M -0.5 -2.8 L 5 0 L -0.5 2.8 Z" />
+    </g>
+  );
+
+  // Merger: arms → stem. Splitter: stem → arms. Drawn in local (unrotated) space.
+  const armArrowX = stemFace + Math.max(10, thin * 0.85);
+  const stemArrowY =
+    config.kind === "wye_merge"
+      ? (barY + (CY + ARM)) / 2
+      : (barY + (CY - ARM)) / 2;
+  const wyeFlowMarks =
+    config.kind === "wye_merge" ? (
+      <>
+        {flowChevron(CX - armArrowX, barY, 0, "m-l")}
+        {flowChevron(CX + armArrowX, barY, 180, "m-r")}
+        {flowChevron(CX, stemArrowY, 90, "m-s")}
+      </>
+    ) : config.kind === "wye_split" ? (
+      <>
+        {flowChevron(CX, stemArrowY, 90, "s-s")}
+        {flowChevron(CX - armArrowX, barY, 180, "s-l")}
+        {flowChevron(CX + armArrowX, barY, 0, "s-r")}
+      </>
+    ) : null;
+
   return (
     <svg
       className="bp-fitting__svg"
@@ -626,6 +658,7 @@ function FittingDrawing({
             {paintArm(splitLeft, thin)}
             {paintArm(splitRight, thin)}
             {paintStem(splitStem, wide)}
+            {wyeFlowMarks}
           </>
         ) : null}
 
@@ -634,6 +667,7 @@ function FittingDrawing({
             {paintArm(mergeLeft, thin)}
             {paintArm(mergeRight, thin)}
             {paintStem(mergeStem, wide)}
+            {wyeFlowMarks}
           </>
         ) : null}
 

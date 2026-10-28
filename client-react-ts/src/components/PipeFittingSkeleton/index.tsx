@@ -1,9 +1,5 @@
 import { PIPE_FILL, PIPE_METAL } from "../pressure-vessel/pipe-style";
-import {
-  boreOd,
-  type PipeBore,
-  type PipeFittingTileKind,
-} from "../../lib/pipeFittings";
+import type { PipeBore, PipeFittingTileKind } from "../../lib/pipeFittings";
 
 type PipeFittingSkeletonProps = {
   kind: PipeFittingTileKind;
@@ -11,26 +7,100 @@ type PipeFittingSkeletonProps = {
   height?: number;
 };
 
+const STROKE = PIPE_METAL.stroke;
+const FILL = PIPE_FILL;
+const ARROW = "#6b7280";
+
+/** Preview strokes sized for a 72×72 tile (not canvas ODs). */
+function previewBores(bore: PipeBore) {
+  const wide = 15;
+  const thin = 8;
+  if (bore === "wide") return { od: wide, wide, thin };
+  return { od: thin, wide, thin };
+}
+
+function paintRun(
+  d: string,
+  od: number,
+  join: "round" | "bevel" | "miter" = "round"
+) {
+  return (
+    <>
+      <path
+        d={d}
+        fill="none"
+        stroke={STROKE}
+        strokeWidth={od + 2}
+        strokeLinecap="butt"
+        strokeLinejoin={join}
+      />
+      <path
+        d={d}
+        fill="none"
+        stroke={FILL}
+        strokeWidth={od}
+        strokeLinecap="butt"
+        strokeLinejoin={join}
+      />
+    </>
+  );
+}
+
+function chevron(x: number, y: number, angle: number, key: string) {
+  return (
+    <g
+      key={key}
+      transform={`translate(${x} ${y}) rotate(${angle})`}
+      fill={ARROW}
+    >
+      <path d="M -3.2 0 H 1.8 M -0.4 -2 L 3.6 0 L -0.4 2 Z" />
+    </g>
+  );
+}
+
 /** Compact SVG preview for device-library piping tiles. */
 export default function PipeFittingSkeleton({
   kind,
   bore = "thin",
   height = 72,
 }: PipeFittingSkeletonProps) {
-  const od = kind === "reducer" ? undefined : boreOd(bore);
-  const wide = boreOd("wide");
-  const thin = boreOd("thin");
-  const stroke = PIPE_METAL.stroke;
-  // Splitter / merger: thin arms butt into the wide stem wall.
-  const stemOd = wide;
-  const armOd = thin;
-  const stemFace = stemOd / 2;
-  const splitLeft = `M22 62 V46 A8 8 0 0 1 30 38 H ${36 - stemFace}`;
-  const splitRight = `M50 62 V46 A8 8 0 0 0 42 38 H ${36 + stemFace}`;
-  const splitStem = `M36 ${38 + armOd / 2} V10`;
-  const mergeLeft = `M22 10 V26 A8 8 0 0 0 30 34 H ${36 - stemFace}`;
-  const mergeRight = `M50 10 V26 A8 8 0 0 1 42 34 H ${36 + stemFace}`;
-  const mergeStem = `M36 ${34 - armOd / 2} V62`;
+  const { od, wide, thin } = previewBores(bore);
+  const cx = 36;
+  const stemFace = wide / 2;
+  const leg = 14;
+  const barY = 34;
+  const bend = 8;
+  const armIn = stemFace + 7;
+
+  // Splitter: wide stem in (top) → thin U legs out (bottom).
+  const splitLeft = [
+    `M ${cx - leg} 64`,
+    `V ${barY + bend}`,
+    `A ${bend} ${bend} 0 0 1 ${cx - leg + bend} ${barY}`,
+    `H ${cx - stemFace}`,
+  ].join(" ");
+  const splitRight = [
+    `M ${cx + leg} 64`,
+    `V ${barY + bend}`,
+    `A ${bend} ${bend} 0 0 0 ${cx + leg - bend} ${barY}`,
+    `H ${cx + stemFace}`,
+  ].join(" ");
+  const splitStem = `M ${cx} ${barY + thin / 2 + 1} V 8`;
+
+  // Merger: thin U legs in (top) → wide stem out (bottom).
+  const mergeLeft = [
+    `M ${cx - leg} 8`,
+    `V ${barY - bend}`,
+    `A ${bend} ${bend} 0 0 0 ${cx - leg + bend} ${barY}`,
+    `H ${cx - stemFace}`,
+  ].join(" ");
+  const mergeRight = [
+    `M ${cx + leg} 8`,
+    `V ${barY - bend}`,
+    `A ${bend} ${bend} 0 0 1 ${cx + leg - bend} ${barY}`,
+    `H ${cx + stemFace}`,
+  ].join(" ");
+  const mergeStem = `M ${cx} ${barY - thin / 2 - 1} V 64`;
 
   return (
     <svg
@@ -42,193 +112,46 @@ export default function PipeFittingSkeleton({
     >
       {kind === "cross" ? (
         <>
-          <line
-            x1="12"
-            y1="36"
-            x2="60"
-            y2="36"
-            stroke={stroke}
-            strokeWidth={(od ?? thin) + 2}
-            strokeLinecap="butt"
-          />
-          <line
-            x1="12"
-            y1="36"
-            x2="60"
-            y2="36"
-            stroke={PIPE_FILL}
-            strokeWidth={od ?? thin}
-            strokeLinecap="butt"
-          />
-          <line
-            x1="36"
-            y1="12"
-            x2="36"
-            y2="60"
-            stroke={stroke}
-            strokeWidth={(od ?? thin) + 2}
-            strokeLinecap="butt"
-          />
-          <line
-            x1="36"
-            y1="12"
-            x2="36"
-            y2="60"
-            stroke={PIPE_FILL}
-            strokeWidth={od ?? thin}
-            strokeLinecap="butt"
-          />
+          {paintRun(`M 10 ${cx} H 62`, od)}
+          {paintRun(`M ${cx} 10 V 62`, od)}
         </>
       ) : null}
 
       {kind === "wye_split" ? (
         <>
-          <path
-            d={splitLeft}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={armOd + 2}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={splitLeft}
-            fill="none"
-            stroke={PIPE_FILL}
-            strokeWidth={armOd}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={splitRight}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={armOd + 2}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={splitRight}
-            fill="none"
-            stroke={PIPE_FILL}
-            strokeWidth={armOd}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={splitStem}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={stemOd + 2}
-            strokeLinecap="butt"
-          />
-          <path
-            d={splitStem}
-            fill="none"
-            stroke={PIPE_FILL}
-            strokeWidth={stemOd}
-            strokeLinecap="butt"
-          />
+          {paintRun(splitLeft, thin)}
+          {paintRun(splitRight, thin)}
+          {paintRun(splitStem, wide, "bevel")}
+          {chevron(cx, 18, 90, "s-stem")}
+          {chevron(cx - armIn, barY, 180, "s-l")}
+          {chevron(cx + armIn, barY, 0, "s-r")}
         </>
       ) : null}
 
       {kind === "wye_merge" ? (
         <>
-          <path
-            d={mergeLeft}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={armOd + 2}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={mergeLeft}
-            fill="none"
-            stroke={PIPE_FILL}
-            strokeWidth={armOd}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={mergeRight}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={armOd + 2}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={mergeRight}
-            fill="none"
-            stroke={PIPE_FILL}
-            strokeWidth={armOd}
-            strokeLinecap="butt"
-            strokeLinejoin="round"
-          />
-          <path
-            d={mergeStem}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={stemOd + 2}
-            strokeLinecap="butt"
-          />
-          <path
-            d={mergeStem}
-            fill="none"
-            stroke={PIPE_FILL}
-            strokeWidth={stemOd}
-            strokeLinecap="butt"
-          />
+          {paintRun(mergeLeft, thin)}
+          {paintRun(mergeRight, thin)}
+          {paintRun(mergeStem, wide, "bevel")}
+          {chevron(cx - armIn, barY, 0, "m-l")}
+          {chevron(cx + armIn, barY, 180, "m-r")}
+          {chevron(cx, 52, 90, "m-stem")}
         </>
       ) : null}
 
       {kind === "reducer" ? (
         <>
-          <line
-            x1="8"
-            y1="36"
-            x2="28"
-            y2="36"
-            stroke={stroke}
-            strokeWidth={wide + 2}
-            strokeLinecap="butt"
-          />
-          <line
-            x1="8"
-            y1="36"
-            x2="28"
-            y2="36"
-            stroke={PIPE_FILL}
-            strokeWidth={wide}
-            strokeLinecap="butt"
+          {paintRun("M 6 36 H 26", wide, "bevel")}
+          <polygon
+            points={`26,${36 - wide / 2 - 1} 46,${36 - thin / 2 - 1} 46,${36 + thin / 2 + 1} 26,${36 + wide / 2 + 1}`}
+            fill={STROKE}
           />
           <polygon
-            points={`28,${36 - wide / 2 - 1} 44,${36 - thin / 2 - 1} 44,${36 + thin / 2 + 1} 28,${36 + wide / 2 + 1}`}
-            fill={PIPE_METAL.stroke}
+            points={`26,${36 - wide / 2} 46,${36 - thin / 2} 46,${36 + thin / 2} 26,${36 + wide / 2}`}
+            fill={FILL}
           />
-          <polygon
-            points={`28,${36 - wide / 2} 44,${36 - thin / 2} 44,${36 + thin / 2} 28,${36 + wide / 2}`}
-            fill={PIPE_FILL}
-          />
-          <line
-            x1="44"
-            y1="36"
-            x2="64"
-            y2="36"
-            stroke={stroke}
-            strokeWidth={thin + 2}
-            strokeLinecap="butt"
-          />
-          <line
-            x1="44"
-            y1="36"
-            x2="64"
-            y2="36"
-            stroke={PIPE_FILL}
-            strokeWidth={thin}
-            strokeLinecap="butt"
-          />
+          {paintRun("M 46 36 H 66", thin, "bevel")}
+          {chevron(36, 36, 0, "red")}
         </>
       ) : null}
     </svg>
