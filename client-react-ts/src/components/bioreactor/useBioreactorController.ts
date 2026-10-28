@@ -35,7 +35,10 @@ import {
   startPlantDrainTransfer,
   subscribePlantSinkLevel,
 } from "../../lib/plantTransferJobs";
-import { resolveDrainFlow } from "../../lib/plantFlow";
+import {
+  liveDrainRateForFront,
+  resolveDrainFlow,
+} from "../../lib/plantFlow";
 import {
   defaultBioreactorGeometry,
   fluidMotionFactors,
@@ -883,8 +886,9 @@ export function useBioreactorController(
     if (!graph || graph.edges.length === 0) return;
 
     const preview = resolveDrainFlow(graph, device.id);
-    if (preview.totalRate > 0.01) {
-      setPlantDrainRate(preview.totalRate);
+    if (preview.totalRate > 0.01 || preview.sinks.length > 0) {
+      // Wide outlet rate first; slows when the front hits a thinner bore.
+      setPlantDrainRate(liveDrainRateForFront(preview, 0));
       if (preview.sprinkleOnly) {
         push(
           "info",
@@ -908,7 +912,7 @@ export function useBioreactorController(
       };
     }
 
-    const flow = startPlantDrainTransfer({
+    startPlantDrainTransfer({
       sourceDeviceId: device.id,
       userId: user.id,
       plantId: device.plant_id,
@@ -920,13 +924,11 @@ export function useBioreactorController(
       startUnits,
       targetUnits: target,
       requestedUnits: (liters / capacityL) * VESSEL_MAX_FILL_UNITS,
+      onLiveRate: (rate) => setPlantDrainRate(rate),
       onComplete: () => {
         setPlantDrainRate(null);
       },
     });
-    if (flow.totalRate > 0.01) {
-      setPlantDrainRate(flow.totalRate);
-    }
 
     void (async () => {
       const next: Record<string, { capacityL: number; units: number }> = {};

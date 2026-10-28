@@ -495,6 +495,30 @@ export function resolveDrainFlow(
 }
 
 /**
+ * Vessel drain rate as the water front advances. Starts at the wide outlet
+ * capacity; drops to a narrower bore's capacity once the front reaches that
+ * section (≈ 70% along the edge, where reducers meet thin fittings).
+ */
+export function liveDrainRateForFront(
+  flow: ResolvedFlow,
+  frontEdges: number
+): number {
+  const outletCap = odVolumetricRate(OUTFLOW_PIPE_OD);
+  if (flow.sinks.length === 0) return outletCap;
+
+  let limitingOd = OUTFLOW_PIPE_OD;
+  for (const sink of flow.sinks) {
+    for (let i = 0; i < sink.edgeIds.length; i++) {
+      // Far end of edge i (often the reduced bore) around i + 0.7.
+      if (frontEdges < i + 0.7) break;
+      const od = flow.edgeOd[sink.edgeIds[i]!] ?? OUTFLOW_PIPE_OD;
+      limitingOd = Math.min(limitingOd, od);
+    }
+  }
+  return odVolumetricRate(limitingOd);
+}
+
+/**
  * A full receiving tank cannot take more water. We used to rewrite it as a
  * "sprinkle" on the inlet handle — that sprayed out the top of the fill pipe.
  * Instead: keep the reactor sink but zero its rate so delivery stops. Atmosphere

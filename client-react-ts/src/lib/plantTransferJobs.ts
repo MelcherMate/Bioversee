@@ -5,6 +5,7 @@ import {
 import { insertSensorReading, insertSliderState } from "./actuators";
 import {
   applySinkBlocks,
+  liveDrainRateForFront,
   resolveDrainFlow,
   type FlowGraph,
   type FlowSink,
@@ -22,6 +23,11 @@ export type PlantTransferSnapshot = {
   requestedUnits: number;
   currentSourceUnits: number;
   flow: ResolvedFlow;
+  /**
+   * Live vessel drain rate (units/s): wide outlet until the front hits a
+   * narrower bore, then that bore's capacity.
+   */
+  liveDrainRate: number;
   /** @deprecated Prefer edgeProgress — kept for callers that expect a scalar. */
   pipeFill01: number;
   /** Per-edge leading fill 0..1 along each active path (source → sink). */
@@ -91,6 +97,8 @@ type InternalJob = {
   lastPersistAt: Map<string, number>;
   /** Sink ids whose server baseline has been applied onto the shared level. */
   patchedSinkBaselines: Set<string>;
+  lastEmittedRate: number;
+  onLiveRate?: (rate: number) => void;
   onComplete?: (snap: PlantTransferSnapshot) => void;
 };
 
@@ -184,6 +192,10 @@ function mergeVisualSnapshot(): PlantTransferSnapshot | null {
     };
   }
 
+  const liveDrainRate = Math.min(
+    ...active.map((j) => liveDrainRateForFront(j.flow, j.frontEdges))
+  );
+
   return {
     sourceDeviceId: active.map((j) => j.sourceDeviceId).join("+"),
     remainingUnits,
@@ -198,6 +210,7 @@ function mergeVisualSnapshot(): PlantTransferSnapshot | null {
       edgeAlongSource,
       sprinkleOnly,
     },
+    liveDrainRate,
     pipeFill01: Math.min(1, frontLike),
     edgeProgress,
     edgeTail,
@@ -246,6 +259,7 @@ function toSnapshot(job: InternalJob): PlantTransferSnapshot {
     requestedUnits: job.requestedUnits,
     currentSourceUnits: sourceUnits,
     flow: job.flow,
+    liveDrainRate: liveDrainRateForFront(job.flow, job.frontEdges),
     pipeFill01: Math.min(1, job.frontEdges / longest),
     edgeProgress: job.edgeProgress,
     edgeTail: job.edgeTail,
@@ -454,6 +468,13 @@ function tick(job: InternalJob, now: number) {
   job.edgeProgress = computeEdgeSpan(job.flow, job.frontEdges);
   job.edgeTail = computeEdgeSpan(job.flow, job.tailEdges);
 
+  // Throttle vessel drain once the front reaches a narrower bore.
+  const liveRate = liveDrainRateForFront(job.flow, job.frontEdges);
+  if (Math.abs(liveRate - job.lastEmittedRate) > 0.05) {
+    job.lastEmittedRate = liveRate;
+    job.onLiveRate?.(liveRate);
+  }
+
   if (dV > 0 && job.flow.sinks.length > 0) {
     const live = job.flow.sinks.filter((s) => s.rate >= 0.01);
     const queue = live.length > 0 ? live : job.flow.sinks;
@@ -531,6 +552,8 @@ export type StartPlantDrainInput = {
   startUnits: number;
   targetUnits: number;
   requestedUnits: number;
+  /** Fired when the front hits a narrower bore and drain should slow. */
+  onLiveRate?: (rate: number) => void;
   onComplete?: (snap: PlantTransferSnapshot) => void;
 };
 
@@ -589,9 +612,13 @@ export function startPlantDrainTransfer(
     lastTime: 0,
     lastPersistAt: new Map(),
     patchedSinkBaselines: new Set(),
+    lastEmittedRate: liveDrainRateForFront(flow, 0),
+    onLiveRate: input.onLiveRate,
     onComplete: input.onComplete,
   };
   jobs.set(input.sourceDeviceId, job);
+  // Start at wide-outlet rate; tick() will drop when the front hits a reducer.
+  input.onLiveRate?.(job.lastEmittedRate);
   notify(job);
   job.raf = requestAnimationFrame((t) => tick(job, t));
   return flow;

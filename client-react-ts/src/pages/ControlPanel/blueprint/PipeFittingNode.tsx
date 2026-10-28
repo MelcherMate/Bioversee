@@ -142,19 +142,6 @@ type FittingWaterSeg = {
   waterOd: number;
 };
 
-function corridorWaterOd(
-  config: PipeFittingConfig,
-  key: string,
-  fallbackOd: number
-): number {
-  if (config.kind === "wye_split" || config.kind === "wye_merge") {
-    return key.includes("stem")
-      ? fittingHandleOd(config, "stem")
-      : fittingHandleOd(config, "left");
-  }
-  return fallbackOd;
-}
-
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
@@ -207,30 +194,26 @@ function wyeCorridorParts(
 
   const { leg, barY, bend } = wyeGeom(od);
   const merge = config.kind === "wye_merge";
-  const stemOd = fittingHandleOd(config, "stem");
-  const armOd = fittingHandleOd(config, "left");
-  // Arms butt into the stem wall — don't run under the wide bore.
-  const stemFace = stemOd / 2;
-  // Stem overlaps the arm stroke so the T reads as one tee.
-  const stemOverlap = armOd / 2 + 1;
+  // Continuous U → stem centerline. Dual drains may overlap on the stem —
+  // that reads as one stream; metal arms still butt at the stem wall.
   const leftEnter = merge
-    ? `M ${CX - leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 0 ${CX - leg + bend} ${barY} H ${CX - stemFace}`
-    : `M ${CX - leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 1 ${CX - leg + bend} ${barY} H ${CX - stemFace}`;
+    ? `M ${CX - leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 0 ${CX - leg + bend} ${barY} H ${CX}`
+    : `M ${CX - leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 1 ${CX - leg + bend} ${barY} H ${CX}`;
   const rightEnter = merge
-    ? `M ${CX + leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 1 ${CX + leg - bend} ${barY} H ${CX + stemFace}`
-    : `M ${CX + leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 0 ${CX + leg - bend} ${barY} H ${CX + stemFace}`;
+    ? `M ${CX + leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 1 ${CX + leg - bend} ${barY} H ${CX}`
+    : `M ${CX + leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 0 ${CX + leg - bend} ${barY} H ${CX}`;
   const stemEnter = merge
-    ? `M ${CX} ${CY + ARM} V ${barY + stemOverlap}`
-    : `M ${CX} ${CY - ARM} V ${barY - stemOverlap}`;
+    ? `M ${CX} ${CY + ARM} V ${barY}`
+    : `M ${CX} ${CY - ARM} V ${barY}`;
   const leftLeave = merge
-    ? `M ${CX - stemFace} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 1 ${CX - leg} ${barY - bend} V ${CY - ARM}`
-    : `M ${CX - stemFace} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 0 ${CX - leg} ${barY + bend} V ${CY + ARM}`;
+    ? `M ${CX} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 1 ${CX - leg} ${barY - bend} V ${CY - ARM}`
+    : `M ${CX} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 0 ${CX - leg} ${barY + bend} V ${CY + ARM}`;
   const rightLeave = merge
-    ? `M ${CX + stemFace} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 0 ${CX + leg} ${barY - bend} V ${CY - ARM}`
-    : `M ${CX + stemFace} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 1 ${CX + leg} ${barY + bend} V ${CY + ARM}`;
+    ? `M ${CX} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 0 ${CX + leg} ${barY - bend} V ${CY - ARM}`
+    : `M ${CX} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 1 ${CX + leg} ${barY + bend} V ${CY + ARM}`;
   const stemLeave = merge
-    ? `M ${CX} ${barY - stemOverlap} V ${CY + ARM}`
-    : `M ${CX} ${barY + stemOverlap} V ${CY - ARM}`;
+    ? `M ${CX} ${barY} V ${CY + ARM}`
+    : `M ${CX} ${barY} V ${CY - ARM}`;
 
   // U-leg (port→elbow→bar to junction) is ~2× the stem length.
   const armFrac = 0.68;
@@ -333,25 +316,6 @@ function corridorPath(
   return null;
 }
 
-/**
- * Map a 0–1 corridor span onto the enter arm [0, split) or leave stem [split, 1].
- * `split` matches enterFrac so length-weighted corridors stay in sync.
- */
-function halfSpan(
-  head01: number,
-  tail01: number,
-  which: "enter" | "leave",
-  split = 0.5
-): { head01: number; tail01: number } | null {
-  const cut = Math.min(0.9, Math.max(0.1, split));
-  const lo = which === "enter" ? 0 : cut;
-  const hi = which === "enter" ? cut : 1;
-  const head = clamp01((head01 - lo) / (hi - lo));
-  const tail = clamp01((tail01 - lo) / (hi - lo));
-  if (head - tail < 0.01) return null;
-  return { head01: head, tail01: tail };
-}
-
 function handleOnNode(
   connection: NodeConnection,
   nodeId: string
@@ -374,9 +338,14 @@ function fittingWaterSegments(
   const segments: FittingWaterSeg[] = [];
   const seen = new Set<string>();
 
-  const upsert = (key: string, d: string, head01: number, tail01: number) => {
+  const upsert = (
+    key: string,
+    d: string,
+    head01: number,
+    tail01: number,
+    waterOd: number
+  ) => {
     if (head01 - tail01 < 0.01) return;
-    const waterOd = corridorWaterOd(config, key, od);
     if (seen.has(key)) {
       const existing = segments.find((s) => s.key === key);
       if (existing) {
@@ -392,24 +361,13 @@ function fittingWaterSegments(
 
   const push = (from: string, to: string, head01: number, tail01: number) => {
     if (head01 - tail01 < 0.01) return;
-    // Wye: butt-capped arm + stem. Shared leaveKey merges dual drains into one
-    // stem stroke instead of stacking two desynced dashes.
-    const parts = wyeCorridorParts(config, from, to, od);
-    if (parts) {
-      const split = parts.enterFrac;
-      const enter = halfSpan(head01, tail01, "enter", split);
-      if (enter) {
-        upsert(parts.enterKey, parts.enter, enter.head01, enter.tail01);
-      }
-      const leave = halfSpan(head01, tail01, "leave", split);
-      if (leave) {
-        upsert(parts.leaveKey, parts.leave, leave.head01, leave.tail01);
-      }
-      return;
-    }
+    // One continuous curved corridor per route (U arm → stem). Dual drains
+    // may overlap on the stem — that is intentional and reads as one stream.
     const d = corridorPath(config, from, to, od);
     if (!d) return;
-    upsert(`${from}>${to}`, d, head01, tail01);
+    const fromOd = fittingHandleOd(config, from);
+    const toOd = fittingHandleOd(config, to);
+    upsert(`${from}>${to}`, d, head01, tail01, Math.min(fromOd, toOd));
   };
 
   for (const sink of plantFlow.flow.sinks) {
@@ -509,8 +467,8 @@ function FittingWaterStroke({
       fill="none"
       stroke={APPLE_DEPTH_COLORS.blue}
       strokeWidth={waterW}
-      strokeLinecap="butt"
-      strokeLinejoin="bevel"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       strokeDasharray={length > 0 ? `${span * length} ${length}` : undefined}
       strokeDashoffset={length > 0 ? -tail01 * length : undefined}
       opacity={length > 0 ? 1 : 0}
