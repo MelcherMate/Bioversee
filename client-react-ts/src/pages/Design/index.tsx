@@ -29,6 +29,7 @@ import "../Login/Login.css";
 import "./Design.css";
 import { LogoBlueprintSection } from "./LogoBlueprint";
 import { EmailTemplateSection, LinkedInCopySection, LinkedInGraphicSection } from "./Templates";
+import { PrintTemplateSection } from "./PrintTemplates";
 import {
   classNames,
   componentSources,
@@ -52,8 +53,13 @@ import {
 } from "./cssAudit";
 
 const SECTIONS = [
-  { id: "overview", label: "Overview", group: "Design system" },
-  { id: "brand", label: "Brand & logo" },
+  { id: "overview", label: "Overview" },
+  { id: "tpl-email", label: "Company email", group: "Templates" },
+  { id: "tpl-signature", label: "Email signature" },
+  { id: "tpl-linkedin", label: "LinkedIn graphics" },
+  { id: "tpl-linkedin-copy", label: "LinkedIn post copy" },
+  { id: "tpl-print", label: "Print · A4 documents" },
+  { id: "brand", label: "Brand & logo", group: "Design system" },
   { id: "logo-blueprint", label: "Logo blueprint" },
   { id: "colour", label: "Colour tokens" },
   { id: "accents", label: "Accent & dark mode" },
@@ -80,10 +86,6 @@ const SECTIONS = [
   { id: "inventory", label: "Component inventory" },
   { id: "patterns", label: "Page patterns" },
   { id: "voice", label: "Tone of voice" },
-  { id: "tpl-email", label: "Company email", group: "Templates" },
-  { id: "tpl-signature", label: "Email signature" },
-  { id: "tpl-linkedin", label: "LinkedIn graphics" },
-  { id: "tpl-linkedin-copy", label: "LinkedIn post copy" },
   { id: "gaps", label: "Not documented" },
 ] as { id: string; label: string; group?: string }[];
 
@@ -537,6 +539,31 @@ function DesignSystem() {
             </p>
           </div>
         </section>
+
+        <Section id="tpl-email" kicker="Templates" title="Company email"
+          lede="Branded HTML email built from inline-styled tables (Gmail / Outlook safe, no external CSS, Outfit with web-safe fallbacks). Edit the form; Copy HTML for your sending tool, or Copy rendered to paste straight into a Gmail compose window.">
+          <EmailTemplateSection />
+        </Section>
+
+        <Section id="tpl-signature" kicker="Templates" title="Email signature"
+          lede="Paste into Gmail → Settings → Signature with Copy rendered. Uses the mark PNG from /assets/logo (public URL).">
+          <EmailTemplateSection initial="signature" />
+        </Section>
+
+        <Section id="tpl-linkedin" kicker="Templates" title="LinkedIn graphics"
+          lede="Canvas-rendered post graphics and banners in LinkedIn sizes. Align content left, centre or right; download PNG or JPG at full resolution.">
+          <LinkedInGraphicSection />
+        </Section>
+
+        <Section id="tpl-linkedin-copy" kicker="Templates" title="LinkedIn post copy"
+          lede="Hook → body → call to action → hashtags. LinkedIn allows 3,000 characters and folds after roughly 210 — the preview shows where “see more” will cut.">
+          <LinkedInCopySection />
+        </Section>
+
+        <Section id="tpl-print" kicker="Templates" title="Print · A4 documents"
+          lede="Letterhead templates with a branded header and footer. Edit the details, check the preview, then download a Word file (.docx, A4, real header and footer).">
+          <PrintTemplateSection />
+        </Section>
 
         <Section id="brand" kicker="Brand" title="Logo & identity"
           lede="Two signatures, never combined: the dial + vessel mark, and the Bioversee wordmark whose ‘o’ is the same mark.">
@@ -1192,26 +1219,6 @@ function DesignSystem() {
               </ul>
             </div>
           </div>
-        </Section>
-
-        <Section id="tpl-email" kicker="Templates" title="Company email"
-          lede="Branded HTML email built from inline-styled tables (Gmail / Outlook safe, no external CSS, Outfit with web-safe fallbacks). Edit the form; Copy HTML for your sending tool, or Copy rendered to paste straight into a Gmail compose window.">
-          <EmailTemplateSection />
-        </Section>
-
-        <Section id="tpl-signature" kicker="Templates" title="Email signature"
-          lede="Paste into Gmail → Settings → Signature with Copy rendered. Uses the mark PNG from /assets/logo (public URL).">
-          <EmailTemplateSection initial="signature" />
-        </Section>
-
-        <Section id="tpl-linkedin" kicker="Templates" title="LinkedIn graphics"
-          lede="Canvas-rendered post graphics in LinkedIn sizes with the brand veil, Outfit display type and accent. Download PNG exports at full resolution.">
-          <LinkedInGraphicSection />
-        </Section>
-
-        <Section id="tpl-linkedin-copy" kicker="Templates" title="LinkedIn post copy"
-          lede="Hook → body → call to action → hashtags. LinkedIn allows 3,000 characters and folds after roughly 210 — the preview shows where “see more” will cut.">
-          <LinkedInCopySection />
         </Section>
 
         <Section id="gaps" kicker="Notes" title="Not documented / gaps">

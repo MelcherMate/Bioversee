@@ -377,10 +377,17 @@ const SIZES = {
 } as const;
 type SizeId = keyof typeof SIZES;
 type LayoutId = "announcement" | "quote" | "stat" | "event";
+type Align = "left" | "center" | "right";
+const ALIGN_OPTIONS: { value: Align; label: string }[] = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Center" },
+  { value: "right", label: "Right" },
+];
 
 type PostData = {
   size: SizeId;
   layout: LayoutId;
+  align: Align;
   theme: "light" | "dark";
   accent: string;
   eyebrow: string;
@@ -430,8 +437,12 @@ function fitText(
   ctx.fillStyle = opts.color;
   ctx.textAlign = opts.align ?? "left";
   ctx.textBaseline = "top";
-  if ("letterSpacing" in ctx && opts.tracking) (ctx as unknown as { letterSpacing: string }).letterSpacing = `${opts.tracking * size}px`;
-  lines.slice(0, opts.maxLines).forEach((l, i) => ctx.fillText(l, x, y + i * size * opts.lh));
+  const ls = "letterSpacing" in ctx && opts.tracking ? opts.tracking * size : 0;
+  if (ls) (ctx as unknown as { letterSpacing: string }).letterSpacing = `${ls}px`;
+  // Canvas adds the spacing after every glyph, including the last one: compensate so
+  // centred and right-aligned lines sit exactly on their anchor.
+  const dx = ctx.textAlign === "right" ? ls : ctx.textAlign === "center" ? ls / 2 : 0;
+  lines.slice(0, opts.maxLines).forEach((l, i) => ctx.fillText(l, x + dx, y + i * size * opts.lh));
   if ("letterSpacing" in ctx) (ctx as unknown as { letterSpacing: string }).letterSpacing = "0px";
   return Math.min(lines.length, opts.maxLines) * size * opts.lh;
 }
@@ -496,17 +507,25 @@ function drawPost(ctx: CanvasRenderingContext2D, d: PostData, logo: HTMLImageEle
     else top = iy + ih - 4 * u;
   }
 
+  // Alignment: every content item is anchored to the same edge (or centre) of the content column.
+  const al = d.align;
+  const ax = al === "left" ? contentX : al === "center" ? contentX + contentW / 2 : contentX + contentW;
+  /** Left edge of a box of width bw placed on the alignment anchor. */
+  const boxX = (bw: number) => (al === "left" ? ax : al === "center" ? ax - bw / 2 : ax - bw);
+  // Page furniture (carousel counter, "Swipe") sits on the side opposite a right-aligned layout.
+  const furnRight = al !== "right";
+
   // Brand: wordmark alone (never mark + wordmark together)
   const markS = 7 * u;
   const wordH = 4.4 * u;
-  if (logo) ctx.drawImage(logo, pad, pad + (markS - wordH) / 2, wordH * WORDMARK_RATIO, wordH);
+  if (logo) ctx.drawImage(logo, boxX(wordH * WORDMARK_RATIO), pad + (markS - wordH) / 2, wordH * WORDMARK_RATIO, wordH);
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   if (d.size === "carousel") {
     ctx.font = `650 ${2.6 * u}px ${UI}`;
     ctx.fillStyle = text3;
-    ctx.textAlign = "right";
-    ctx.fillText(`${d.slide} / ${d.slides}`, w - pad, pad + markS / 2);
+    ctx.textAlign = furnRight ? "right" : "left";
+    ctx.fillText(`${d.slide} / ${d.slides}`, furnRight ? w - pad : pad, pad + markS / 2);
   }
   if (!d.image || wide) top = pad + markS + (wide ? 7 * u : 12 * u);
   else top += 8 * u;
@@ -516,43 +535,44 @@ function drawPost(ctx: CanvasRenderingContext2D, d: PostData, logo: HTMLImageEle
   const eyebrow = () => {
     if (!d.eyebrow) return;
     ctx.font = `700 ${2.6 * u}px ${UI}`;
-    y += fitText(ctx, d.eyebrow.toUpperCase(), contentX, y, contentW, { size: 2.6 * u, min: 2 * u, weight: 700, family: UI, lh: 1.2, color: ink, maxLines: 1, tracking: 0.14 }) + 2.4 * u;
+    y += fitText(ctx, d.eyebrow.toUpperCase(), ax, y, contentW, { size: 2.6 * u, min: 2 * u, weight: 700, family: UI, lh: 1.2, color: ink, maxLines: 1, tracking: 0.14, align: al }) + 2.4 * u;
   };
 
   if (d.layout === "announcement") {
     eyebrow();
-    y += fitText(ctx, d.headline, contentX, y, contentW, { size: (wide ? 8 : 9) * u, min: 5 * u, weight: 700, family: DISPLAY, lh: 1.02, color: text, maxLines: wide ? 3 : 4, tracking: -0.04 }) + 3 * u;
-    y += fitText(ctx, d.subtext, contentX, y, contentW * 0.92, { size: 3.6 * u, min: 2.6 * u, weight: 400, family: UI, lh: 1.45, color: text2, maxLines: wide ? 3 : 5 });
+    y += fitText(ctx, d.headline, ax, y, contentW, { size: (wide ? 8 : 9) * u, min: 5 * u, weight: 700, family: DISPLAY, lh: 1.02, color: text, maxLines: wide ? 3 : 4, tracking: -0.04, align: al }) + 3 * u;
+    y += fitText(ctx, d.subtext, ax, y, contentW * 0.92, { size: 3.6 * u, min: 2.6 * u, weight: 400, family: UI, lh: 1.45, color: text2, maxLines: wide ? 3 : 5, align: al });
   } else if (d.layout === "quote") {
     ctx.font = `700 ${18 * u}px ${DISPLAY}`;
     ctx.fillStyle = accent;
     ctx.textBaseline = "top";
-    ctx.textAlign = "left";
-    ctx.fillText("“", contentX - 1 * u, y - 4 * u);
+    ctx.textAlign = al;
+    ctx.fillText("“", al === "left" ? contentX - 1 * u : ax, y - 4 * u);
     y += 11 * u;
-    y += fitText(ctx, d.headline, contentX, y, contentW, { size: (wide ? 5.6 : 6.6) * u, min: 3.6 * u, weight: 600, family: DISPLAY, lh: 1.2, color: text, maxLines: wide ? 4 : 7, tracking: -0.025 }) + 4 * u;
+    y += fitText(ctx, d.headline, ax, y, contentW, { size: (wide ? 5.6 : 6.6) * u, min: 3.6 * u, weight: 600, family: DISPLAY, lh: 1.2, color: text, maxLines: wide ? 4 : 7, tracking: -0.025, align: al }) + 4 * u;
     ctx.fillStyle = accent;
-    roundRect(ctx, contentX, y, 6 * u, 0.7 * u, 0.35 * u);
+    roundRect(ctx, boxX(6 * u), y, 6 * u, 0.7 * u, 0.35 * u);
     ctx.fill();
     y += 3 * u;
-    y += fitText(ctx, d.author, contentX, y, contentW, { size: 3.2 * u, min: 2.4 * u, weight: 650, family: UI, lh: 1.3, color: text, maxLines: 1 });
-    fitText(ctx, d.subtext, contentX, y + 0.8 * u, contentW, { size: 2.8 * u, min: 2.2 * u, weight: 400, family: UI, lh: 1.3, color: text3, maxLines: 1 });
+    y += fitText(ctx, d.author, ax, y, contentW, { size: 3.2 * u, min: 2.4 * u, weight: 650, family: UI, lh: 1.3, color: text, maxLines: 1, align: al });
+    fitText(ctx, d.subtext, ax, y + 0.8 * u, contentW, { size: 2.8 * u, min: 2.2 * u, weight: 400, family: UI, lh: 1.3, color: text3, maxLines: 1, align: al });
   } else if (d.layout === "stat") {
     eyebrow();
-    y += fitText(ctx, d.stat, contentX, y, contentW, { size: (wide ? 18 : 24) * u, min: 8 * u, weight: 700, family: DISPLAY, lh: 1, color: ink, maxLines: 1, tracking: -0.05 }) + 2 * u;
-    y += fitText(ctx, d.statLabel, contentX, y, contentW, { size: 4.6 * u, min: 3 * u, weight: 650, family: DISPLAY, lh: 1.15, color: text, maxLines: 2, tracking: -0.025 }) + 2.5 * u;
-    y += fitText(ctx, d.subtext, contentX, y, contentW * 0.9, { size: 3.2 * u, min: 2.4 * u, weight: 400, family: UI, lh: 1.45, color: text2, maxLines: wide ? 2 : 4 });
+    y += fitText(ctx, d.stat, ax, y, contentW, { size: (wide ? 18 : 24) * u, min: 8 * u, weight: 700, family: DISPLAY, lh: 1, color: ink, maxLines: 1, tracking: -0.05, align: al }) + 2 * u;
+    y += fitText(ctx, d.statLabel, ax, y, contentW, { size: 4.6 * u, min: 3 * u, weight: 650, family: DISPLAY, lh: 1.15, color: text, maxLines: 2, tracking: -0.025, align: al }) + 2.5 * u;
+    y += fitText(ctx, d.subtext, ax, y, contentW * 0.9, { size: 3.2 * u, min: 2.4 * u, weight: 400, family: UI, lh: 1.45, color: text2, maxLines: wide ? 2 : 4, align: al });
   } else {
     // event / hiring: pill tag + headline + details card
     const tag = d.eyebrow || "We’re hiring";
     ctx.font = `700 ${2.6 * u}px ${UI}`;
     const tw = ctx.measureText(tag.toUpperCase()).width + 0.14 * 2.6 * u * tag.length + 5 * u;
     ctx.fillStyle = accent;
-    roundRect(ctx, contentX, y, tw, 6 * u, 3 * u);
+    const pillX = boxX(tw);
+    roundRect(ctx, pillX, y, tw, 6 * u, 3 * u);
     ctx.fill();
-    fitText(ctx, tag.toUpperCase(), contentX + 2.5 * u, y + 1.7 * u, tw, { size: 2.6 * u, min: 2 * u, weight: 700, family: UI, lh: 1, color: onAccent(accent), maxLines: 1, tracking: 0.14 });
+    fitText(ctx, tag.toUpperCase(), pillX + 2.5 * u, y + 1.7 * u, tw, { size: 2.6 * u, min: 2 * u, weight: 700, family: UI, lh: 1, color: onAccent(accent), maxLines: 1, tracking: 0.14 });
     y += 10 * u;
-    y += fitText(ctx, d.headline, contentX, y, contentW, { size: (wide ? 7 : 8) * u, min: 4.6 * u, weight: 700, family: DISPLAY, lh: 1.05, color: text, maxLines: 3, tracking: -0.04 }) + 4 * u;
+    y += fitText(ctx, d.headline, ax, y, contentW, { size: (wide ? 7 : 8) * u, min: 4.6 * u, weight: 700, family: DISPLAY, lh: 1.05, color: text, maxLines: 3, tracking: -0.04, align: al }) + 4 * u;
     const cardH = Math.min(bottom - 10 * u - y, (wide ? 14 : 20) * u);
     if (cardH > 8 * u) {
       ctx.save();
@@ -563,20 +583,20 @@ function drawPost(ctx: CanvasRenderingContext2D, d: PostData, logo: HTMLImageEle
       roundRect(ctx, contentX, y, contentW, cardH, 2.4 * u);
       ctx.fill();
       ctx.restore();
-      fitText(ctx, d.subtext, contentX + 3.5 * u, y + 3 * u, contentW - 7 * u, { size: 3.2 * u, min: 2.4 * u, weight: 500, family: UI, lh: 1.45, color: text2, maxLines: Math.max(1, Math.floor((cardH - 5 * u) / (3.2 * u * 1.45))) });
+      fitText(ctx, d.subtext, al === "left" ? ax + 3.5 * u : al === "right" ? ax - 3.5 * u : ax, y + 3 * u, contentW - 7 * u, { size: 3.2 * u, min: 2.4 * u, weight: 500, family: UI, lh: 1.45, color: text2, maxLines: Math.max(1, Math.floor((cardH - 5 * u) / (3.2 * u * 1.45))), align: al });
     }
   }
 
   // Footer line
   ctx.fillStyle = dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   ctx.fillRect(contentX, bottom - 6 * u, (d.image && wide ? contentW : w - pad * 2), Math.max(1, 0.15 * u));
-  fitText(ctx, d.footer, contentX, bottom - 4 * u, contentW, { size: 2.6 * u, min: 2 * u, weight: 550, family: UI, lh: 1.2, color: text3, maxLines: 1 });
+  fitText(ctx, d.footer, ax, bottom - 4 * u, contentW, { size: 2.6 * u, min: 2 * u, weight: 550, family: UI, lh: 1.2, color: text3, maxLines: 1, align: al });
   if (d.size === "carousel" && d.slide < d.slides) {
     ctx.font = `650 ${2.6 * u}px ${UI}`;
     ctx.fillStyle = ink;
-    ctx.textAlign = "right";
+    ctx.textAlign = furnRight ? "right" : "left";
     ctx.textBaseline = "top";
-    ctx.fillText("Swipe →", w - pad, bottom - 4 * u);
+    ctx.fillText("Swipe →", furnRight ? w - pad : pad, bottom - 4 * u);
   }
 }
 
@@ -607,6 +627,7 @@ const BANNERS = {
 } as const;
 type BannerKind = keyof typeof BANNERS;
 type BannerStyle = "light" | "dark" | "teal";
+const BANNER_DEFAULT_ALIGN: Record<BannerKind, Align> = { company: "center", profile: "right" };
 
 /** Wordmark colours per banner style (teal follows app-tile option 1: white + ink accent). */
 const BANNER_STYLES: Record<BannerStyle, { bg: [string, string]; fg: string; ac: string; trk: string; tag: string; sub: string; line: string }> = {
@@ -641,7 +662,7 @@ function dialMotif(ctx: CanvasRenderingContext2D, cx: number, cy: number, radii:
   ctx.restore();
 }
 
-function drawBanner(ctx: CanvasRenderingContext2D, kind: BannerKind, style: BannerStyle, tagline: string, subline: string, logo: HTMLImageElement | null, scale = 1) {
+function drawBanner(ctx: CanvasRenderingContext2D, kind: BannerKind, style: BannerStyle, tagline: string, subline: string, logo: HTMLImageElement | null, scale = 1, align: Align = BANNER_DEFAULT_ALIGN[kind]) {
   const { w, h } = BANNERS[kind];
   const s = BANNER_STYLES[style];
   ctx.save();
@@ -659,34 +680,33 @@ function drawBanner(ctx: CanvasRenderingContext2D, kind: BannerKind, style: Bann
     ctx.fillRect(0, 0, w, h);
   }
 
-  if (kind === "profile") {
-    // Avatar covers ~x 0–568 in the lower half: motif lives top-left, all content is right-aligned.
-    dialMotif(ctx, 250, 150, [70, 120, 170, 220, 270], s.line, 2);
-    const right = w - 224; // mobile crops ~200px per side
-    const maxW = right - 600;
-    const wh = 54;
-    let y = 104;
-    if (logo) ctx.drawImage(logo, right - wh * WORDMARK_RATIO, y, wh * WORDMARK_RATIO, wh);
-    y += wh + 34;
-    y += fitText(ctx, tagline, right, y, maxW, { size: 40, min: 26, weight: 600, family: DISPLAY, lh: 1.15, color: s.tag, maxLines: 2, tracking: -0.025, align: "right" }) + 12;
-    fitText(ctx, subline, right, y, maxW, { size: 20, min: 15, weight: 450, family: UI, lh: 1.35, color: s.sub, maxLines: 1, align: "right" });
-  } else {
-    // Company logo square sits bottom-left and mobile crops the sides: centre the stack, motif on the far right.
-    dialMotif(ctx, w - 70, h * 0.5, [40, 70, 100, 130], s.line, 1.5);
-    const cx = w / 2;
-    const maxW = 560;
-    const wh = 36;
-    let y = 34;
-    if (logo) ctx.drawImage(logo, cx - (wh * WORDMARK_RATIO) / 2, y, wh * WORDMARK_RATIO, wh);
-    y += wh + 20;
-    y += fitText(ctx, tagline, cx, y, maxW, { size: 26, min: 18, weight: 600, family: DISPLAY, lh: 1.15, color: s.tag, maxLines: 1, tracking: -0.02, align: "center" }) + 8;
-    fitText(ctx, subline, cx, y, maxW, { size: 15, min: 12, weight: 450, family: UI, lh: 1.3, color: s.sub, maxLines: 1, align: "center" });
-  }
+  // Safe zone per banner: the profile photo covers ~x 0–568 (lower half) and mobile crops ~200px per side;
+  // the company logo square overlaps the lower-left. Content aligns left / centre / right inside that zone.
+  const profile = kind === "profile";
+  const [zl, zr] = profile ? [600, w - 224] : [224, w - 224];
+  const ax = align === "left" ? zl : align === "center" ? (zl + zr) / 2 : zr;
+  const boxX = (bw: number) => (align === "left" ? ax : align === "center" ? ax - bw / 2 : ax - bw);
+  const maxW = zr - zl;
+  if (profile) dialMotif(ctx, 250, 150, [70, 120, 170, 220, 270], s.line, 2);
+  else if (align === "right") dialMotif(ctx, 70, h * 0.5, [40, 70, 100, 130], s.line, 1.5);
+  else dialMotif(ctx, w - 70, h * 0.5, [40, 70, 100, 130], s.line, 1.5);
+  const wh = profile ? 54 : 36;
+  let y = profile ? 104 : 34;
+  if (logo) ctx.drawImage(logo, boxX(wh * WORDMARK_RATIO), y, wh * WORDMARK_RATIO, wh);
+  y += wh + (profile ? 34 : 20);
+  y += fitText(ctx, tagline, ax, y, maxW, profile
+    ? { size: 40, min: 26, weight: 600, family: DISPLAY, lh: 1.15, color: s.tag, maxLines: 2, tracking: -0.025, align }
+    : { size: 26, min: 18, weight: 600, family: DISPLAY, lh: 1.15, color: s.tag, maxLines: 1, tracking: -0.02, align }) + (profile ? 12 : 8);
+  fitText(ctx, subline, ax, y, maxW, profile
+    ? { size: 20, min: 15, weight: 450, family: UI, lh: 1.35, color: s.sub, maxLines: 1, align }
+    : { size: 15, min: 12, weight: 450, family: UI, lh: 1.3, color: s.sub, maxLines: 1, align });
   ctx.restore();
 }
 
 function BannerEditor({ kind, sizeField }: { kind: BannerKind; sizeField: ReactNode }) {
   const [style, setStyle] = useState<BannerStyle>("light");
+  const [align, setAlign] = useState<Align>(BANNER_DEFAULT_ALIGN[kind]);
+  useEffect(() => setAlign(BANNER_DEFAULT_ALIGN[kind]), [kind]);
   const [tagline, setTagline] = useState("Automation that feels like child's play");
   const [subline, setSubline] = useState("Bioreactor control from the browser · bioversee.com");
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
@@ -708,8 +728,8 @@ function BannerEditor({ kind, sizeField }: { kind: BannerKind; sizeField: ReactN
     if (!c || !ctx) return;
     c.width = w * 2;
     c.height = h * 2;
-    drawBanner(ctx, kind, style, tagline, subline, logo, 2);
-  }, [kind, style, tagline, subline, logo, fontsReady, w, h]);
+    drawBanner(ctx, kind, style, tagline, subline, logo, 2, align);
+  }, [kind, style, tagline, subline, logo, fontsReady, w, h, align]);
 
   const download = (type: "png" | "jpg", scale: number) => {
     const c = document.createElement("canvas");
@@ -717,12 +737,12 @@ function BannerEditor({ kind, sizeField }: { kind: BannerKind; sizeField: ReactN
     c.height = h * scale;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    drawBanner(ctx, kind, style, tagline, subline, logo, scale);
+    drawBanner(ctx, kind, style, tagline, subline, logo, scale, align);
     c.toBlob((blob) => {
       if (!blob) return;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `bioversee-linkedin-banner-${kind}-${style}-${c.width}x${c.height}.${type}`;
+      a.download = `bioversee-linkedin-banner-${kind}-${style}-${align}-${c.width}x${c.height}.${type}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }, type === "png" ? "image/png" : "image/jpeg", 0.92);
@@ -738,10 +758,14 @@ function BannerEditor({ kind, sizeField }: { kind: BannerKind; sizeField: ReactN
           <span className="tpl-label">Style</span>
           <SegmentedControl<BannerStyle> shape="pill" aria-label="Banner style" value={style} onChange={setStyle} options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "teal", label: "Teal" }]} />
         </div>
+        <div className="tpl-field">
+          <span className="tpl-label">Align</span>
+          <SegmentedControl<Align> aria-label="Align content" value={align} onChange={setAlign} options={ALIGN_OPTIONS} />
+        </div>
         <p className="tpl-cap">
           {kind === "profile"
-            ? "Safe zone: your round photo covers the lower-left (~0–568px) and mobile crops the sides, so content sits right of centre."
-            : "Safe zone: the logo square overlaps the lower-left and mobile crops the sides, so content stays centred."}
+            ? "Safe zone: your round photo covers the lower-left (~0–568px) and mobile crops the sides, so content stays between x 600 and 1360."
+            : "Safe zone: the logo square overlaps the lower-left and mobile crops the sides, so content stays between x 224 and 904."}
         </p>
         <div className="tpl-actions landing">
           <button type="button" className="landing-btn landing-btn--primary" onClick={() => download("png", 1)}>PNG {w}×{h}</button>
@@ -761,6 +785,7 @@ export function LinkedInGraphicSection() {
   const [d, setD] = useState<PostData>({
     size: "square",
     layout: "announcement",
+    align: "left",
     theme: "light",
     accent: DEFAULT_ACCENT,
     eyebrow: "",
@@ -799,15 +824,22 @@ export function LinkedInGraphicSection() {
   const set = <K extends keyof PostData>(k: K, v: PostData[K]) => setD((p) => ({ ...p, [k]: v }));
   const setLayout = (layout: LayoutId) => setD((p) => ({ ...p, layout, eyebrow: "", ...LAYOUT_DEFAULTS[layout] }));
 
-  const download = () => {
-    canvasRef.current?.toBlob((blob) => {
+  const download = (type: "png" | "jpg") => {
+    // Render a fresh full-resolution canvas so the export never depends on the preview element.
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    drawPost(ctx, d, logo);
+    c.toBlob((blob) => {
       if (!blob) return;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `bioversee-linkedin-${d.layout}-${w}x${h}.png`;
+      a.download = `bioversee-linkedin-${d.layout}-${d.theme}-${d.align}-${w}x${h}.${type}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    }, "image/png");
+    }, type === "png" ? "image/png" : "image/jpeg", 0.92);
   };
 
   const onFile = (file?: File) => {
@@ -859,6 +891,10 @@ export function LinkedInGraphicSection() {
             ]}
           />
         </div>
+        <div className="tpl-field">
+          <span className="tpl-label">Align</span>
+          <SegmentedControl<Align> aria-label="Align content" value={d.align} onChange={(v) => set("align", v)} options={ALIGN_OPTIONS} />
+        </div>
         {d.layout !== "quote" ? <Field label={d.layout === "event" ? "Tag" : "Eyebrow"}><input value={d.eyebrow} onChange={(e) => set("eyebrow", e.target.value)} /></Field> : null}
         {d.layout === "stat" ? (
           <div className="tpl-row">
@@ -888,7 +924,8 @@ export function LinkedInGraphicSection() {
           </div>
         </div>
         <div className="tpl-actions landing">
-          <button type="button" className="landing-btn landing-btn--primary" onClick={download}>Download PNG</button>
+          <button type="button" className="landing-btn landing-btn--primary" onClick={() => download("png")}>Download PNG</button>
+          <button type="button" className="landing-btn landing-btn--ghost" onClick={() => download("jpg")}>JPG</button>
           {d.image ? <button type="button" className="landing-btn landing-btn--ghost" onClick={() => onFile()}>Remove image</button> : null}
           <span className="tpl-cap">{w}×{h}px</span>
         </div>

@@ -1210,9 +1210,6 @@
 .lb-stage .lb-svg > svg { width: auto; }
 .lb-row { flex-direction: row; flex-wrap: wrap; gap: 18px; }
 .lb-row .ds-cap { flex-basis: 100%; text-align: center; }
-.lb-clear { padding: 28px; outline: 1.5px dashed var(--bv-accent); background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--bv-accent) 10%, transparent) 0 6px, transparent 6px 12px); }
-.lb-clear .lb-svg { background: var(--bv-surface-elevated, var(--bv-surface)); }
-.lb-mins { align-items: flex-start; gap: 8px; font-size: 14px; color: var(--bv-text); }
 .lb-do { box-shadow: 0 0 0 2px var(--bv-success, #34c759); }
 .lb-dont { box-shadow: 0 0 0 2px var(--bv-danger, #ff3b30); position: relative; }
 .lb-dont::after { content: "✕"; position: absolute; top: 10px; right: 12px; color: var(--bv-danger, #ff3b30); font-weight: 700; }
@@ -1228,7 +1225,6 @@
 :root[data-theme="dark"] { --bv-logo-track: 0.3; }
 .lb-dont .ds-cap { background: var(--bv-surface-elevated); padding: 3px 8px; border-radius: 8px; }
 .lb-combo { display: inline-flex; align-items: center; gap: 8px; }
-.lb-clear--half { padding: 18px; }
 
 /* Logo asset gallery */
 .la-group { margin-top: 22px; }
@@ -1251,3 +1247,12 @@
 .la-btn:disabled { opacity: .5; cursor: default; }
 .la-size { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--bv-text-secondary); }
 .la-size select { font: inherit; padding: 6px 8px; border-radius: 9px; border: 1px solid var(--bv-line, rgba(0,0,0,.12)); background: var(--bv-input-bg, var(--bv-surface)); color: var(--bv-text); }
+
+/* Logo blueprint — sheets with SVG download */
+.lb-figure { margin: 0 0 14px; }
+.lb-figcap { display: flex; justify-content: flex-end; margin-top: 6px; }
+.lb-dl { appearance: none; border: 0; background: none; color: var(--bv-text-secondary); font: 600 12px/1 var(--bv-font, inherit); padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.lb-dl:hover { color: var(--bv-accent); background: color-mix(in srgb, var(--bv-accent) 10%, transparent); }
+.lb-mins { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 14px; color: var(--bv-text); margin-top: 4px; }
+.lb-do::after { content: "✓"; position: absolute; top: 10px; right: 12px; color: var(--bv-success, #34c759); font-weight: 700; }
+.lb-do { position: relative; }

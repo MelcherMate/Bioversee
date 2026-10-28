@@ -1,0 +1,79 @@
+/* Print · A4 templates on /design. The sheet is laid out in mm at 96 dpi and scaled to fit. */
+
+.pt-preview {
+  padding: clamp(12px, 3vw, 28px);
+  background: var(--bv-fill);
+  box-shadow: 0 0 0 1px var(--bv-line);
+}
+.pt-fit { position: relative; width: 100%; overflow: hidden; }
+.pt-fit__inner { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+
+.pt-page {
+  --pt-ink: #1d1d1f;
+  --pt-ink2: #6e6e73;
+  --pt-ink3: #86868b;
+  --pt-accent: #0d9488;
+  --pt-line: #e8e8ed;
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  box-sizing: border-box;
+  padding: 11mm 22mm 0;
+  background: #fff;
+  color: var(--pt-ink);
+  font: 10pt/1.38 Arial, Helvetica, sans-serif;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+.pt-page p { margin: 0 0 8pt; }
+
+.pt-head { display: flex; justify-content: space-between; align-items: flex-end; height: 16mm; }
+.pt-logo { height: 7.6mm; width: auto; display: block; }
+.pt-head__right { display: flex; flex-direction: column; align-items: flex-end; font-size: 8pt; color: var(--pt-ink2); line-height: 1.35; }
+.pt-head__right b { color: var(--pt-ink); font-size: 8.5pt; }
+.pt-head__right .pt-invoice { color: var(--pt-accent); font-size: 15pt; line-height: 1.1; }
+.pt-rule { position: relative; margin-top: 3mm; border-top: 0.75pt solid var(--pt-line); }
+.pt-rule::before { content: ""; position: absolute; left: 0; top: -0.75pt; width: 20mm; border-top: 2.25pt solid var(--pt-accent); }
+
+.pt-body { position: absolute; top: 38mm; left: 22mm; right: 22mm; }
+.pt-sender { font-size: 6.5pt; color: var(--pt-ink3); margin-bottom: 4pt !important; }
+.pt-addr { display: flex; flex-direction: column; line-height: 1.3; }
+.pt-date { text-align: right; margin-top: 24pt !important; color: var(--pt-ink2); display: flex; flex-direction: column; }
+.pt-date small { font-size: 8pt; color: var(--pt-ink3); }
+.pt-subject { font-size: 12pt; margin: 14pt 0 12pt; }
+.pt-sign { display: flex; flex-direction: column; margin-top: 30pt !important; }
+.pt-sign span { color: var(--pt-ink2); }
+.pt-title { font-size: 26pt; line-height: 1.1; margin: 0 0 4pt; letter-spacing: -0.01em; }
+.pt-subtitle { color: var(--pt-accent); font-size: 13pt; }
+.pt-meta { font-size: 8pt; color: var(--pt-ink3); margin-bottom: 18pt !important; }
+.pt-body h5 { font-size: 13pt; margin: 18pt 0 6pt; }
+.pt-body ul { margin: 0; padding-left: 16pt; }
+.pt-kicker { font-size: 7pt; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--pt-accent); margin: 24pt 0 3pt !important; }
+.pt-cols { display: grid; grid-template-columns: 1fr 1fr; }
+.pt-cols .pt-kicker { margin-top: 0 !important; }
+.pt-meta-list, .pt-totals { margin: 0; }
+.pt-meta-list div, .pt-totals div { display: flex; justify-content: space-between; line-height: 1.5; }
+.pt-meta-list dt, .pt-totals dt { color: var(--pt-ink2); }
+.pt-meta-list dd, .pt-totals dd { margin: 0; }
+.pt-items { width: 100%; border-collapse: collapse; font-size: 10pt; }
+.pt-items th { background: var(--pt-accent); color: #fff; font-size: 8pt; text-align: right; padding: 4pt 5pt; }
+.pt-items td { border-bottom: 0.5pt solid var(--pt-line); text-align: right; padding: 4pt 5pt; }
+.pt-items th:first-child, .pt-items td:first-child { text-align: left; }
+.pt-totals { margin: 10pt 0 0 50%; }
+.pt-totals .is-total { border-top: 1pt solid var(--pt-ink); margin-top: 6pt; padding-top: 4pt; font-weight: 700; font-size: 12pt; }
+.pt-totals .is-total dt { color: var(--pt-ink); }
+
+.pt-foot {
+  position: absolute; left: 22mm; right: 22mm; bottom: 10mm;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  padding-top: 6pt; border-top: 0.5pt solid var(--pt-line);
+  font-size: 7pt; line-height: 1.3; color: var(--pt-ink2);
+}
+.pt-foot div { display: flex; flex-direction: column; }
+.pt-foot b { color: var(--pt-accent); text-transform: uppercase; margin-bottom: 2pt; }
+.pt-foot em { font-style: normal; color: var(--pt-ink3); align-self: flex-end; margin-top: 4pt; }
+
+.pt-details { border-radius: 12px; box-shadow: 0 0 0 1px var(--bv-line); padding: 10px 12px; }
+.pt-details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--bv-text-secondary); }
+.pt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.pt-err { color: var(--bv-danger, #ff3b30); }

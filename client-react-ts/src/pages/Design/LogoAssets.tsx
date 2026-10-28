@@ -51,7 +51,7 @@ const GROUPS: Group[] = [
   },
   {
     title: "Wordmark – small (<160px)",
-    note: "Solid vessel with a teal lower half so the ‘o’ stays clean. 72–160px wide.",
+    note: "The ‘o’ is the small mark: 270° teal arc, vessel ring, liquid. 72–160px wide.",
     assets: [
       { file: "g-wordmark-small-light.svg", slug: "bioversee-wordmark-small-light", name: "Small wordmark · Light background", use: "Navbars, auth cards, email footers.", min: "72px wide", bg: "light", defaultSize: 512 },
       { file: "g-wordmark-small-dark.svg", slug: "bioversee-wordmark-small-dark", name: "Small wordmark · Dark background", use: "Compact headers in dark mode.", min: "72px wide", bg: "dark", defaultSize: 512 },
