@@ -42,14 +42,16 @@ export const PIPE_FITTING_TILES: PipeFittingCatalogItem[] = [
   },
   {
     kind: "wye_split",
-    usesBore: true,
+    // Always wide stem → two thin outlets.
+    usesBore: false,
     labelKey: "piping.wyeSplit",
     hintKey: "piping.wyeSplitHint",
     nameKey: "piping.nameWyeSplit",
   },
   {
     kind: "wye_merge",
-    usesBore: true,
+    // Always two thin inlets → wide stem.
+    usesBore: false,
     labelKey: "piping.wyeMerge",
     hintKey: "piping.wyeMergeHint",
     nameKey: "piping.nameWyeMerge",
@@ -109,6 +111,12 @@ export function fittingHandleOd(
   if (config.kind === "reducer") {
     if (handleId === "wide") return OUTFLOW_PIPE_OD;
     if (handleId === "thin") return FILL_PIPE_OD;
+    return OUTFLOW_PIPE_OD;
+  }
+  // Splitter: wide inlet (stem) → thin outlets. Merger: thin inlets → wide outlet.
+  if (config.kind === "wye_split" || config.kind === "wye_merge") {
+    if (handleId === "stem") return OUTFLOW_PIPE_OD;
+    if (handleId === "left" || handleId === "right") return FILL_PIPE_OD;
     return OUTFLOW_PIPE_OD;
   }
   return boreOd(config.bore);

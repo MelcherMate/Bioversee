@@ -139,7 +139,21 @@ type FittingWaterSeg = {
   d: string;
   head01: number;
   tail01: number;
+  waterOd: number;
 };
+
+function corridorWaterOd(
+  config: PipeFittingConfig,
+  key: string,
+  fallbackOd: number
+): number {
+  if (config.kind === "wye_split" || config.kind === "wye_merge") {
+    return key.includes("stem")
+      ? fittingHandleOd(config, "stem")
+      : fittingHandleOd(config, "left");
+  }
+  return fallbackOd;
+}
 
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
@@ -193,27 +207,30 @@ function wyeCorridorParts(
 
   const { leg, barY, bend } = wyeGeom(od);
   const merge = config.kind === "wye_merge";
-  // Overlap stem into the crossbar like the metal path (avoids a dry notch).
-  const join = od * 0.4;
+  const stemOd = fittingHandleOd(config, "stem");
+  const armOd = fittingHandleOd(config, "left");
+  // Arms butt into the stem wall — don't run under the wide bore.
+  const stemFace = stemOd / 2;
+  // Stem overlaps the arm stroke so the T reads as one tee.
+  const stemOverlap = armOd / 2 + 1;
   const leftEnter = merge
-    ? `M ${CX - leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 0 ${CX - leg + bend} ${barY} H ${CX}`
-    : `M ${CX - leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 1 ${CX - leg + bend} ${barY} H ${CX}`;
+    ? `M ${CX - leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 0 ${CX - leg + bend} ${barY} H ${CX - stemFace}`
+    : `M ${CX - leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 1 ${CX - leg + bend} ${barY} H ${CX - stemFace}`;
   const rightEnter = merge
-    ? `M ${CX + leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 1 ${CX + leg - bend} ${barY} H ${CX}`
-    : `M ${CX + leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 0 ${CX + leg - bend} ${barY} H ${CX}`;
+    ? `M ${CX + leg} ${CY - ARM} V ${barY - bend} A ${bend} ${bend} 0 0 1 ${CX + leg - bend} ${barY} H ${CX + stemFace}`
+    : `M ${CX + leg} ${CY + ARM} V ${barY + bend} A ${bend} ${bend} 0 0 0 ${CX + leg - bend} ${barY} H ${CX + stemFace}`;
   const stemEnter = merge
-    ? `M ${CX} ${CY + ARM} V ${barY}`
-    : `M ${CX} ${CY - ARM} V ${barY}`;
+    ? `M ${CX} ${CY + ARM} V ${barY + stemOverlap}`
+    : `M ${CX} ${CY - ARM} V ${barY - stemOverlap}`;
   const leftLeave = merge
-    ? `M ${CX} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 1 ${CX - leg} ${barY - bend} V ${CY - ARM}`
-    : `M ${CX} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 0 ${CX - leg} ${barY + bend} V ${CY + ARM}`;
+    ? `M ${CX - stemFace} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 1 ${CX - leg} ${barY - bend} V ${CY - ARM}`
+    : `M ${CX - stemFace} ${barY} H ${CX - leg + bend} A ${bend} ${bend} 0 0 0 ${CX - leg} ${barY + bend} V ${CY + ARM}`;
   const rightLeave = merge
-    ? `M ${CX} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 0 ${CX + leg} ${barY - bend} V ${CY - ARM}`
-    : `M ${CX} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 1 ${CX + leg} ${barY + bend} V ${CY + ARM}`;
-  // Stem overlaps the bar the same way the metal U does.
+    ? `M ${CX + stemFace} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 0 ${CX + leg} ${barY - bend} V ${CY - ARM}`
+    : `M ${CX + stemFace} ${barY} H ${CX + leg - bend} A ${bend} ${bend} 0 0 1 ${CX + leg} ${barY + bend} V ${CY + ARM}`;
   const stemLeave = merge
-    ? `M ${CX} ${barY - join} V ${CY + ARM}`
-    : `M ${CX} ${barY + join} V ${CY - ARM}`;
+    ? `M ${CX} ${barY - stemOverlap} V ${CY + ARM}`
+    : `M ${CX} ${barY + stemOverlap} V ${CY - ARM}`;
 
   // U-leg (port→elbow→bar to junction) is ~2× the stem length.
   const armFrac = 0.68;
@@ -359,16 +376,18 @@ function fittingWaterSegments(
 
   const upsert = (key: string, d: string, head01: number, tail01: number) => {
     if (head01 - tail01 < 0.01) return;
+    const waterOd = corridorWaterOd(config, key, od);
     if (seen.has(key)) {
       const existing = segments.find((s) => s.key === key);
       if (existing) {
         existing.head01 = Math.max(existing.head01, head01);
         existing.tail01 = Math.min(existing.tail01, tail01);
+        existing.waterOd = Math.max(existing.waterOd, waterOd);
       }
       return;
     }
     seen.add(key);
-    segments.push({ key, d, head01, tail01 });
+    segments.push({ key, d, head01, tail01, waterOd });
   };
 
   const push = (from: string, to: string, head01: number, tail01: number) => {
@@ -506,13 +525,15 @@ function FittingDrawing({
   config: PipeFittingConfig;
   waterSegs: FittingWaterSeg[];
 }) {
-  const od = config.kind === "reducer" ? null : boreOd(config.bore);
-  const wide = fittingHandleOd(config, "wide");
-  const thin = fittingHandleOd(config, "thin");
+  const isWye = config.kind === "wye_split" || config.kind === "wye_merge";
+  const od = config.kind === "reducer" || isWye ? null : boreOd(config.bore);
+  const wide = isWye
+    ? fittingHandleOd(config, "stem")
+    : fittingHandleOd(config, "wide");
+  const thin = isWye
+    ? fittingHandleOd(config, "left")
+    : fittingHandleOd(config, "thin");
   const stroke = PIPE_METAL.stroke;
-  const waterOd =
-    config.kind === "reducer" ? Math.min(wide, thin) : (od ?? 16);
-  const waterW = waterWidthForOd(waterOd);
   /** Half-spacing between the two parallel fork legs. */
   const leg = ARM * 0.55;
   /** Crossbar Y — stem meets the U here (split) / legs meet the stem (merge). */
@@ -521,31 +542,76 @@ function FittingDrawing({
   const bend = Math.min(
     leg * 0.5,
     (CY + ARM - barY) * 0.4,
-    Math.max(14, (od ?? 16) * 0.95)
+    Math.max(14, wide * 0.95)
   );
-  // Continuous U crossbar + overlapping stem (separate M). Butt caps at a
-  // T-junction leave a visible notch; one crossbar path + stem overlap fixes it.
-  const join = (od ?? 16) * 0.4;
-  const splitPath = [
+  // Thin arms stop at the wide stem wall (reducing tee), then stem covers the T.
+  const stemFace = wide / 2;
+  const stemOverlap = thin / 2 + 1;
+  const splitLeft = [
     `M ${CX - leg} ${CY + ARM}`,
     `V ${barY + bend}`,
     `A ${bend} ${bend} 0 0 1 ${CX - leg + bend} ${barY}`,
-    `H ${CX + leg - bend}`,
-    `A ${bend} ${bend} 0 0 1 ${CX + leg} ${barY + bend}`,
-    `V ${CY + ARM}`,
-    `M ${CX} ${barY + join}`,
-    `V ${CY - ARM}`,
+    `H ${CX - stemFace}`,
   ].join(" ");
-  const mergePath = [
+  const splitRight = [
+    `M ${CX + leg} ${CY + ARM}`,
+    `V ${barY + bend}`,
+    `A ${bend} ${bend} 0 0 0 ${CX + leg - bend} ${barY}`,
+    `H ${CX + stemFace}`,
+  ].join(" ");
+  const splitStem = `M ${CX} ${barY + stemOverlap} V ${CY - ARM}`;
+  const mergeLeft = [
     `M ${CX - leg} ${CY - ARM}`,
     `V ${barY - bend}`,
     `A ${bend} ${bend} 0 0 0 ${CX - leg + bend} ${barY}`,
-    `H ${CX + leg - bend}`,
-    `A ${bend} ${bend} 0 0 0 ${CX + leg} ${barY - bend}`,
-    `V ${CY - ARM}`,
-    `M ${CX} ${barY - join}`,
-    `V ${CY + ARM}`,
+    `H ${CX - stemFace}`,
   ].join(" ");
+  const mergeRight = [
+    `M ${CX + leg} ${CY - ARM}`,
+    `V ${barY - bend}`,
+    `A ${bend} ${bend} 0 0 1 ${CX + leg - bend} ${barY}`,
+    `H ${CX + stemFace}`,
+  ].join(" ");
+  const mergeStem = `M ${CX} ${barY - stemOverlap} V ${CY + ARM}`;
+
+  const paintArm = (d: string, armOd: number) => (
+    <>
+      <path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={armOd + 2}
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+      />
+      <path
+        d={d}
+        fill="none"
+        stroke={PIPE_FILL}
+        strokeWidth={armOd}
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+      />
+    </>
+  );
+  const paintStem = (d: string, stemStroke: number) => (
+    <>
+      <path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={stemStroke + 2}
+        strokeLinecap="butt"
+      />
+      <path
+        d={d}
+        fill="none"
+        stroke={PIPE_FILL}
+        strokeWidth={stemStroke}
+        strokeLinecap="butt"
+      />
+    </>
+  );
 
   return (
     <svg
@@ -597,45 +663,19 @@ function FittingDrawing({
           </>
         ) : null}
 
-        {config.kind === "wye_split" && od != null ? (
+        {config.kind === "wye_split" ? (
           <>
-            <path
-              d={splitPath}
-              fill="none"
-              stroke={stroke}
-              strokeWidth={od + 2}
-              strokeLinecap="butt"
-              strokeLinejoin="round"
-            />
-            <path
-              d={splitPath}
-              fill="none"
-              stroke={PIPE_FILL}
-              strokeWidth={od}
-              strokeLinecap="butt"
-              strokeLinejoin="round"
-            />
+            {paintArm(splitLeft, thin)}
+            {paintArm(splitRight, thin)}
+            {paintStem(splitStem, wide)}
           </>
         ) : null}
 
-        {config.kind === "wye_merge" && od != null ? (
+        {config.kind === "wye_merge" ? (
           <>
-            <path
-              d={mergePath}
-              fill="none"
-              stroke={stroke}
-              strokeWidth={od + 2}
-              strokeLinecap="butt"
-              strokeLinejoin="round"
-            />
-            <path
-              d={mergePath}
-              fill="none"
-              stroke={PIPE_FILL}
-              strokeWidth={od}
-              strokeLinecap="butt"
-              strokeLinejoin="round"
-            />
+            {paintArm(mergeLeft, thin)}
+            {paintArm(mergeRight, thin)}
+            {paintStem(mergeStem, wide)}
           </>
         ) : null}
 
@@ -694,7 +734,7 @@ function FittingDrawing({
             d={seg.d}
             head01={seg.head01}
             tail01={seg.tail01}
-            waterW={waterW}
+            waterW={waterWidthForOd(seg.waterOd)}
           />
         ))}
       </g>
@@ -798,6 +838,10 @@ export default function PipeFittingNode({
         fittingHandleOd(config, "wide"),
         fittingHandleOd(config, "thin")
       );
+    }
+    if (config.kind === "wye_split" || config.kind === "wye_merge") {
+      // Corridor geometry sized to the wide stem.
+      return fittingHandleOd(config, "stem");
     }
     return boreOd(config.bore);
   }, [config]);

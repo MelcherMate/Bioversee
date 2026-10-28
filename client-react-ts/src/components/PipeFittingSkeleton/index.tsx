@@ -21,6 +21,16 @@ export default function PipeFittingSkeleton({
   const wide = boreOd("wide");
   const thin = boreOd("thin");
   const stroke = PIPE_METAL.stroke;
+  // Splitter / merger: thin arms butt into the wide stem wall.
+  const stemOd = wide;
+  const armOd = thin;
+  const stemFace = stemOd / 2;
+  const splitLeft = `M22 62 V46 A8 8 0 0 1 30 38 H ${36 - stemFace}`;
+  const splitRight = `M50 62 V46 A8 8 0 0 0 42 38 H ${36 + stemFace}`;
+  const splitStem = `M36 ${38 + armOd / 2} V10`;
+  const mergeLeft = `M22 10 V26 A8 8 0 0 0 30 34 H ${36 - stemFace}`;
+  const mergeRight = `M50 10 V26 A8 8 0 0 1 42 34 H ${36 + stemFace}`;
+  const mergeStem = `M36 ${34 - armOd / 2} V62`;
 
   return (
     <svg
@@ -74,20 +84,50 @@ export default function PipeFittingSkeleton({
       {kind === "wye_split" ? (
         <>
           <path
-            d="M36 10 V38 H30 A8 8 0 0 0 22 46 V62 M36 38 H42 A8 8 0 0 1 50 46 V62"
+            d={splitLeft}
             fill="none"
             stroke={stroke}
-            strokeWidth={(od ?? thin) + 2}
+            strokeWidth={armOd + 2}
             strokeLinecap="butt"
             strokeLinejoin="round"
           />
           <path
-            d="M36 10 V38 H30 A8 8 0 0 0 22 46 V62 M36 38 H42 A8 8 0 0 1 50 46 V62"
+            d={splitLeft}
             fill="none"
             stroke={PIPE_FILL}
-            strokeWidth={od ?? thin}
+            strokeWidth={armOd}
             strokeLinecap="butt"
             strokeLinejoin="round"
+          />
+          <path
+            d={splitRight}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={armOd + 2}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={splitRight}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={armOd}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={splitStem}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={stemOd + 2}
+            strokeLinecap="butt"
+          />
+          <path
+            d={splitStem}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={stemOd}
+            strokeLinecap="butt"
           />
         </>
       ) : null}
@@ -95,20 +135,50 @@ export default function PipeFittingSkeleton({
       {kind === "wye_merge" ? (
         <>
           <path
-            d="M22 10 V26 A8 8 0 0 0 30 34 H36 M50 10 V26 A8 8 0 0 1 42 34 H36 M36 34 V62"
+            d={mergeLeft}
             fill="none"
             stroke={stroke}
-            strokeWidth={(od ?? thin) + 2}
+            strokeWidth={armOd + 2}
             strokeLinecap="butt"
             strokeLinejoin="round"
           />
           <path
-            d="M22 10 V26 A8 8 0 0 0 30 34 H36 M50 10 V26 A8 8 0 0 1 42 34 H36 M36 34 V62"
+            d={mergeLeft}
             fill="none"
             stroke={PIPE_FILL}
-            strokeWidth={od ?? thin}
+            strokeWidth={armOd}
             strokeLinecap="butt"
             strokeLinejoin="round"
+          />
+          <path
+            d={mergeRight}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={armOd + 2}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={mergeRight}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={armOd}
+            strokeLinecap="butt"
+            strokeLinejoin="round"
+          />
+          <path
+            d={mergeStem}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={stemOd + 2}
+            strokeLinecap="butt"
+          />
+          <path
+            d={mergeStem}
+            fill="none"
+            stroke={PIPE_FILL}
+            strokeWidth={stemOd}
+            strokeLinecap="butt"
           />
         </>
       ) : null}

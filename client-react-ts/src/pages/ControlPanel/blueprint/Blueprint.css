@@ -467,3 +467,82 @@
 .bp-dock .chartBox {
   box-shadow: none;
 }
+
+/* Top-center canvas controls — grow by adding buttons into the group. */
+.bp-canvas-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.bp-canvas-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--bv-glass-border);
+  background: var(--bv-glass);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  pointer-events: auto;
+}
+
+.bp-canvas-toolbar__btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--bv-text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s var(--bv-ease, ease),
+    background 0.15s var(--bv-ease, ease);
+}
+
+.bp-canvas-toolbar__btn:hover {
+  color: var(--bv-text);
+  background: var(--bv-fill);
+}
+
+.bp-canvas-toolbar__btn:focus {
+  outline: none;
+}
+
+.bp-canvas-toolbar__btn:focus-visible {
+  box-shadow: inset 0 0 0 1.5px var(--bv-accent);
+}
+
+.bp-canvas-toolbar__btn.is-active {
+  color: var(--bv-accent);
+  background: color-mix(in srgb, var(--bv-accent) 14%, transparent);
+}
+
+.bp-canvas-toolbar__icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
+}
+
+.bp-canvas-toolbar__icon > span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
+}
+
+.bp-canvas-toolbar__icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}

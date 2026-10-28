@@ -13,6 +13,7 @@ import {
   type PipeBore,
   type PipeFittingTileKind,
 } from "../../../lib/pipeFittings";
+import PipeFittingSkeleton from "../../../components/PipeFittingSkeleton";
 import VesselShapeSkeleton from "../../../components/VesselShapeSkeleton";
 import "./DeviceLibrary.css";
 
@@ -159,42 +160,37 @@ function DeviceLibrary({ open }: DeviceLibraryProps) {
               >
                 {t("piping.section")}
               </button>
-              {category === "piping" ? (
-                <ul
-                  className="bp-library__dots"
-                  role="listbox"
-                  aria-label={t("piping.boreSelect")}
-                >
-                  <li>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={pipeBore === "wide"}
-                      className={`bp-library__dot ${pipeBore === "wide" ? "is-active" : ""}`}
-                      tabIndex={interactive ? 0 : -1}
-                      onClick={() => setPipeBore("wide")}
-                    >
-                      {t("piping.widePipe")}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={pipeBore === "thin"}
-                      className={`bp-library__dot ${pipeBore === "thin" ? "is-active" : ""}`}
-                      tabIndex={interactive ? 0 : -1}
-                      onClick={() => setPipeBore("thin")}
-                    >
-                      {t("piping.thinPipe")}
-                    </button>
-                  </li>
-                </ul>
-              ) : null}
             </div>
           </nav>
 
           <div className="bp-library__stage">
+            {category === "piping" ? (
+              <div
+                className="bp-library__bore"
+                role="group"
+                aria-label={t("piping.boreSelect")}
+              >
+                <button
+                  type="button"
+                  className={`bp-library__bore-btn ${pipeBore === "wide" ? "is-active" : ""}`}
+                  aria-pressed={pipeBore === "wide"}
+                  tabIndex={interactive ? 0 : -1}
+                  onClick={() => setPipeBore("wide")}
+                >
+                  {t("piping.widePipe")}
+                </button>
+                <button
+                  type="button"
+                  className={`bp-library__bore-btn ${pipeBore === "thin" ? "is-active" : ""}`}
+                  aria-pressed={pipeBore === "thin"}
+                  tabIndex={interactive ? 0 : -1}
+                  onClick={() => setPipeBore("thin")}
+                >
+                  {t("piping.thinPipe")}
+                </button>
+              </div>
+            ) : null}
+
             {category === "bioreactor" ? (
               <div className="bp-library__tiles" role="list">
                 {VESSEL_SHAPE_OPTIONS.map((shapeId, index) => {
@@ -228,30 +224,35 @@ function DeviceLibrary({ open }: DeviceLibraryProps) {
                 })}
               </div>
             ) : (
-              <ul className="bp-library__fit-list" role="list">
-                {PIPE_FITTING_TILES.map((tile) => (
-                  <li key={tile.kind}>
-                    <button
-                      type="button"
-                      className="bp-library__fit"
-                      draggable={interactive}
-                      tabIndex={interactive ? 0 : -1}
-                      onDragStart={(event) =>
-                        onFittingDragStart(event, tile.kind)
-                      }
-                      onDragEnd={onTileDragEnd}
-                      aria-label={t(tile.labelKey)}
-                    >
-                      <span className="bp-library__fit-name">
-                        {t(tile.labelKey)}
-                      </span>
-                      <span className="bp-library__fit-hint">
-                        {t(tile.hintKey)}
-                      </span>
-                    </button>
-                  </li>
+              <div className="bp-library__tiles" role="list">
+                {PIPE_FITTING_TILES.map((tile, index) => (
+                  <button
+                    key={tile.kind}
+                    type="button"
+                    role="listitem"
+                    className="bp-library__tile"
+                    style={{ "--bp-tile-i": index } as CSSProperties}
+                    draggable={interactive}
+                    tabIndex={interactive ? 0 : -1}
+                    onDragStart={(event) =>
+                      onFittingDragStart(event, tile.kind)
+                    }
+                    onDragEnd={onTileDragEnd}
+                    aria-label={t(tile.labelKey)}
+                  >
+                    <span className="bp-library__tile-figure">
+                      <PipeFittingSkeleton
+                        kind={tile.kind}
+                        bore={tile.usesBore ? pipeBore : "thin"}
+                        height={72}
+                      />
+                    </span>
+                    <span className="bp-library__tile-name">
+                      {t(tile.labelKey)}
+                    </span>
+                  </button>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         </div>

@@ -20,7 +20,8 @@ const FLANGE_THICK = 7;
 const FLANGE_OVERHANG = 5;
 const COLLAR_THICK = 4;
 const COLLAR_OVERHANG = 2;
-const REDUCER_LENGTH = 40;
+/** Short collar at the tip — long mid-run cones looked wrong into fittings. */
+const REDUCER_LENGTH = 16;
 
 export type PipeFlowVisual = {
   /** Leading edge 0..1 along the flow direction. */
@@ -158,7 +159,12 @@ export default function PipeShape({
 
   const lastRun = Math.hypot(last.x - beforeLast.x, last.y - beforeLast.y);
   // Reach past the tip into the unit's painted nozzle so plant + unit meet flush.
-  const tipOverlap = Math.max(2 * scale, 0.35 * Math.min(sourceOd, targetOd) * scale);
+  // Bury a bit deeper into the thinner fitting ports so the OD step sits inside.
+  const tipOverlap = Math.max(
+    3 * scale,
+    0.45 * Math.min(sourceOd, targetOd) * scale,
+    sourceOd !== targetOd ? 0.35 * Math.max(sourceOd, targetOd) * scale : 0
+  );
   const flangeLength = targetJoint ? FLANGE_THICK * scale : 0;
   const reducerLength =
     sourceOd === targetOd

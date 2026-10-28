@@ -718,25 +718,14 @@ export function useBioreactorController(
       if (isDrainHeldRef.current) return;
 
       const next = Math.min(VESSEL_MAX_FILL_UNITS, Math.max(0, event.units));
-      const current = fillUnitsRef.current;
+      // Chase the shared plant sink — dual drains accumulate into one level.
+      // Compare against the live fill target (not only painted units) so a
+      // second merger stream isn't ignored while the inlet is still animating.
+      const current = Math.max(
+        fillUnitsRef.current,
+        fillTargetUnitsRef.current ?? 0,
+      );
       if (next <= current + minDeltaUnits) return;
-
-      // Plant water (or a prior remote fill): keep the inlet stream chasing.
-      if (remoteLevelAnimRef.current) {
-        clearRemoteEndTimer();
-        setDrainTargetUnits(null);
-        setIsDrainHeld(false);
-        setFillTargetUnits(next);
-        setIsFillHeld(true);
-        return;
-      }
-      if (
-        isFillHeldRef.current ||
-        inletAnimatingRef.current ||
-        drainAnimatingRef.current
-      ) {
-        return;
-      }
 
       remoteLevelAnimRef.current = true;
       transferJobRef.current = null;

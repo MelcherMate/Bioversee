@@ -66,6 +66,8 @@ type InternalJob = {
   getOutletCleared: () => boolean;
   /** Latched once outletPrimed has been seen for this job. */
   wasOutletPrimed: boolean;
+  /** Source fill when the job started (immutable). */
+  startSourceUnits: number;
   lastSourceUnits: number;
   targetSourceUnits: number;
   requestedUnits: number;
@@ -76,6 +78,10 @@ type InternalJob = {
   tailEdges: number;
   /** Volume waiting in the pipes per sink until the front arrives. */
   inTransit: Map<string, number>;
+  /** Source units committed into inTransit (must equal delivered + pending). */
+  volumeOut: number;
+  /** Units delivered into reactor sinks (or vented as sprinkle). */
+  volumeDelivered: number;
   edgeProgress: Record<string, number>;
   edgeTail: Record<string, number>;
   done: boolean;
@@ -310,13 +316,13 @@ function maybeStreamPersist(job: InternalJob, deviceId: string) {
 }
 
 function deliverToSink(job: InternalJob, sink: FlowSink, amount: number) {
-  if (amount <= 0 || sink.kind !== "reactor") return;
+  if (amount <= 0 || sink.kind !== "reactor") return 0;
   const level =
     sharedSinkLevels.get(sink.deviceId) ?? job.sinkLevels.get(sink.deviceId);
-  if (!level) return;
+  if (!level) return 0;
   const room = VESSEL_MAX_FILL_UNITS - level.units;
   const add = Math.min(room, amount);
-  if (add <= 0) return;
+  if (add <= 0) return 0;
   level.units = clampUnits(level.units + add);
   sharedSinkDelivered.set(
     sink.deviceId,
@@ -325,8 +331,10 @@ function deliverToSink(job: InternalJob, sink: FlowSink, amount: number) {
   // Keep per-job map on the same object so concurrent drains share units.
   job.sinkLevels.set(sink.deviceId, level);
   sharedSinkLevels.set(sink.deviceId, level);
+  job.volumeDelivered += add;
   emitSinkLevel(sink.deviceId, level);
   maybeStreamPersist(job, sink.deviceId);
+  return add;
 }
 
 function finish(job: InternalJob) {
@@ -335,9 +343,39 @@ function finish(job: InternalJob) {
     const key = sinkKey(sink);
     const pending = job.inTransit.get(key) ?? 0;
     if (pending > 0 && job.frontEdges >= sink.edgeIds.length) {
-      deliverToSink(job, sink, pending);
-      job.inTransit.set(key, 0);
+      if (sink.kind === "reactor") {
+        const got = deliverToSink(job, sink, pending);
+        job.inTransit.set(key, Math.max(0, pending - got));
+      } else {
+        // Atmosphere: vent remaining.
+        job.volumeDelivered += pending;
+        job.inTransit.set(key, 0);
+      }
     }
+  }
+  // Precision: every unit that left the source must land in a reactor sink
+  // (merger accumulation) unless the receiver is truly full. Prefer actual
+  // tank delta over the tick ledger so priming/rAF races cannot leak liters.
+  let pendingLeft = 0;
+  for (const v of job.inTransit.values()) pendingLeft += v;
+  const endUnits = clampUnits(job.getSourceUnits());
+  const drained = Math.max(0, job.startSourceUnits - endUnits);
+  const shortfall = Math.max(
+    0,
+    Math.max(drained, job.volumeOut) - job.volumeDelivered - pendingLeft
+  );
+  if (shortfall > 0.001) {
+    const reactorSink = job.flow.sinks.find((s) => s.kind === "reactor");
+    if (reactorSink) deliverToSink(job, reactorSink, shortfall);
+  }
+  // Anything still queued with nowhere to go (full tank) is dropped here.
+  for (const key of job.inTransit.keys()) job.inTransit.set(key, 0);
+
+  // Final emit so the receiver UI snaps to the shared accumulated level.
+  for (const sink of job.flow.sinks) {
+    if (sink.kind !== "reactor") continue;
+    const level = sharedSinkLevels.get(sink.deviceId);
+    if (level) emitSinkLevel(sink.deviceId, level);
   }
   for (const id of job.sinkLevels.keys()) {
     persistSink(job, id, true);
@@ -380,18 +418,15 @@ function tick(job: InternalJob, now: number) {
   const outletPrimed = job.getOutletPrimed();
   const outletCleared = job.getOutletCleared();
 
-  // Only count volume that leaves after the metal outlet is primed — otherwise
-  // plant pipes would fill before the vessel outflow.
+  // Count volume that left the source once the metal outlet is primed.
+  // Include any decrease since job start on the first primed tick — the drain
+  // rAF can run several steady frames before we observe prime, and discarding
+  // that window dropped ~1 L per job (broken merger accumulation).
   let dV = 0;
   if (outletPrimed) {
-    if (!job.wasOutletPrimed) {
-      // Sync baseline so priming itself doesn't invent a volume dump.
-      job.lastSourceUnits = sourceUnits;
-      job.wasOutletPrimed = true;
-    } else {
-      dV = Math.max(0, job.lastSourceUnits - sourceUnits);
-      job.lastSourceUnits = sourceUnits;
-    }
+    dV = Math.max(0, job.lastSourceUnits - sourceUnits);
+    job.lastSourceUnits = sourceUnits;
+    job.wasOutletPrimed = true;
 
     // Sequence: outflow first → then plant front.
     const dose = Math.max(0.01, job.requestedUnits);
@@ -420,11 +455,14 @@ function tick(job: InternalJob, now: number) {
   job.edgeTail = computeEdgeSpan(job.flow, job.tailEdges);
 
   if (dV > 0 && job.flow.sinks.length > 0) {
-    const sinkTotal = job.flow.sinks.reduce((s, x) => s + x.rate, 0) || 1;
-    for (const sink of job.flow.sinks) {
-      const share = (sink.rate / sinkTotal) * dV;
+    const live = job.flow.sinks.filter((s) => s.rate >= 0.01);
+    const queue = live.length > 0 ? live : job.flow.sinks;
+    const sinkTotal = queue.reduce((s, x) => s + Math.max(x.rate, 0.01), 0);
+    for (const sink of queue) {
+      const share = (Math.max(sink.rate, 0.01) / sinkTotal) * dV;
       const key = sinkKey(sink);
       job.inTransit.set(key, (job.inTransit.get(key) ?? 0) + share);
+      job.volumeOut += share;
     }
   }
 
@@ -432,20 +470,21 @@ function tick(job: InternalJob, now: number) {
   for (const sink of job.flow.sinks) {
     const key = sinkKey(sink);
     const pending = job.inTransit.get(key) ?? 0;
-    // Full receiver — drop undeliverable volume (do not rewrite as inlet spray).
+    // Full receiver — keep volume queued; finish() tops up remaining room.
     if (sink.kind === "reactor" && sink.rate < 0.01) {
-      if (pending > 0) job.inTransit.set(key, 0);
       continue;
     }
     if (pending <= 0 || job.frontEdges < sink.edgeIds.length) continue;
     const give = Math.min(pending, Math.max(sink.rate, 0.01) * dt);
     if (give <= 0) continue;
     if (sink.kind === "reactor") {
-      deliverToSink(job, sink, give);
+      const got = deliverToSink(job, sink, give);
+      job.inTransit.set(key, Math.max(0, pending - got));
+    } else {
+      // Sprinkle = atmosphere: volume leaves the pipes, nothing to store.
+      job.volumeDelivered += give;
+      job.inTransit.set(key, Math.max(0, pending - give));
     }
-    // Sprinkle = atmosphere: volume leaves the pipes, nothing to store.
-    // Must still consume inTransit or the job never finishes and spray sticks on.
-    job.inTransit.set(key, Math.max(0, pending - give));
   }
 
   notify(job);
@@ -457,9 +496,20 @@ function tick(job: InternalJob, now: number) {
     const tailDone = job.tailEdges >= job.frontEdges - 0.01;
     // Wait for the vessel outlet to finish clearing before we consider the
     // plant trail done (and before we drop remaining in-pipe volume).
-    if (pending > 0.05 || !frontDone || !outletCleared || !tailDone) {
+    if (!frontDone || !outletCleared || !tailDone) {
       job.raf = requestAnimationFrame((t) => tick(job, t));
       return;
+    }
+    if (pending > 0.05) {
+      const canDeliver = job.flow.sinks.some((sink) => {
+        if (job.frontEdges < sink.edgeIds.length) return false;
+        if (sink.kind === "sprinkle") return true;
+        return sink.kind === "reactor" && sink.rate >= 0.01;
+      });
+      if (canDeliver) {
+        job.raf = requestAnimationFrame((t) => tick(job, t));
+        return;
+      }
     }
     finish(job);
     return;
@@ -521,6 +571,7 @@ export function startPlantDrainTransfer(
     getOutletPrimed: input.getOutletPrimed ?? (() => true),
     getOutletCleared: input.getOutletCleared ?? (() => true),
     wasOutletPrimed: false,
+    startSourceUnits: clampUnits(input.startUnits),
     lastSourceUnits: clampUnits(input.startUnits),
     targetSourceUnits: input.targetUnits,
     requestedUnits: input.requestedUnits,
@@ -528,6 +579,8 @@ export function startPlantDrainTransfer(
     frontEdges: 0,
     tailEdges: 0,
     inTransit: new Map(),
+    volumeOut: 0,
+    volumeDelivered: 0,
     edgeProgress: {},
     edgeTail: {},
     done: false,
@@ -631,6 +684,34 @@ export function subscribePlantFlowVisuals(
 
 export function getActivePlantFlowVisual(): PlantTransferSnapshot | null {
   return mergeVisualSnapshot();
+}
+
+/** Debug: shared receiver fill + liters delivered this multi-drain session. */
+export function getSharedPlantSinkDebug(): Record<
+  string,
+  { units: number; capacityL: number; deliveredUnits: number }
+> {
+  const out: Record<
+    string,
+    { units: number; capacityL: number; deliveredUnits: number }
+  > = {};
+  for (const [id, level] of sharedSinkLevels) {
+    out[id] = {
+      units: level.units,
+      capacityL: level.capacityL,
+      deliveredUnits: sharedSinkDelivered.get(id) ?? 0,
+    };
+  }
+  return out;
+}
+
+if (typeof window !== "undefined") {
+  const w = window as unknown as {
+    __plantJobs?: () => string[];
+    __plantSinks?: () => ReturnType<typeof getSharedPlantSinkDebug>;
+  };
+  w.__plantJobs = () => [...jobs.keys()];
+  w.__plantSinks = getSharedPlantSinkDebug;
 }
 
 

@@ -81,6 +81,7 @@ import {
   useBlueprint,
   type BlueprintContextValue,
 } from "./BlueprintContext";
+import CanvasToolbar, { CANVAS_GRID_GAP } from "./CanvasToolbar";
 import DeviceLibrary, {
   DEVICE_LIBRARY_MIME,
   type DeviceLibraryPayload,
@@ -315,6 +316,21 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedPipeId, setSelectedPipeId] = useState<string | null>(null);
+  const [snapToGrid, setSnapToGrid] = useState(() => {
+    try {
+      return localStorage.getItem("bv.canvas.snapToGrid") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const onSnapToGridChange = useCallback((next: boolean) => {
+    setSnapToGrid(next);
+    try {
+      localStorage.setItem("bv.canvas.snapToGrid", next ? "1" : "0");
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, []);
   const [dockedId, setDockedId] = useState<string | null>(null);
   const [controlsDock, setControlsDock] = useState<HTMLElement | null>(null);
   const [chartsDock, setChartsDock] = useState<HTMLElement | null>(null);
@@ -1021,14 +1037,31 @@ function BlueprintInner({ plantId, user, editing }: BlueprintInnerProps) {
             edgesFocusable={false}
             elementsSelectable={false}
             deleteKeyCode={null}
+            snapToGrid={snapToGrid}
+            snapGrid={[CANVAS_GRID_GAP, CANVAS_GRID_GAP]}
             fitView
             fitViewOptions={{ padding: 0.25, maxZoom: 0.9 }}
             minZoom={0.2}
             proOptions={{ hideAttribution: true }}
           >
-            <Background gap={18} size={1} color="var(--bv-border)" />
+            <Background
+              gap={CANVAS_GRID_GAP}
+              size={editing && snapToGrid ? 1.25 : 1}
+              color={
+                editing && snapToGrid
+                  ? "color-mix(in srgb, var(--bv-border) 85%, var(--bv-accent))"
+                  : "var(--bv-border)"
+              }
+            />
             <PlantFlowOverlay />
           </ReactFlow>
+
+          {editing ? (
+            <CanvasToolbar
+              snapToGrid={snapToGrid}
+              onSnapToGridChange={onSnapToGridChange}
+            />
+          ) : null}
 
           {nodes.length === 0 ? (
             <div className="bp-empty">
