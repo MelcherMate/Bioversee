@@ -29,7 +29,7 @@ import {
   type ParagraphChild,
 } from "docx";
 
-import { PRINT_BRAND, money, parseItems, type PrintData, type PrintKind } from "./printData";
+import { FOOTER_ALL, FOOTER_COLS, PRINT_BRAND, footerColumn, money, parseItems, type FooterCols, type PrintData, type PrintKind } from "./printData";
 
 /** A4 in twips (1/1440 in) and the page margins used by every template. */
 export const A4 = { width: 11906, height: 16838 };
@@ -114,8 +114,10 @@ function header(kind: PrintKind, d: PrintData, logo: LogoPng) {
   });
 }
 
-function footer(d: PrintData) {
+function footer(d: PrintData, cols: FooterCols) {
+  // Fixed quarter-width columns; disabled ones are dropped so the rest pack to the left margin.
   const w = Math.floor(CONTENT_W / 4);
+  const on = FOOTER_COLS.filter((c) => cols[c.id]);
   const col = (title: string, rows: string[]) => [
     para([run(title, { size: 14, bold: true, color: PRINT_BRAND.accent, caps: true })], { after: 40 }),
     ...rows.map((r) => para([run(r, { size: 14, color: PRINT_BRAND.ink2 })], { line: 240 })),
@@ -125,15 +127,24 @@ function footer(d: PrintData) {
     spacing: { line: 240 },
     children: [new TextRun({ font: PRINT_BRAND.font, size: 14, color: PRINT_BRAND.ink3, children: [PageNumber.CURRENT, " / ", PageNumber.TOTAL_PAGES] })],
   });
+  const grid = on.length
+    ? [
+        new Table({
+          width: { size: w * on.length, type: WidthType.DXA },
+          columnWidths: on.map(() => w),
+          layout: TableLayoutType.FIXED,
+          alignment: AlignmentType.LEFT,
+          indent: { size: 0, type: WidthType.DXA },
+          borders: NO_BORDERS,
+          rows: [new TableRow({ children: on.map((c) => { const f = footerColumn(c.id, d); return cell(col(f.title, f.rows), w, { margins: false }); }) })],
+        }),
+      ]
+    : [];
   return new Footer({
     children: [
       new Paragraph({ spacing: { after: 120 }, border: { top: { style: BorderStyle.SINGLE, size: 4, color: PRINT_BRAND.line, space: 1 } }, children: [] }),
-      table([w, w, w, CONTENT_W - 3 * w], [[
-        cell(col(d.company, [d.street, d.city, d.country]), w, { margins: false }),
-        cell(col("Contact", [d.email, d.web, d.phone]), w, { margins: false }),
-        cell(col("Company", [d.regNo, d.vatId]), w, { margins: false }),
-        cell([...col("Bank", [d.bank, d.iban, d.bic]), page], CONTENT_W - 3 * w, { margins: false }),
-      ]]),
+      ...grid,
+      page,
     ],
   });
 }
@@ -213,7 +224,7 @@ function invoiceBody(d: PrintData) {
 }
 
 /** Build the Word document for a template. */
-export function buildPrintDocument(kind: PrintKind, d: PrintData, logo: LogoPng) {
+export function buildPrintDocument(kind: PrintKind, d: PrintData, logo: LogoPng, cols: FooterCols = FOOTER_ALL) {
   const children = kind === "letter" ? letterBody(d) : kind === "report" ? reportBody(d) : invoiceBody(d);
   return new Document({
     creator: d.company,
@@ -230,7 +241,7 @@ export function buildPrintDocument(kind: PrintKind, d: PrintData, logo: LogoPng)
           },
         },
         headers: { default: header(kind, d, logo) },
-        footers: { default: footer(d) },
+        footers: { default: footer(d, cols) },
         children,
       },
     ],

@@ -1,11 +1,20 @@
 import type { CSSProperties, ReactNode } from "react";
 import { LogoAssetGallery } from "./LogoAssets";
-import { BLUEPRINT_CLEAR, BLUEPRINT_MARK, BLUEPRINT_WORD, BLUEPRINT_WORD_SMALL } from "./blueprintSheets";
+import markSvg from "../../assets/blueprint/01-mark-construction.svg?url";
+import markPng from "../../assets/blueprint/01-mark-construction.png?url";
+import smallSvg from "../../assets/blueprint/02-small-mark-construction.svg?url";
+import smallPng from "../../assets/blueprint/02-small-mark-construction.png?url";
+import wordSvg from "../../assets/blueprint/03-wordmark.svg?url";
+import wordPng from "../../assets/blueprint/03-wordmark.png?url";
+import wordSmallSvg from "../../assets/blueprint/04-small-wordmark.svg?url";
+import wordSmallPng from "../../assets/blueprint/04-small-wordmark.png?url";
+import clearSvg from "../../assets/blueprint/05-clear-space-min-sizes.svg?url";
+import clearPng from "../../assets/blueprint/05-clear-space-min-sizes.png?url";
 import { LOGO_MARK, LOGO_TILE, LOGO_WORDMARK, WORDMARK_RATIO } from "../../components/BrandLogo/logoSvgs";
 
 /**
- * Logo blueprint. The drawings are generated from the real logo SVGs by
- * scripts/gen-logo-blueprint.mjs — re-run it after changing logoSvgs.ts.
+ * Logo blueprint. The construction sheets in src/assets/blueprint are generated from the
+ * real logo paths by scripts/blueprint (see its README) — re-run it after changing logoSvgs.ts.
  */
 
 /** Inline SVG from the generated geometry module (trusted, build-time strings). */
@@ -23,20 +32,13 @@ function Block({ title, note, children }: { title: string; note?: ReactNode; chi
   );
 }
 
-function downloadSvg(svg: string, name: string) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-  a.download = `${name}.svg`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
-function Sheet({ src, label, file }: { src: string; label: string; file: string }) {
+function Sheet({ svg, png, label, file, width, height }: { svg: string; png: string; label: string; file: string; width: number; height: number }) {
   return (
     <figure className="lb-figure">
-      <div className="lb-sheet"><Svg src={src} label={label} /></div>
+      <div className="lb-sheet"><img className="lb-sheet__img" src={svg} alt={label} width={width} height={height} loading="lazy" decoding="async" /></div>
       <figcaption className="lb-figcap">
-        <button type="button" className="lb-dl" onClick={() => downloadSvg(src, file)}>SVG ↓</button>
+        <a className="lb-dl" href={svg} download={`${file}.svg`}>SVG ↓</a>
+        <a className="lb-dl" href={png} download={`${file}.png`}>PNG ↓</a>
       </figcaption>
     </figure>
   );
@@ -64,17 +66,18 @@ const chip = (v: string) => (v.startsWith("#") ? <span className="lb-chip" style
 export function LogoBlueprintSection() {
   return (
     <>
-      <Block title="Mark" note="u = 1/64 of the artboard. Large master from 48 px, small master below.">
-        <Sheet src={BLUEPRINT_MARK} label="Mark construction: grid, radii, stroke widths and arc angles" file="bioversee-blueprint-mark" />
+      <Block title="Mark" note="Values in px on the 64 px artboard; m = 4 px grid module. Large master from 48 px, small master below.">
+        <Sheet svg={markSvg} png={markPng} width={1480} height={960} label="Mark construction: grid, radii, stroke widths, gaps and arc angles" file="bioversee-blueprint-mark" />
+        <Sheet svg={smallSvg} png={smallPng} width={1480} height={960} label="Small mark (favicon) construction" file="bioversee-blueprint-mark-small" />
       </Block>
 
-      <Block title="Wordmark" note="Outfit 650, outlined. The ‘o’ is the mark; below 160 px wide it is the small mark.">
-        <Sheet src={BLUEPRINT_WORD} label="Wordmark construction: cap height, x-height, baseline and the mark-o" file="bioversee-blueprint-wordmark" />
-        <Sheet src={BLUEPRINT_WORD_SMALL} label="Small wordmark construction" file="bioversee-blueprint-wordmark-small" />
+      <Block title="Wordmark" note="Outfit 650, outlined. The ‘o’ is the mark; below 160 px wide it is the small mark. H = cap height (70.5 px).">
+        <Sheet svg={wordSvg} png={wordPng} width={1600} height={1000} label="Wordmark construction: cap height, x-height, baseline and the dial ‘o’" file="bioversee-blueprint-wordmark" />
+        <Sheet svg={wordSmallSvg} png={wordSmallPng} width={1600} height={1000} label="Small wordmark construction" file="bioversee-blueprint-wordmark-small" />
       </Block>
 
       <Block title="Clear space & minimum size">
-        <Sheet src={BLUEPRINT_CLEAR} label="Clear space around the mark and the wordmark" file="bioversee-blueprint-clear-space" />
+        <Sheet svg={clearSvg} png={clearPng} width={1600} height={880} label="Clear space around the mark and the wordmark, and minimum sizes" file="bioversee-blueprint-clear-space" />
         <div className="lb-mins">
           <span><b>Mark</b> ≥ 16 px</span>
           <span><b>Wordmark</b> ≥ 72 px wide</span>

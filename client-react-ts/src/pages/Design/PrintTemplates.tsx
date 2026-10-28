@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LOGO_WORDMARK, WORDMARK_RATIO } from "../../components/BrandLogo/logoSvgs";
 import SegmentedControl from "../../components/SegmentedControl";
-import { money, parseItems, PRINT_BODY, PRINT_BRAND, PRINT_DEFAULTS, PRINT_KINDS, type PrintData, type PrintKind } from "./printData";
+import { FOOTER_ALL, FOOTER_COLS, footerColumn, money, parseItems, PRINT_BODY, PRINT_BRAND, PRINT_DEFAULTS, PRINT_KINDS, type FooterCol, type FooterCols, type PrintData, type PrintKind } from "./printData";
 import "./PrintTemplates.css";
 
 /** Light-theme wordmark (fixed colours) — the same SVG as the site, rasterised for Word. */
@@ -36,7 +36,7 @@ const lines = (t: string) => t.split("\n");
 const paras = (t: string) => t.split(/\n\s*\n/).filter((p) => p.trim());
 
 /** HTML mirror of the Word layout (mm units on a 210 × 297 mm sheet). */
-function A4Preview({ kind, d }: { kind: PrintKind; d: PrintData }) {
+function A4Preview({ kind, d, cols }: { kind: PrintKind; d: PrintData; cols: FooterCols }) {
   const items = parseItems(d.items);
   const sub = items.reduce((a, b) => a + b.total, 0);
   const rate = Number(d.vatRate.replace(",", ".")) || 0;
@@ -102,10 +102,11 @@ function A4Preview({ kind, d }: { kind: PrintKind; d: PrintData }) {
       </main>
 
       <footer className="pt-foot">
-        <div><b>{d.company}</b><span>{d.street}</span><span>{d.city}</span><span>{d.country}</span></div>
-        <div><b>Contact</b><span>{d.email}</span><span>{d.web}</span><span>{d.phone}</span></div>
-        <div><b>Company</b><span>{d.regNo}</span><span>{d.vatId}</span></div>
-        <div><b>Bank</b><span>{d.bank}</span><span>{d.iban}</span><span>{d.bic}</span><em>1 / 1</em></div>
+        {FOOTER_COLS.filter((c) => cols[c.id]).map((c) => {
+          const f = footerColumn(c.id, d);
+          return <div key={c.id} data-col={c.id}><b>{f.title}</b>{f.rows.map((r, i) => <span key={i}>{r}</span>)}</div>;
+        })}
+        <em className="pt-foot__page">1 / 1</em>
       </footer>
     </div>
   );
@@ -132,6 +133,8 @@ function Fit({ children }: { children: ReactNode }) {
 export function PrintTemplateSection() {
   const [kind, setKind] = useState<PrintKind>("letter");
   const [d, setD] = useState<PrintData>({ ...PRINT_DEFAULTS, body: PRINT_BODY.letter });
+  const [cols, setCols] = useState<FooterCols>(FOOTER_ALL);
+  const toggleCol = (id: FooterCol) => setCols((p) => ({ ...p, [id]: !p[id] }));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const set = <K extends keyof PrintData>(k: K) => (e: { target: { value: string } }) => setD((p) => ({ ...p, [k]: e.target.value }));
@@ -145,7 +148,7 @@ export function PrintTemplateSection() {
     setErr("");
     try {
       const [{ Packer }, { buildPrintDocument }, logo] = await Promise.all([import("docx"), import("./printDocx"), wordmarkPng()]);
-      const blob = await Packer.toBlob(buildPrintDocument(kind, d, logo));
+      const blob = await Packer.toBlob(buildPrintDocument(kind, d, logo, cols));
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `bioversee-${kind}-a4.docx`;
@@ -206,6 +209,18 @@ export function PrintTemplateSection() {
             <Field label="BIC">{input("bic")}</Field>
           </div>
         </details>
+        <div className="tpl-field">
+          <span className="tpl-label">Footer columns</span>
+          <div className="pt-toggles" role="group" aria-label="Footer columns">
+            {FOOTER_COLS.map((c) => (
+              <label key={c.id} className={`pt-toggle${cols[c.id] ? " is-on" : ""}`}>
+                <input type="checkbox" role="switch" checked={cols[c.id]} onChange={() => toggleCol(c.id)} />
+                <span className="pt-toggle__track" aria-hidden="true"><span className="pt-toggle__thumb" /></span>
+                <span>{c.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
         <div className="tpl-actions landing">
           <button type="button" className="landing-btn landing-btn--primary" onClick={download} disabled={busy}>{busy ? "Building…" : "Download .docx"}</button>
           <span className="tpl-cap">A4 · Word header &amp; footer</span>
@@ -214,7 +229,7 @@ export function PrintTemplateSection() {
         <p className="tpl-cap">[Bracketed] values are placeholders — fill in the real company details before printing.</p>
       </form>
       <div className="tpl-preview pt-preview">
-        <Fit><A4Preview kind={kind} d={d} /></Fit>
+        <Fit><A4Preview kind={kind} d={d} cols={cols} /></Fit>
       </div>
     </div>
   );

@@ -1,0 +1,6 @@
+svgpathtools
+cairosvg
+pillow
+numpy
+fonttools
+brotli

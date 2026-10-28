@@ -71,9 +71,21 @@
 }
 .pt-foot div { display: flex; flex-direction: column; }
 .pt-foot b { color: var(--pt-accent); text-transform: uppercase; margin-bottom: 2pt; }
-.pt-foot em { font-style: normal; color: var(--pt-ink3); align-self: flex-end; margin-top: 4pt; }
+/* Own full-width row under the columns (mirrors the Word footer), so it stays bottom-right whichever columns are on. */
+.pt-foot__page { grid-column: 1 / -1; justify-self: end; margin-top: 4pt; font-style: normal; color: var(--pt-ink3); }
 
 .pt-details { border-radius: 12px; box-shadow: 0 0 0 1px var(--bv-line); padding: 10px 12px; }
 .pt-details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--bv-text-secondary); }
 .pt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
 .pt-err { color: var(--bv-danger, #ff3b30); }
+
+/* Footer column switches */
+.pt-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.pt-toggle { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--bv-line); font-size: 13px; color: var(--bv-text-secondary); cursor: pointer; user-select: none; }
+.pt-toggle.is-on { color: var(--bv-text); box-shadow: inset 0 0 0 1px var(--bv-accent-border, var(--bv-line)); }
+.pt-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.pt-toggle__track { position: relative; width: 28px; height: 16px; border-radius: 999px; background: var(--bv-fill, #e5e5ea); box-shadow: inset 0 0 0 1px var(--bv-line); transition: background 0.18s; }
+.pt-toggle__thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.18s; }
+.pt-toggle.is-on .pt-toggle__track { background: var(--bv-accent); box-shadow: none; }
+.pt-toggle.is-on .pt-toggle__thumb { transform: translateX(12px); }
+.pt-toggle input:focus-visible + .pt-toggle__track { outline: 2px solid var(--bv-accent); outline-offset: 2px; }

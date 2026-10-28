@@ -101,3 +101,24 @@ export function parseItems(items: string) {
 }
 export const money = (n: number, cur: string) => `${n.toFixed(2)} ${cur}`;
 
+
+/** The four footer columns — each can be switched off; enabled ones pack to the left. */
+export type FooterCol = "address" | "contact" | "company" | "bank";
+export const FOOTER_COLS: { id: FooterCol; label: string }[] = [
+  { id: "address", label: "Address" },
+  { id: "contact", label: "Contact" },
+  { id: "company", label: "Company" },
+  { id: "bank", label: "Bank" },
+];
+export type FooterCols = Record<FooterCol, boolean>;
+export const FOOTER_ALL: FooterCols = { address: true, contact: true, company: true, bank: true };
+
+/** Title + lines of one footer column (shared by preview and Word). */
+export function footerColumn(id: FooterCol, d: PrintData): { title: string; rows: string[] } {
+  switch (id) {
+    case "address": return { title: d.company, rows: [d.street, d.city, d.country] };
+    case "contact": return { title: "Contact", rows: [d.email, d.web, d.phone] };
+    case "company": return { title: "Company", rows: [d.regNo, d.vatId] };
+    case "bank": return { title: "Bank", rows: [d.bank, d.iban, d.bic] };
+  }
+}
