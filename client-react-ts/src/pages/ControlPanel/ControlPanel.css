@@ -26,7 +26,13 @@
   gap: 12px;
   flex: 1;
   min-height: 0;
-  /* Clip the sliding plant list so it cannot paint over the main panel. */
+  /* Clip the sliding plant list so it cannot paint over the main panel.
+     The padding / negative margin pair gives the panels' --bv-shadow-float room
+     to render inside the clip box; without it the shadow was cut off at the
+     panels' bottom edge, leaving a hard band and corner blobs. */
+  --cp-shadow-room: 14px;
+  padding: 0 var(--cp-shadow-room) var(--cp-shadow-room);
+  margin: 0 calc(-1 * var(--cp-shadow-room)) calc(-1 * var(--cp-shadow-room));
   overflow: hidden;
   transition:
     grid-template-columns var(--bv-chrome-ms, 600ms) var(--bv-chrome-ease, ease),
@@ -1006,6 +1012,10 @@
 @media (max-width: 720px) {
   .cp {
     padding: 8px 10px 12px;
+  }
+
+  .cp__layout {
+    --cp-shadow-room: 10px;
   }
 
   .cp-card__metrics {
